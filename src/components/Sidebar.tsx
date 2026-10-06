@@ -150,7 +150,7 @@ export function Sidebar({
           <nav className="px-3 pb-4 space-y-4 overflow-y-auto max-h-[calc(100vh-500px)]" aria-label={isAr ? 'أقسام القائمة الرئيسية' : 'Main navigation sections'}>
             {visibleSections.map((section) => (
               <div key={section.title}>
-                <h2 className="px-3 mb-1.5 text-lg italic text-center font-black tracking-[0.16em] text-brand-500 bg-white uppercase">{section.title}</h2>
+                <h2 className="px-3 mb-1.5 text-lg italic text-center font-black tracking-[0.16em] text-brand-500 bg-[#171b22] uppercase">{section.title}</h2>
                 <div className="space-y-0.5">
                   {section.items.map((item) => {
                     const Icon = item.icon;
@@ -175,7 +175,7 @@ export function Sidebar({
             ))}
             {activeRole === 'parent' && (
               <div>
-                <h2 className="px-3 mb-1.5 text-lg italic text-center font-black tracking-[0.16em] text-brand-500 bg-white uppercase">{isAr ? 'الإدارة' : 'Administration'}</h2>
+                <h2 className="px-3 mb-1.5 text-lg italic text-center font-black tracking-[0.16em] text-brand-500 bg-[#171b22] uppercase">{isAr ? 'الإدارة' : 'Administration'}</h2>
                 <button onClick={() => handleNav('registration')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-right text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
                   <ClipboardList className="h-4 w-4 shrink-0" />
                   <span className="truncate">{t.registration}</span>
