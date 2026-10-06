@@ -51,7 +51,7 @@ export function Sidebar({
   const isAr = lang === 'ar';
   const ROLE_OPTIONS = getRoleOptions(lang);
   const brandName = academyName?.trim() || t.academyShort;
-  const fallbackLogo = '/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy 2.png';
+  const fallbackLogo = logoUrl || '/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy 2.png';
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
@@ -110,7 +110,8 @@ export function Sidebar({
               <p className="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5 uppercase">SHOOTER ACADEMY</p>
               <p className="text-[9px] text-brand-500 font-semibold mt-0.5">{t.systemTitle}</p>
             </div>
-            <button onClick={() => setMobileOpen(false)} aria-label={lang === 'ar' ? 'إغلاق القائمة' : 'Close menu'} className="lg:hidden p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer">
+            <button onClick={() => setMobileOpen(false)} aria-label={lang === 'ar' ? 'إغلاق القائمة' : 'Close menu'} className="lg:hidden p-1.5 rounded-lg hover:bg-slate-800 transition focus:outline-none focus:ring-2 focus:ring-brand-500/70"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
