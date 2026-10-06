@@ -1,0 +1,1 @@
+create or replace function internal.get_staff_private() returns table(id text,salary numeric,national_id text) language sql stable security definer set search_path = '' as $$ select s.id,s.salary::numeric,s.national_id from public.staff s where internal.is_academy_admin(); $$;

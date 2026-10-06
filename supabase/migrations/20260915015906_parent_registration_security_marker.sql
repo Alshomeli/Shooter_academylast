@@ -1,0 +1,1 @@
+COMMENT ON TABLE public.parents IS 'Parent profiles. Self-registration is performed by the parent-register Edge Function, which binds user_id to auth.users.id. Direct authenticated inserts remain manager/receptionist only.';

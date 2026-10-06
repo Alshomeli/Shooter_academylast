@@ -1,0 +1,1 @@
+revoke execute on function internal.stamp_audit_log() from authenticated, service_role; revoke execute on function internal.stamp_login_audit_log() from authenticated, service_role; grant execute on function internal.stamp_audit_log() to postgres; grant execute on function internal.stamp_login_audit_log() to postgres;

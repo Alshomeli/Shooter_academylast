@@ -1,0 +1,129 @@
+openapi: 3.1.0
+info:
+  title: Shooter Academy Safe Operations Gateway
+  version: 1.0.0
+  description: >
+    Authenticated administrative gateway. Mutating actions must always use
+    prepare -> explicit human confirmation -> execute. Never expose or use
+    the Supabase service-role key from a client or ChatGPT connector.
+servers:
+  - url: https://jgvfruijtixguavspyer.supabase.co/functions/v1
+paths:
+  /ai-operations-gateway:
+    post:
+      operationId: academySafeOperation
+      summary: Prepare, confirm, cancel, or list safe administrative actions
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/PrepareRequest'
+                - $ref: '#/components/schemas/ExecuteRequest'
+                - $ref: '#/components/schemas/CancelRequest'
+                - $ref: '#/components/schemas/HistoryRequest'
+                - $ref: '#/components/schemas/SnapshotRequest'
+      responses:
+        '200':
+          description: Successful gateway response
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SnapshotResponse'
+        '400':
+          description: Invalid request or explicit confirmation missing
+        '401':
+          description: Authentication required or invalid session
+        '403':
+          description: Role or ownership denied
+        '409':
+          description: Action is no longer executable or business rule rejected it
+        '410':
+          description: Prepared action expired
+        '429':
+          description: Rate limit exceeded
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Supabase JWT
+  schemas:
+    Operation:
+      type: string
+      enum:
+        - approve_registration
+        - review_registration
+        - record_subscription_payment
+        - record_attendance
+        - publish_player_evaluation
+        - create_subscription
+    PrepareRequest:
+      type: object
+      required: [mode, operation, params]
+      properties:
+        mode:
+          const: prepare
+        operation:
+          $ref: '#/components/schemas/Operation'
+        params:
+          type: object
+          additionalProperties: true
+    ExecuteRequest:
+      type: object
+      required: [mode, requestId, confirm]
+      properties:
+        mode:
+          const: execute
+        requestId:
+          type: string
+          format: uuid
+        confirm:
+          const: true
+    CancelRequest:
+      type: object
+      required: [mode, requestId]
+      properties:
+        mode:
+          const: cancel
+        requestId:
+          type: string
+          format: uuid
+    HistoryRequest:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          const: history
+    SnapshotRequest:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          const: snapshot
+
+    SnapshotResponse:
+      type: object
+      required: [generatedAt, role, snapshot]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        role:
+          type: string
+        snapshot:
+          type: object
+          required: [unpaidSubscriptions, activePlayers, draftEvaluations, applicationsNeedingAction]
+          properties:
+            unpaidSubscriptions:
+              type: [integer, 'null']
+            activePlayers:
+              type: integer
+            draftEvaluations:
+              type: [integer, 'null']
+            applicationsNeedingAction:
+              type: [integer, 'null']

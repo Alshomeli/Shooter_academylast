@@ -1,0 +1,1 @@
+grant select,insert,delete on table public.telegram_link_codes to authenticated;

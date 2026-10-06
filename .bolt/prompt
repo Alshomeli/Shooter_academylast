@@ -1,0 +1,23 @@
+You are modifying an EXISTING production app called Shooter Academy.
+
+RULES:
+- Do not rebuild the app or refactor unrelated code.
+- Reuse the existing router, Supabase client, authentication, role system, components, styling, and state patterns.
+- Supabase is already configured and security-hardened.
+- Do NOT recreate or modify tables, RLS, RPCs, triggers, storage buckets, or Edge Functions unless explicitly requested.
+- Never weaken RLS or expose service-role credentials.
+- Authorization must use the existing authenticated Supabase session/auth.uid().
+- Keep Arabic RTL, existing dark theme, and responsive/mobile-first UX.
+- Keep private documents private.
+- Never put CPR, names, email, or phone in storage filenames.
+- Player photo must be compressed client-side before upload.
+- Use existing RPCs instead of direct writes whenever an RPC exists.
+- Do not activate players directly.
+- Do not mark subscriptions paid directly.
+- Do NOT delete/reset/reseed test data.
+- Make minimal targeted changes.
+- Do not run unrelated audits.
+- At completion report only:
+  1. files changed
+  2. features implemented
+  3. items requiring end-to-end testing

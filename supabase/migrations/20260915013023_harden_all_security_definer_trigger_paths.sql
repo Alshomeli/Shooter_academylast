@@ -1,0 +1,16 @@
+alter function internal.audit_subscription_payment() set search_path='';
+alter function internal.claim_staff_record() set search_path='';
+alter function internal.guard_audit_log_immutable() set search_path='';
+alter function internal.guard_player_sensitive_columns() set search_path='';
+alter function internal.guard_staff_deactivation() set search_path='';
+alter function internal.guard_team_coach_assignment() set search_path='';
+alter function internal.guard_transaction_financial_fields() set search_path='';
+alter function internal.stamp_audit_log() set search_path='';
+alter function internal.stamp_login_audit_log() set search_path='';
+alter function internal.validate_attendance_training_link() set search_path='';
+alter function internal.validate_notification_recipient() set search_path='';
+alter function internal.validate_subscription_player() set search_path='';
+alter function internal.validate_subscription_state() set search_path='';
+alter function internal.validate_team_coach() set search_path='';
+alter function internal.validate_transaction_subscription_link() set search_path='';
+alter function internal.validate_match_result() set search_path='';

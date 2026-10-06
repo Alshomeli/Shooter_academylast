@@ -1,0 +1,8 @@
+drop policy if exists telegram_link_codes_no_direct_access on public.telegram_link_codes;
+create policy telegram_link_codes_delete_own on public.telegram_link_codes for delete to authenticated using (user_id=(select auth.uid()));
+create policy telegram_link_codes_insert_own_staff_role on public.telegram_link_codes for insert to authenticated with check (user_id=(select auth.uid()) and role in ('manager','coach') and role=internal.telegram_role_for_user((select auth.uid())) and consumed_at is null and expires_at>now() and expires_at<=now()+interval '11 minutes');
+revoke all on table public.telegram_link_codes from anon,authenticated;
+grant insert,delete on table public.telegram_link_codes to authenticated;
+create or replace function public.create_telegram_link_code() returns text language plpgsql security invoker set search_path='' as $$ declare v_user uuid:=auth.uid(); v_role text; v_code text; begin if v_user is null then raise exception 'authentication_required'; end if; v_role:=internal.telegram_role_for_user(v_user); if v_role is null or v_role not in ('manager','coach') then raise exception 'telegram_role_not_allowed'; end if; delete from public.telegram_link_codes where user_id=v_user and consumed_at is null; v_code:=upper(substr(replace(gen_random_uuid()::text,'-',''),1,8)); insert into public.telegram_link_codes(user_id,code_hash,role,expires_at) values(v_user,encode(extensions.digest(v_code,'sha256'),'hex'),v_role,now()+interval '10 minutes'); return v_code; end $$;
+revoke all on function public.create_telegram_link_code() from public,anon;
+grant execute on function public.create_telegram_link_code() to authenticated;

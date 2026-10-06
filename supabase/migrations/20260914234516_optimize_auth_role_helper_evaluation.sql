@@ -1,0 +1,5 @@
+create or replace function internal.current_user_role() returns text language sql stable security definer set search_path = public as $function$ select s.role from public.staff s where (s.user_id = (select auth.uid()) or (s.user_id is null and lower(s.email) = lower((select auth.jwt() ->> 'email'))) ) and s.status = 'active' limit 1; $function$;
+
+create or replace function internal.has_role(allowed_roles text[]) returns boolean language sql stable security definer set search_path = public as $function$ select exists (select 1 from public.staff s where (s.user_id = (select auth.uid()) or (s.user_id is null and lower(s.email) = lower((select auth.jwt() ->> 'email')))) and s.status = 'active' and s.role = any(allowed_roles)); $function$;
+
+create or replace function internal.is_active_member() returns boolean language sql stable security definer set search_path = public as $function$ select exists (select 1 from public.staff s where (s.user_id = (select auth.uid()) or (s.user_id is null and lower(s.email) = lower((select auth.jwt() ->> 'email')))) and s.status = 'active'); $function$;

@@ -1,0 +1,18 @@
+[functions.setup-academy]
+verify_jwt = true
+
+[functions.delete-player-file]
+verify_jwt = true
+
+
+[auth.oauth_server]
+enabled = true
+authorization_url_path = "/oauth/consent"
+allow_dynamic_registration = true
+
+[functions.telegram-reply]
+verify_jwt = false
+
+
+[functions.parent-account-invite]
+verify_jwt = true
