@@ -17,6 +17,8 @@ interface SettingsProps {
 const inputCls =
   'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
+const DEFAULT_ACADEMY_LOGO = '/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy 2.png';
+
 function isImageLogo(value: string) {
   return /^(https?:\/\/|data:image\/|\/)/i.test(value.trim());
 }
@@ -110,10 +112,12 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 {isAr ? 'الشعار' : 'Logo'}
               </label>
-              <div className="w-14 h-14 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-2xl overflow-hidden">
-                {form.logoUrl && isImageLogo(form.logoUrl)
-                  ? <img src={form.logoUrl} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="w-full h-full object-contain p-1" />
-                  : <span>{form.logoUrl || '⚽'}</span>}
+              <div className="w-24 h-24 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+                <img
+                  src={form.logoUrl && isImageLogo(form.logoUrl) ? form.logoUrl : DEFAULT_ACADEMY_LOGO}
+                  alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'}
+                  className="w-full h-full object-contain p-2"
+                />
               </div>
             </div>
             <div className="flex-1">
@@ -128,7 +132,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
                 required
               />
             </div>
-            <div className="w-28 shrink-0">
+            <div className="w-40 shrink-0">
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 {isAr ? 'الشعار' : 'Logo'}
               </label>

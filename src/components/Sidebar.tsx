@@ -32,6 +32,11 @@ interface NavItem {
   allowedRoles: Role[];
 }
 
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
 function getRoleOptions(lang: Lang): { value: Role; label: string }[] {
   const t = tr(lang);
   return [
@@ -51,31 +56,47 @@ export function Sidebar({
   const isAr = lang === 'ar';
   const ROLE_OPTIONS = getRoleOptions(lang);
   const brandName = academyName?.trim() || t.academyShort;
-  const fallbackLogo = logoUrl || '/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy 2.png';
+  const fallbackLogo = '/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy 2.png';
+  const selectedLogo = logoUrl && /^(https?:\/\/|data:image\/|\/)/i.test(logoUrl.trim()) ? logoUrl : fallbackLogo;
 
-  const navItems: NavItem[] = [
-    { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
-    { id: 'approvals', label: isAr ? 'الموافقات' : 'Approvals', icon: ShieldCheck, allowedRoles: ['manager'] },
-    { id: 'registration-admin', label: t.registrationAdmin, icon: FileCheck, allowedRoles: ['manager'] },
-    { id: 'players', label: t.players, icon: Users, allowedRoles: ['manager', 'receptionist', 'coach'] },
-    { id: 'parents', label: t.parents, icon: UsersRound, allowedRoles: ['manager', 'receptionist', 'coach'] },
-    { id: 'teams', label: t.teams, icon: Trophy, allowedRoles: ['manager', 'coach', 'receptionist'] },
-    { id: 'staff', label: t.staff, icon: Dumbbell, allowedRoles: ['manager'] },
-    { id: 'subscriptions', label: t.subscriptions, icon: Wallet, allowedRoles: ['manager', 'accountant', 'receptionist'] },
-    { id: 'attendance', label: t.attendance, icon: ClipboardCheck, allowedRoles: ['manager', 'coach', 'receptionist'] },
-    { id: 'schedules', label: t.schedules, icon: CalendarDays, allowedRoles: ['manager', 'coach'] },
-    { id: 'tournaments', label: t.tournaments, icon: Medal, allowedRoles: ['manager', 'coach', 'receptionist'] },
-    { id: 'evaluations', label: t.evaluations, icon: Star, allowedRoles: ['manager', 'coach'] },
-    { id: 'reports', label: t.reports, icon: BarChart3, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
-    { id: 'audit-logs', label: t.auditLogs, icon: ScrollText, allowedRoles: ['manager'] },
-
-    { id: 'messages', label: t.messages, icon: Send, allowedRoles: ['manager', 'coach', 'receptionist', 'accountant'] },
-    { id: 'ai-center', label: t.aiCenter, icon: Sparkles, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
-    { id: 'registration', label: t.registration, icon: ClipboardList, allowedRoles: ['parent'] },
-    { id: 'settings', label: t.settings, icon: SettingsIcon, allowedRoles: ['manager'] },
+  const navSections: NavSection[] = [
+    {
+      title: isAr ? 'الإدارة' : 'Administration',
+      items: [
+        { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
+        { id: 'registration-admin', label: t.registrationAdmin, icon: FileCheck, allowedRoles: ['manager'] },
+        { id: 'approvals', label: isAr ? 'الموافقات' : 'Approvals', icon: ShieldCheck, allowedRoles: ['manager'] },
+        { id: 'players', label: t.players, icon: Users, allowedRoles: ['manager', 'receptionist', 'coach'] },
+        { id: 'parents', label: t.parents, icon: UsersRound, allowedRoles: ['manager', 'receptionist', 'coach'] },
+      ],
+    },
+    {
+      title: isAr ? 'العمليات' : 'Operations',
+      items: [
+        { id: 'staff', label: t.staff, icon: Dumbbell, allowedRoles: ['manager'] },
+        { id: 'subscriptions', label: t.subscriptions, icon: Wallet, allowedRoles: ['manager', 'accountant', 'receptionist'] },
+        { id: 'attendance', label: t.attendance, icon: ClipboardCheck, allowedRoles: ['manager', 'coach', 'receptionist'] },
+        { id: 'teams', label: t.teams, icon: Trophy, allowedRoles: ['manager', 'coach', 'receptionist'] },
+        { id: 'schedules', label: t.schedules, icon: CalendarDays, allowedRoles: ['manager', 'coach'] },
+        { id: 'tournaments', label: t.tournaments, icon: Medal, allowedRoles: ['manager', 'coach', 'receptionist'] },
+        { id: 'evaluations', label: t.evaluations, icon: Star, allowedRoles: ['manager', 'coach'] },
+      ],
+    },
+    {
+      title: isAr ? 'النظام' : 'System',
+      items: [
+        { id: 'reports', label: t.reports, icon: BarChart3, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
+        { id: 'audit-logs', label: t.auditLogs, icon: ScrollText, allowedRoles: ['manager'] },
+        { id: 'messages', label: t.messages, icon: Send, allowedRoles: ['manager', 'coach', 'receptionist', 'accountant'] },
+        { id: 'ai-center', label: t.aiCenter, icon: Sparkles, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
+        { id: 'settings', label: t.settings, icon: SettingsIcon, allowedRoles: ['manager'] },
+      ],
+    },
   ];
 
-  const visibleItems = navItems.filter((item) => item.allowedRoles.includes(activeRole));
+  const visibleSections = navSections
+    .map((section) => ({ ...section, items: section.items.filter((item) => item.allowedRoles.includes(activeRole)) }))
+    .filter((section) => section.items.length > 0);
 
   const handleNav = (id: ViewId) => {
     setCurrentTab(id);
@@ -98,14 +119,12 @@ export function Sidebar({
       >
         <div>
           {/* Logo header */}
-          <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-brand-950/20">
-            <div className="relative group shrink-0">
-              <div className="absolute -inset-0.5 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" style={{ backgroundColor: '#cbd5e1' }} />
-              <div className="relative w-13 h-13 flex items-center justify-center">
-                <img src={fallbackLogo} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="h-12 w-12 object-contain drop-shadow-lg" />
-              </div>
+          <div className="relative p-6 border-b border-slate-800 flex flex-col items-center gap-3 bg-brand-950/20 text-center">
+            <div className="relative group shrink-0 w-24 h-24 flex items-center justify-center">
+              <div className="absolute -inset-1 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" style={{ backgroundColor: '#cbd5e1' }} />
+              <img src={selectedLogo} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="relative h-24 w-24 object-contain drop-shadow-lg" />
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 w-full">
               <h1 className="font-black text-base text-slate-200 tracking-tight leading-tight">{brandName}</h1>
               <p className="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5 uppercase">SHOOTER ACADEMY</p>
               <p className="text-[9px] text-brand-500 font-semibold mt-0.5">{t.systemTitle}</p>
@@ -128,25 +147,41 @@ export function Sidebar({
           </div>
 
           {/* Nav items */}
-          <nav className="px-3 pb-4 space-y-0.5 overflow-y-auto max-h-[calc(100vh-460px)]">
-            {visibleItems.map((item) => {
-              const Icon = item.icon;
-              const active = currentTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNav(item.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-right ${
-                    active
-                      ? 'bg-brand-600 text-white shadow-lg shadow-brand-900/20'
-                      : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                  }`}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
+          <nav className="px-3 pb-4 space-y-4 overflow-y-auto max-h-[calc(100vh-500px)]" aria-label={isAr ? 'أقسام القائمة الرئيسية' : 'Main navigation sections'}>
+            {visibleSections.map((section) => (
+              <div key={section.title}>
+                <h2 className="px-3 mb-1.5 text-[10px] font-black tracking-[0.16em] text-slate-500 uppercase">{section.title}</h2>
+                <div className="space-y-0.5">
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+                    const active = currentTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleNav(item.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-right ${
+                          active
+                            ? 'bg-brand-600 text-white shadow-lg shadow-brand-900/20'
+                            : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            {activeRole === 'parent' && (
+              <div>
+                <h2 className="px-3 mb-1.5 text-[10px] font-black tracking-[0.16em] text-slate-500 uppercase">{isAr ? 'الإدارة' : 'Administration'}</h2>
+                <button onClick={() => handleNav('registration')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-right text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
+                  <ClipboardList className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{t.registration}</span>
                 </button>
-              );
-            })}
+              </div>
+            )}
           </nav>
         </div>
 
