@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { tr } from '@/lib/i18n';
 import { ParentPortal } from '@/views/ParentPortal';
+import { LegalPage } from '@/views/LegalPage';
 import type {
   CurrentUser, Lang, Role, ViewId,
   Staff as StaffType, Team, Player, Parent, Subscription, Attendance,
@@ -562,6 +563,9 @@ export default function App() {
   };
 
   const unreadCount = useMemo(() => data.notifications.filter((n) => !n.read).length, [data.notifications]);
+
+  const legalPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  if (legalPath === '/privacy' || legalPath === '/terms') return <LegalPage page={legalPath === '/privacy' ? 'privacy' : 'terms'} />;
 
   const oauthConsentPath = (window.location.pathname.replace(/\/+$/, '') || '/') === '/oauth/consent';
 
