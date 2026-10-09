@@ -564,7 +564,7 @@ export default function App() {
 
   const unreadCount = useMemo(() => data.notifications.filter((n) => !n.read).length, [data.notifications]);
 
-  const legalPath = (window.location.pathname.replace(/\/+$/, '') || '/') === '/oauth/consent';
+  const legalPath = window.location.pathname.replace(/\/+$/, '') || '/');
   if (legalPath === '/privacy' || legalPath === '/terms') return <LegalPage page={legalPath === '/privacy' ? 'privacy' : 'terms'} />;
 
   const oauthConsentPath = (window.location.pathname.replace(/\/+$/, '') || '/') === '/oauth/consent';
