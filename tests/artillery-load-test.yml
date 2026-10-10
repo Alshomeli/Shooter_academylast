@@ -1,0 +1,121 @@
+# Concurrent-login load test (Artillery).
+#
+#   npm i -g artillery
+#   npx tsx scripts/seed-test-users.ts        # creates the accounts + users.csv
+#   SUPABASE_URL=https://<ref>.supabase.co \
+#   SUPABASE_ANON_KEY=<anon-key> \
+#   APP_URL=https://shooter-academy-new-1vvk.bolt.host \
+#     artillery run tests/artillery-load-test.yml
+#
+# Add `-e high` for the aggressive profile once the project's auth rate limits
+# have been raised - see the "Rate limits" note below.
+#
+# --- Rate limits (read before raising arrivalRate) -----------------------------
+# Supabase Auth rate limits POST /auth/v1/token per client IP. In supabase/auth
+# the password grant uses the same limiter as the refresh grant:
+#
+#   internal/api/apilimiter/apilimiter.go
+#     o.Token = tollbooth.NewLimiter(gc.RateLimitTokenRefresh/(60*5), ...).SetBurst(30)
+#   internal/conf/configuration.go
+#     RateLimitTokenRefresh float64 `split_words:"true" default:"150"`
+#
+# 150 / 300s = 0.5 requests/second, burst 30, keyed on the caller's IP. A single
+# load generator sending more than that gets HTTP 429 within the first few
+# seconds and the run measures the rate limiter, not the app. Raise
+# GOTRUE_RATE_LIMIT_TOKEN_REFRESH on the project (or spread the load across
+# source IPs) before using the `high` profile.
+#
+# PUT /auth/v1/user is limited the same way from GOTRUE_RATE_LIMIT_OTP (default
+# 30 per 5 minutes per IP). src/components/Login.tsx calls updateUser() on the
+# staff login path, so staff logins from one office IP share that budget.
+
+config:
+  target: "{{ $env.APP_URL }}"
+
+  # Relative to THIS file, so this resolves to tests/users.csv.
+  payload:
+    path: "users.csv"
+    fields:
+      - "email"
+      - "password"
+    order: sequence
+    skipHeader: true
+
+  defaults:
+    headers:
+      apikey: "{{ $env.SUPABASE_ANON_KEY }}"
+
+  http:
+    timeout: 30
+    maxSockets: 100
+
+  ensure:
+    thresholds:
+      - http.codes.200: "> 95"
+      - http.response_time.p95: "< 1500"
+
+  environments:
+    smoke:
+      phases:
+        - duration: 60
+          arrivalRate: 1
+          name: "Smoke - inside the default 0.5 rps/IP auth limit"
+    high:
+      phases:
+        - duration: 60
+          arrivalRate: 5
+          name: "Warm-up"
+        - duration: 180
+          arrivalRate: 5
+          rampTo: 50
+          name: "Ramp up"
+        - duration: 300
+          arrivalRate: 50
+          name: "Sustained peak"
+        - duration: 60
+          arrivalRate: 50
+          rampTo: 1
+          name: "Ramp down"
+
+  phases:
+    - duration: 60
+      arrivalRate: 1
+      name: "Smoke - inside the default 0.5 rps/IP auth limit"
+
+scenarios:
+  - name: "Browse, sign in, then make an authenticated call"
+    flow:
+      - get:
+          url: "/"
+      - think: 2
+
+      - get:
+          url: "/courses"
+      - think: 1
+
+      - post:
+          url: "{{ $env.SUPABASE_URL }}/auth/v1/token?grant_type=password"
+          headers:
+            Authorization: "Bearer {{ $env.SUPABASE_ANON_KEY }}"
+            Content-Type: "application/json"
+          json:
+            email: "{{ email }}"
+            password: "{{ password }}"
+          capture:
+            - json: "$.access_token"
+              as: "userToken"
+          expect:
+            - statusCode: 200
+
+      # GET /auth/v1/user has no GoTrue rate limiter, so it is a safe stand-in
+      # for "one authenticated request per login". There is no public.profiles
+      # table in this project, so do not point this at /rest/v1/profiles - it
+      # would 404 for every virtual user. To exercise app data instead, the
+      # seeded accounts need academy membership (SEED_PARENT_ROWS=1) and a real
+      # table such as /rest/v1/parents?select=id.
+      - get:
+          url: "{{ $env.SUPABASE_URL }}/auth/v1/user"
+          headers:
+            Authorization: "Bearer {{ userToken }}"
+          expect:
+            - statusCode: 200
