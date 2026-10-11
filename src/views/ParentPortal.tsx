@@ -7,6 +7,7 @@ import type { RegistrationApplication } from '@/types';
 import { planLabel } from '@/lib/i18n';
 import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerDocument, PlayerEvaluation, Settings, Subscription } from '@/types';
 import { db } from '@/lib/store';
+import { uploadPlayerFile } from '@/lib/uploads';
 import { tr } from '@/lib/i18n';
 
 const bahrainToday = () => {
@@ -34,6 +35,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
   const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || '');
   const [paymentProofs, setPaymentProofs] = useState<PaymentProof[]>([]);
   const [playerDocuments, setPlayerDocuments] = useState<PlayerDocument[]>([]);
+  const [uploadingCategory, setUploadingCategory] = useState<'photo' | 'document' | null>(null);
   const [photoUrls, setPhotoUrls] = useState<Record<string,string>>({});
   const [payingSubscription, setPayingSubscription] = useState<Subscription | null>(null);
   const [resubmittingProof, setResubmittingProof] = useState<PaymentProof | null>(null);
@@ -64,6 +66,19 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
   }, [load]);
   const statusLabel = (status: RegistrationApplication['status']) => ({ draft: text('مسودة', 'Draft'), pending: text('بانتظار المراجعة', 'Pending review'), under_review: text('قيد المراجعة', 'Under review'), needs_info: text('يحتاج استكمال', 'More information needed'), approved: text('مقبول', 'Approved'), rejected: text('مرفوض', 'Rejected') })[status];
   const refresh = async () => { await load(); await onRefresh(); };
+  const uploadChildFile = async (category: 'photo' | 'document', file: File | undefined) => {
+    if (!selectedPlayer || !file || uploadingCategory) return;
+    setUploadingCategory(category);
+    setError('');
+    try {
+      await uploadPlayerFile(selectedPlayer.id, file, category);
+      await load();
+    } catch (e) {
+      setError(errorMessage(e, ar));
+    } finally {
+      setUploadingCategory(null);
+    }
+  };
   const submitProof = async () => {
     if (!payingSubscription || !selectedPlayer || !paymentFile) return;
     try {
@@ -143,10 +158,26 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
             {approvedPayments.length===0?<p className="text-sm text-slate-500 py-3">{text('لا توجد مدفوعات معتمدة حتى الآن.','No approved payments yet.')}</p>:approvedPayments.map(sub=><div key={sub.id} className="border-t dark:border-slate-700 pt-3 flex items-center justify-between gap-3"><div><p className="font-bold text-sm">{planLabel(sub.planType,lang)}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p></div><div className="text-end"><p className="font-black text-brand-600">{sub.amount} {text('د.ب','BHD')}</p><Badge color="green">{text('مدفوع','Paid')}</Badge>{(()=>{const approved=paymentProofs.find(p=>p.subscriptionId===sub.id&&p.status==='approved'&&p.receiptNumber);return approved?<button onClick={()=>printReceipt(approved,sub)} className="mt-2 flex items-center gap-1 text-xs font-bold text-blue-600"><Printer className="h-3.5 w-3.5"/>{text('الإيصال','Receipt')} SA-{String(approved.receiptNumber).padStart(6,'0')}</button>:null})()}</div></div>)}
           </div>
 
-          {selectedDocuments.length > 0 && <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3">
-            <h3 className="font-black">{text('مستندات اللاعب','Player documents')}</h3>
+          <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3">
+            <h3 className="font-black">{text('صور ومستندات اللاعب','Player photos and documents')}</h3>
+            <p className="text-sm text-slate-500">{text('يمكنك إضافة صور أو مستندات لطفلك بعد اعتماد التسجيل. لا يمكن رفع ملفات لأبناء حساب آخر.', 'Add photos or documents for your child after registration approval. Files for other accounts are not permitted.')}</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block rounded-xl border border-dashed border-brand-300 p-3 text-sm font-bold cursor-pointer focus-within:ring-2 focus-within:ring-brand-500">
+                <span className="flex items-center gap-2"><FileUp className="h-4 w-4" />{text('رفع صورة (JPG، PNG، WebP)', 'Upload photo (JPG, PNG, WebP)')}</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="mt-2 w-full text-xs" disabled={uploadingCategory !== null} onChange={e => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ''; void uploadChildFile('photo', file); }} />
+              </label>
+              <label className="block rounded-xl border border-dashed border-brand-300 p-3 text-sm font-bold cursor-pointer focus-within:ring-2 focus-within:ring-brand-500">
+                <span className="flex items-center gap-2"><FileText className="h-4 w-4" />{text('رفع مستند (PDF أو صورة)', 'Upload document (PDF or image)')}</span>
+                <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="mt-2 w-full text-xs" disabled={uploadingCategory !== null} onChange={e => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ''; void uploadChildFile('document', file); }} />
+              </label>
+            </div>
+            {uploadingCategory && <p role="status" className="text-sm text-brand-700">{text('جارٍ رفع الملف، يرجى الانتظار…','Uploading your file, please wait…')}</p>}
+            {selectedDocuments.length===0 && <p className="text-sm text-slate-500">{text('لا توجد مستندات مضافة بعد.','No documents uploaded yet.')}</p>}
+            {selectedDocuments.length > 0 && <>
+            <h4 className="font-bold text-sm">{text('المستندات المحفوظة','Saved documents')}</h4>
             {selectedDocuments.map(d=><button key={d.id} onClick={async()=>window.open(await db.getPlayerDocumentUrl(d.filePath),'_blank','noopener,noreferrer')} className="w-full flex justify-between gap-3 border-t dark:border-slate-700 pt-3 text-sm"><span className="font-bold">{d.fileName}</span><span className="text-brand-600">{text('عرض','View')}</span></button>)}
-          </div>}
+            </>}
+          </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
             <div className="flex items-center gap-2"><CalendarCheck2 className="h-5 w-5 text-brand-600"/><div><h3 className="font-black">{text('آخر سجلات الحضور','Recent attendance')}</h3><p className="text-xs text-slate-500">{text('آخر الأنشطة المسجلة للاعب','Latest recorded player sessions')}</p></div></div>
