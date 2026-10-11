@@ -1,5 +1,5 @@
 -- Proposed staging migration. Does not change existing subscription rows.
--- Serializes concurrent writes for one player and rejects future duplicate unpaid periods.
+-- Serializes concurrent writes for one player and rejects future duplicate or overlapping unpaid periods.
 CREATE OR REPLACE FUNCTION public.prevent_duplicate_unpaid_subscription_period()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -17,11 +17,11 @@ BEGIN
     SELECT 1 FROM public.subscriptions existing
     WHERE existing.player_id = NEW.player_id
       AND existing.status = 'unpaid'
-      AND existing.start_date = NEW.start_date
-      AND existing.end_date = NEW.end_date
+      AND existing.start_date <= NEW.end_date
+      AND existing.end_date >= NEW.start_date
       AND existing.id IS DISTINCT FROM NEW.id
   ) THEN
-    RAISE EXCEPTION 'An unpaid subscription already exists for this player and period'
+    RAISE EXCEPTION 'An overlapping unpaid subscription period already exists for this player'
       USING ERRCODE = '23505';
   END IF;
   RETURN NEW;
