@@ -15,6 +15,7 @@ test('database guard rejects repeat unpaid periods but preserves paid history an
     await db.exec(await read('supabase/migrations/20261011115000_prevent_duplicate_unpaid_subscription_periods.sql'));
     await db.exec(`insert into public.subscriptions values ('new','p1','2026-10-01','2026-11-01','unpaid');`);
     await assert.rejects(db.exec(`insert into public.subscriptions values ('repeat','p1','2026-10-01','2026-11-01','unpaid');`), /already exists/);
+    await assert.rejects(db.exec(`insert into public.subscriptions values ('partial','p1','2026-10-15','2026-11-15','unpaid');`), /overlapping/);
     await db.exec(`insert into public.subscriptions values ('other','p2','2026-10-01','2026-11-01','unpaid');`);
     await db.exec(`update public.subscriptions set status='unpaid' where id='new';`);
     const rows = (await db.query('select id,status from public.subscriptions order by id')).rows;
