@@ -1,5 +1,5 @@
-import { getLifecycleStatus, type LifecycleStatus } from '@/lib/report-dates';
-import { calcEndDate } from '@/lib/subscription-dates';
+import { academyToday, getLifecycleStatus, type LifecycleStatus } from '@/lib/report-dates';
+import { calcEndDate, renewalDraft } from '@/lib/subscription-dates';
 import { errorMessage } from '@/lib/registration';
 import { useEffect, useState, useMemo, useDeferredValue, type FormEvent } from 'react';
 import {
@@ -63,7 +63,7 @@ const CATEGORY_COLORS: Record<string, 'emerald' | 'blue' | 'amber' | 'slate'> = 
   other: 'slate',
 };
 
-const todayISO = () => new Date().toISOString().substring(0, 10);
+const todayISO = () => academyToday();
 
 const LIFECYCLE_BADGE: Record<LifecycleStatus, { color: 'emerald' | 'amber' | 'red' | 'blue'; key: 'subActive' | 'subExpiring' | 'subExpired' | 'subFuture' }> = {
   active:   { color: 'emerald', key: 'subActive' },
@@ -97,6 +97,7 @@ export function Subscriptions({
   const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState('all');
   const [showAddSub, setShowAddSub] = useState(false);
+  const [renewSub, setRenewSub] = useState<Subscription | null>(null);
   const [editSub, setEditSub] = useState<Subscription | null>(null);
   const [showAddTrans, setShowAddTrans] = useState(false);
   const [deleteSubId, setDeleteSubId] = useState<string | null>(null);
@@ -196,6 +197,7 @@ export function Subscriptions({
     }
     setShowAddSub(false);
     setEditSub(null);
+    setRenewSub(null);
   };
 
   const handleDeleteSub = async () => {
@@ -441,6 +443,11 @@ export function Subscriptions({
                             {markingPaidId === sub.id ? t.processing : t.confirmPayment}
                           </button>
                         )}
+                        {canManage && getLifecycleStatus(sub) === 'expired' && (
+                          <button onClick={() => setRenewSub(sub)} className="px-2 py-1 rounded-lg bg-brand-600 text-white text-xs font-bold">
+                            {isAr ? 'تجديد الاشتراك' : 'Renew subscription'}
+                          </button>
+                        )}
                         {isManager && !isPaid && (
                           <>
                             <button
@@ -602,9 +609,10 @@ export function Subscriptions({
       {receiptSub && <PaymentReceipt subscription={receiptSub} transactions={transactions} players={players} parents={parents} settings={settings} lang={lang} officialReceiptNumber={paymentProofs.find((proof) => proof.subscriptionId === receiptSub.id && proof.status === 'approved')?.receiptNumber} onClose={() => setReceiptSub(null)} />}
 
       {/* ---------------- Modals ---------------- */}
-      {(showAddSub || editSub) && (
+      {(showAddSub || editSub || renewSub) && (
         <SubscriptionForm
           subscription={editSub}
+          initialData={renewSub ? renewalDraft(renewSub, academyToday()) : undefined}
           players={players}
           planAmounts={planAmounts}
           lang={lang}
@@ -612,6 +620,7 @@ export function Subscriptions({
           onClose={() => {
             setShowAddSub(false);
             setEditSub(null);
+            setRenewSub(null);
           }}
         />
       )}
@@ -652,6 +661,7 @@ export function Subscriptions({
 
 function SubscriptionForm({
   subscription,
+  initialData,
   players,
   planAmounts,
   lang,
@@ -659,6 +669,7 @@ function SubscriptionForm({
   onClose,
 }: {
   subscription: Subscription | null;
+  initialData?: Omit<Subscription, 'id'>;
   players: Player[];
   planAmounts: Record<Subscription['planType'], number>;
   lang: Lang;
@@ -667,13 +678,14 @@ function SubscriptionForm({
 }) {
   const t = tr(lang);
   const today = todayISO();
+  const draft = subscription || initialData;
   const [form, setForm] = useState({
-    playerId: subscription?.playerId || '',
-    planType: subscription?.planType || ('monthly' as Subscription['planType']),
-    amount: subscription?.amount ?? planAmounts.monthly,
-    startDate: subscription?.startDate || today,
-    endDate: subscription?.endDate || calcEndDate(today, 'monthly'),
-    status: subscription?.status || ('unpaid' as Subscription['status']),
+    playerId: draft?.playerId || '',
+    planType: draft?.planType || ('monthly' as Subscription['planType']),
+    amount: draft?.amount ?? planAmounts.monthly,
+    startDate: draft?.startDate || today,
+    endDate: draft?.endDate || calcEndDate(today, 'monthly'),
+    status: draft?.status || ('unpaid' as Subscription['status']),
 
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
