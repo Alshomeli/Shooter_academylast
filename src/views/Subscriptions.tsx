@@ -1,5 +1,5 @@
 import { academyToday, getLifecycleStatus, type LifecycleStatus } from '@/lib/report-dates';
-import { calcEndDate, renewalDraft } from '@/lib/subscription-dates';
+import { calcEndDate, renewalDraft, hasOverlappingSubscriptionPeriod } from '@/lib/subscription-dates';
 import { errorMessage } from '@/lib/registration';
 import { useEffect, useState, useMemo, useDeferredValue, type FormEvent } from 'react';
 import {
@@ -190,6 +190,9 @@ export function Subscriptions({
   };
 
   const handleSaveSub = async (data: Omit<Subscription, 'id'>, id?: string) => {
+    if (renewSub && hasOverlappingSubscriptionPeriod(subscriptions, data)) {
+      throw new Error(isAr ? 'توجد فترة اشتراك مسجلة لهذا اللاعب تتداخل مع فترة التجديد.' : 'An overlapping subscription period already exists for this player.');
+    }
     if (id) {
       await onSubscriptionsChange(subscriptions.map((s) => (s.id === id ? { ...data, id } : s)));
     } else {
@@ -443,7 +446,7 @@ export function Subscriptions({
                             {markingPaidId === sub.id ? t.processing : t.confirmPayment}
                           </button>
                         )}
-                        {canManage && getLifecycleStatus(sub) === 'expired' && (
+                        {canManage && getLifecycleStatus(sub) === 'expired' && !hasOverlappingSubscriptionPeriod(subscriptions, renewalDraft(sub, academyToday()), sub.id) && (
                           <button onClick={() => setRenewSub(sub)} className="px-2 py-1 rounded-lg bg-brand-600 text-white text-xs font-bold">
                             {isAr ? 'تجديد الاشتراك' : 'Renew subscription'}
                           </button>
