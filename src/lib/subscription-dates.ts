@@ -9,3 +9,17 @@ export function calcEndDate(startDate: string, planType: Subscription['planType'
   target.setUTCDate(Math.min(day, lastDay));
   return target.toISOString().slice(0, 10);
 }
+
+/** Renewal is a new unpaid period; historical payment evidence stays untouched. */
+export function renewalDraft(subscription: Subscription, today: string): Omit<Subscription, 'id'> {
+  const nextDay = new Date(subscription.endDate + 'T00:00:00Z');
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+  const startDate = today > nextDay.toISOString().slice(0, 10) ? today : nextDay.toISOString().slice(0, 10);
+  return { playerId: subscription.playerId, planType: subscription.planType,
+    amount: subscription.amount, startDate, endDate: calcEndDate(startDate, subscription.planType), status: 'unpaid' };
+}
+
+/** Block duplicate or overlapping periods for the same player. */
+export function hasOverlappingSubscriptionPeriod(subscriptions: Subscription[], candidate: Pick<Subscription, 'playerId' | 'startDate' | 'endDate'>, excludeId?: string): boolean {
+  return subscriptions.some((existing) => existing.id !== excludeId && existing.playerId === candidate.playerId && existing.startDate <= candidate.endDate && existing.endDate >= candidate.startDate);
+}

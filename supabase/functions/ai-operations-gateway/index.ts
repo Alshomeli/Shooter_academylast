@@ -345,6 +345,7 @@ Deno.serve(async (req) => {
       const status = cleanText(params.status, 20) || "present";
       const notes = cleanText(params.notes, 500);
       const trainingId = cleanText(params.trainingId, 100);
+      const matchId = cleanText(params.matchId, 100);
       if (!playerId || !/^\d{4}-\d{2}-\d{2}$/.test(sessionDate)) {
         return reply(origin, 400, { error: "player_and_valid_session_date_required" });
       }
@@ -353,6 +354,9 @@ Deno.serve(async (req) => {
       }
       if (!["present", "absent", "excused"].includes(status)) {
         return reply(origin, 400, { error: "invalid_attendance_status" });
+      }
+      if ((sessionType === "training" && matchId) || (sessionType === "match" && trainingId)) {
+        return reply(origin, 400, { error: "attendance_session_link_type_mismatch" });
       }
 
       const { data: player, error } = await userClient
@@ -369,6 +373,7 @@ Deno.serve(async (req) => {
         status,
         notes,
         trainingId: trainingId || null,
+        matchId: matchId || null,
       };
       preview = {
         playerId,
@@ -379,6 +384,7 @@ Deno.serve(async (req) => {
         attendanceStatus: status,
         hasNotes: Boolean(notes),
         trainingId: trainingId || null,
+        matchId: matchId || null,
       };
     }
 
@@ -498,6 +504,7 @@ Deno.serve(async (req) => {
         p_status: String(p.status),
         p_notes: p.notes ? String(p.notes) : null,
         p_training_id: p.trainingId ? String(p.trainingId) : null,
+        p_match_id: p.matchId ? String(p.matchId) : null,
       });
       if (error) throw error;
       sanitizedResult = {

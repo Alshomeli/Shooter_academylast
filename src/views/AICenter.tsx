@@ -438,7 +438,7 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
 
       <ChatGPTIntegrationStatus lang={lang} />
 
-      <AIOperationsPanel activeRole={activeRole} lang={lang} subscriptions={subscriptions} players={players} evaluations={evaluations} trainings={trainings} onCompleted={onRefresh} />
+      <AIOperationsPanel activeRole={activeRole} lang={lang} subscriptions={subscriptions} players={players} evaluations={evaluations} trainings={trainings} matches={matches} onCompleted={onRefresh} />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         <aside className="lg:col-span-1 space-y-3">

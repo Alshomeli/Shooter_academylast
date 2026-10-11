@@ -2,9 +2,9 @@ name: Quality Gate
 
 on:
   push:
-    branches: [main]
+    branches: [main, Staging-shooter]
   pull_request:
-    branches: [main]
+    branches: [main, Staging-shooter]
 
 jobs:
   verify:
@@ -17,6 +17,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
