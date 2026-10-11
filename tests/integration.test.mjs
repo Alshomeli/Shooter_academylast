@@ -2,6 +2,9 @@ import { before, after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
+import { renewalDraft } from '../src/lib/subscription-dates.ts';
+import { mapSubscription, subscriptionToRow } from '../src/lib/db-mappers.ts';
+import { collectionChanges } from '../src/lib/collection-diff.ts';
 
 const db = new PGlite();
 const read = path => readFile(new URL('../' + path, import.meta.url), 'utf8');
@@ -132,6 +135,30 @@ test('compare-and-swap rejects stale editors without changing the saved amount',
   const stale = await db.query("update public.subscriptions set amount=45 where id='stale' and row_version=0 returning id");
   assert.equal(first.rows.length, 1); assert.equal(stale.rows.length, 0);
   assert.equal(Number((await row("select amount from public.subscriptions where id='stale'")).amount), 40);
+});
+
+test('renewal persists only a new unpaid period while posted history and transactions stay identical', async () => {
+  await role(manager);
+  const previous = (await db.query('select * from public.subscriptions order by id')).rows;
+  const transactionsBefore = (await db.query('select * from public.transactions order by id')).rows;
+  const auditBefore = (await db.query('select * from public.audit_logs order by id')).rows;
+  const old = previous.find(s => s.id === 'pay');
+  assert.equal(old.status, 'paid');
+  // PGlite returns Date objects; PostgREST returns these date columns as ISO strings.
+  const restRow = s => ({...s, start_date: s.start_date.toISOString().slice(0,10), end_date: s.end_date.toISOString().slice(0,10)});
+  const existing = previous.map(s => mapSubscription(restRow(s)));
+  const renewed = { ...renewalDraft(mapSubscription(restRow(old)), '2026-10-11'), id: 'renewal-test-only' };
+  // Same diff and mapper used by the real UI's syncSubscriptions path.
+  const changes = collectionChanges(existing, [...existing, renewed], subscriptionToRow);
+  assert.equal(changes.length, 1); assert.equal(changes[0].kind, 'insert');
+  const fields = Object.keys(changes[0].row);
+  await db.query(`insert into public.subscriptions (${fields.join(',')}) values (${fields.map((_,i)=>'$'+(i+1)).join(',')})`, Object.values(changes[0].row));
+  assert.deepEqual((await db.query("select * from public.subscriptions where id <> 'renewal-test-only' order by id")).rows, previous);
+  const saved = await row("select * from public.subscriptions where id='renewal-test-only'");
+  assert.equal(saved.status, 'unpaid'); assert.equal(saved.payment_method, null); assert.equal(saved.paid_at, null);
+  assert.equal(saved.start_date.toISOString().slice(0,10), '2026-10-11');
+  assert.deepEqual((await db.query('select * from public.transactions order by id')).rows, transactionsBefore);
+  assert.deepEqual((await db.query('select * from public.audit_logs order by id')).rows, auditBefore);
 });
 test('parent edits atomically synchronize child contacts and retain private notes', async () => {
   await role(receptionist);

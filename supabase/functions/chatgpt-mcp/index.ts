@@ -160,6 +160,7 @@ function makeServer(authHeader: string) {
         status: z.enum(["present", "absent", "excused"]).default("present"),
         notes: z.string().max(500).optional(),
         trainingId: z.string().optional(),
+        matchId: z.string().optional(),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
