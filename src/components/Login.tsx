@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { AlertCircle, Loader2, LogIn } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
 import { db, signIn, signUp, setRegistering } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import { FormField, inputCls } from '@/components/ui';
@@ -14,6 +14,8 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -22,7 +24,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
   }, [recovery]);
   const ar = lang === 'ar';
   const text = (a: string, e: string) => ar ? a : e;
-  const changeScreen = (next: Screen) => { setScreen(next); setError(''); setMessage(''); setPassword(''); setConfirm(''); };
+  const changeScreen = (next: Screen) => { setShowPassword(false); setShowConfirm(false); setScreen(next); setError(''); setMessage(''); setPassword(''); setConfirm(''); };
   const googleLogin = async () => {
     if (busy) return;
     setBusy(true); setError(''); setMessage('');
@@ -105,8 +107,8 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       <form onSubmit={submit} className="space-y-4">
         <fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
           {screen !== 'reset' && <FormField label={text('البريد الإلكتروني', 'Email')}><input aria-label={text('البريد الإلكتروني', 'Email')} className={inputCls} type="email" dir="ltr" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></FormField>}
-          {screen !== 'forgot' && <FormField label={text('كلمة المرور', 'Password')}><input aria-label={text('كلمة المرور', 'Password')} className={inputCls} type="password" autoComplete={screen === 'login' ? 'current-password' : 'new-password'} required value={password} onChange={e => setPassword(e.target.value)} /></FormField>}
-          {(screen === 'register' || screen === 'reset') && <><p className="text-xs text-slate-500">{text('10 أحرف على الأقل، تتضمن حروفًا إنجليزية وأرقامًا.', 'At least 10 characters, including letters and numbers.')}</p><FormField label={text('تأكيد كلمة المرور', 'Confirm password')}><input aria-label={text('تأكيد كلمة المرور', 'Confirm password')} className={inputCls} type="password" autoComplete="new-password" required value={confirm} onChange={e => setConfirm(e.target.value)} /></FormField></>}
+          {screen !== 'forgot' && <FormField label={text('كلمة المرور', 'Password')}><div className="relative"><input aria-label={text('كلمة المرور', 'Password')} className={`${inputCls} pe-12`} type={showPassword ? "text" : "password"} autoComplete={screen === 'login' ? 'current-password' : 'new-password'} required value={password} onChange={e => setPassword(e.target.value)} /><button type="button" aria-label={showPassword ? text("إخفاء كلمة المرور", "Hide password") : text("إظهار كلمة المرور", "Show password")} aria-pressed={showPassword} onClick={() => setShowPassword(v => !v)} className="absolute inset-y-0 end-2 flex items-center text-slate-500 hover:text-brand-600">{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button></div></FormField>}
+          {(screen === 'register' || screen === 'reset') && <><p className="text-xs text-slate-500">{text('10 أحرف على الأقل، تتضمن حروفًا إنجليزية وأرقامًا.', 'At least 10 characters, including letters and numbers.')}</p><FormField label={text('تأكيد كلمة المرور', 'Confirm password')}><div className="relative"><input aria-label={text('تأكيد كلمة المرور', 'Confirm password')} className={`${inputCls} pe-12`} type={showConfirm ? "text" : "password"} autoComplete="new-password" required value={confirm} onChange={e => setConfirm(e.target.value)} /><button type="button" aria-label={showConfirm ? text("إخفاء تأكيد كلمة المرور", "Hide confirmation password") : text("إظهار تأكيد كلمة المرور", "Show confirmation password")} aria-pressed={showConfirm} onClick={() => setShowConfirm(v => !v)} className="absolute inset-y-0 end-2 flex items-center text-slate-500 hover:text-brand-600">{showConfirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button></div></FormField></>}
           <button className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg" type="submit">{busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogIn className="h-5 w-5" />}{titles[screen]}</button>
         </fieldset>
       </form>
