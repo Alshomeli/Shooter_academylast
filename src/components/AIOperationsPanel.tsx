@@ -428,7 +428,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
                 <h4 className="text-xs font-black text-slate-800 dark:text-white">{ar ? 'تسجيل حضور لاعب' : 'Record player attendance'}</h4>
               </div>
               <div className="space-y-3">
-                <select value={attendancePlayerId} onChange={(e) => setAttendancePlayerId(e.target.value)} className={inputCls}>
+                <select value={attendancePlayerId} onChange={(e) => { setAttendancePlayerId(e.target.value); setAttendanceMatchId(''); setPrepared(null); }} className={inputCls}>
                   <option value="">{ar ? 'اختر اللاعب' : 'Select player'}</option>
                   {players.filter((p) => p.status === 'active').map((player) => (
                     <option key={player.id} value={player.id}>{player.name}</option>
@@ -472,7 +472,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
                       if (match) setAttendanceDate(match.matchDate);
                     }}>
                     <option value="">{ar ? 'بدون ربط بمباراة محددة' : 'No specific match'}</option>
-                    {matches.slice().sort((a, b) => b.matchDate.localeCompare(a.matchDate)).map((match) => (
+                    {matches.filter((match) => attendancePlayerId && match.teamId === players.find((player) => player.id === attendancePlayerId)?.teamId).sort((a, b) => b.matchDate.localeCompare(a.matchDate)).map((match) => (
                       <option key={match.id} value={match.id}>{match.matchDate} — {match.opponent}</option>
                     ))}
                   </select>
