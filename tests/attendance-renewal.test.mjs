@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { renewalDraft } from '../src/lib/subscription-dates.ts';
+import { renewalDraft, hasOverlappingSubscriptionPeriod } from '../src/lib/subscription-dates.ts';
 import { academyToday } from '../src/lib/report-dates.ts';
 import { assertNewAttendance } from '../src/lib/attendance-identity.ts';
 import { mapAttendance, attendanceToRow } from '../src/lib/db-mappers.ts';
@@ -38,4 +38,19 @@ test('match IDs survive the actual frontend database mapper round trip as text',
 test('attendance and renewal business dates follow Bahrain across UTC midnight and year boundaries', () => {
   assert.equal(academyToday(new Date('2026-10-10T21:01:00Z')),'2026-10-11');
   assert.equal(academyToday(new Date('2026-12-31T21:01:00Z')),'2027-01-01');
+});
+
+test('renewal rejects duplicate or overlapping billing periods for the same player', () => {
+  const existing = [{ id: 'original', playerId: 'p1', startDate: '2026-09-01', endDate: '2026-09-30', status: 'paid' }, { id: 'renewal', playerId: 'p1', startDate: '2026-10-01', endDate: '2026-11-01', status: 'unpaid' }];
+  assert.equal(hasOverlappingSubscriptionPeriod(existing, { playerId: 'p1', startDate: '2026-10-01', endDate: '2026-11-01' }), true);
+  assert.equal(hasOverlappingSubscriptionPeriod(existing, { playerId: 'p1', startDate: '2026-10-15', endDate: '2026-11-15' }), true);
+  assert.equal(hasOverlappingSubscriptionPeriod(existing, { playerId: 'p1', startDate: '2026-11-02', endDate: '2026-12-02' }), false);
+  assert.equal(hasOverlappingSubscriptionPeriod(existing, { playerId: 'p2', startDate: '2026-10-01', endDate: '2026-11-01' }), false);
+});
+
+test('AI match selector filters by chosen player team and clears stale match', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const panel = await readFile(new URL('../src/components/AIOperationsPanel.tsx', import.meta.url), 'utf8');
+  assert.match(panel, /match\.teamId === players\.find\(\(player\) => player\.id === attendancePlayerId\)\?\.teamId/);
+  assert.match(panel, /setAttendancePlayerId\(e\.target\.value\); setAttendanceMatchId\(''\)/);
 });
