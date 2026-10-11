@@ -18,3 +18,8 @@ export function renewalDraft(subscription: Subscription, today: string): Omit<Su
   return { playerId: subscription.playerId, planType: subscription.planType,
     amount: subscription.amount, startDate, endDate: calcEndDate(startDate, subscription.planType), status: 'unpaid' };
 }
+
+/** Block duplicate or overlapping periods for the same player. */
+export function hasOverlappingSubscriptionPeriod(subscriptions: Subscription[], candidate: Pick<Subscription, 'playerId' | 'startDate' | 'endDate'>, excludeId?: string): boolean {
+  return subscriptions.some((existing) => existing.id !== excludeId && existing.playerId === candidate.playerId && existing.startDate <= candidate.endDate && existing.endDate >= candidate.startDate);
+}
