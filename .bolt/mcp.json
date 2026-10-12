@@ -11,6 +11,9 @@
     },
     "sentry": {
       "enabled": true
+    },
+    "gpt_chat": {
+      "enabled": true
     }
   }
 }
