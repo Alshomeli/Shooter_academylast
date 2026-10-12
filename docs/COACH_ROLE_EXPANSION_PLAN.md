@@ -1,6 +1,6 @@
 # Coaching roles: staged design and security gate
 
-Status: design only; no DB changes or roles have been implemented.
+Status: implementation prepared in `20261011145140_coach_specialties_and_parent_portal.sql`; release requires the checks below.
 
 ## Existing constraints
 - Current Role is manager/accountant/coach/receptionist/parent.
@@ -29,3 +29,15 @@ Status: design only; no DB changes or roles have been implemented.
 6. Pass typecheck, lint, test, build and staging runtime checks before considering release.
 
 No production data edits, payment changes, bulk player migrations, deployment or merge in this document.
+
+## Implemented routing and manager workflow
+- Staff retains role `coach`; `coach_kind` distinguishes team, assistant and goalkeeper coaches.
+- After approving an assistant application, the manager opens Staff → Edit and chooses an active supervising coach. Unlinked assistants have no player access.
+- In Teams → Edit, the manager chooses one goalkeeper coach for each age team. Each specialist may serve several teams. The single foreign key prevents conflicting specialists for the same team.
+- Only the exact supported goalkeeper position values (حارس مرمى / حارس / goalkeeper / gk) enter that specialist scope; name or notes never determine access.
+- Parent photos and documents remain available after approval. Private object paths must match the child owned by that parent.
+- The isolated PostgreSQL suite covers reassignment, deactivation, unlinked assistants, multiple specialists, document path forgery, cross-parent access, evaluation/attendance RPCs and both legacy and match-aware attendance signatures.
+- Parent portal has all six navigation options at the top on desktop and mobile, plus the existing registration/payment workflows.
+
+## Release procedure
+Apply the new migration before publishing the frontend. It patches the installed attendance scope in place, preserving the match-aware seven-argument function if present. Do not replay historical migrations or reset academy data. Existing team coaches retain their original scope. Configure goalkeeper teams and assistant supervisors explicitly in the manager UI.

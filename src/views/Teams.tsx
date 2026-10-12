@@ -113,6 +113,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
                   </div>
                 </div>
 
+                <p className="text-xs text-slate-500 mb-3">{isAr ? 'مدرب الحراس: ' : 'Goalkeeper coach: '}{coachOf(tm.goalkeeperCoachId || '')?.name || (isAr ? 'غير معيّن' : 'Not assigned')}</p>
                 <div className="space-y-2.5 text-[12px] text-slate-500 dark:text-slate-400 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Calendar className="h-4 w-4 shrink-0 text-brand-500" />
@@ -236,7 +237,7 @@ function TeamForm({
   const t = tr(lang);
   const isAr = lang === 'ar';
   const eligibleCoaches = useMemo(
-    () => staff.filter((s) => s.role === 'coach' || s.role === 'manager'),
+    () => staff.filter((s) => s.role === 'coach' && s.status === 'active' && (!s.coachKind || s.coachKind === 'team')),
     [staff],
   );
 
@@ -245,6 +246,7 @@ function TeamForm({
     name: team?.name || '',
     ageGroup: team?.ageGroup || '',
     coachId: team?.coachId || eligibleCoaches[0]?.id || '',
+    goalkeeperCoachId: team?.goalkeeperCoachId || '',
     trainingDays: team?.trainingDays || ([] as string[]),
     trainingTime: team?.trainingTime || '',
     pitchNumber: team?.pitchNumber || '',
@@ -317,6 +319,13 @@ function TeamForm({
               ))}
             </select>
           </Field>
+          <Field label={isAr ? 'مدرب حراس المرمى' : 'Goalkeeper coach'}>
+            <select aria-label={isAr ? 'مدرب حراس المرمى' : 'Goalkeeper coach'} value={form.goalkeeperCoachId} onChange={e => setForm({...form, goalkeeperCoachId: e.target.value})} className={inputCls}>
+              <option value="">{isAr ? 'غير معيّن' : 'Not assigned'}</option>
+              {staff.filter(s => s.role === 'coach' && s.status === 'active' && s.coachKind === 'goalkeeper').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">{isAr ? 'يظهر حراس هذا الفريق تلقائيًا لدى المدرب المحدد ومساعده.' : 'This team’s goalkeepers automatically appear for the selected coach and their assistant.'}</p>
+          </Field>
           <Field label={t.pitchNumber}>
             <input
               value={form.pitchNumber}
@@ -383,3 +392,4 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
+
