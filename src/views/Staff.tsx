@@ -91,8 +91,8 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
 
   const coachPlayers = (coachId: string) => {
     const member = staff.find(s => s.id === coachId);
-    const coach = member?.coachKind === 'assistant' ? staff.find(s => s.id === member.supervisingCoachId && s.status === 'active' && s.role === 'coach') : member;
-    if (!coach || member?.status !== 'active') return [];
+    const coach = member?.coachKind === 'assistant' ? staff.find(s => s.id === member.supervisingCoachId && s.status === 'active' && s.role === 'coach' && (s.coachKind === 'team' || s.coachKind === 'goalkeeper')) : member;
+    if (!coach || member?.status !== 'active' || member.role !== 'coach') return [];
     if (coach.coachKind === 'goalkeeper') return players.filter(p => teams.some(t => t.id === p.teamId && t.goalkeeperCoachId === coach.id) && ['حارس مرمى','حارس','goalkeeper','gk'].includes(p.position.trim().toLowerCase()));
     const teamIds = teams.filter(t => t.coachId === coach.id).map(t => t.id);
     return players.filter(p => teamIds.includes(p.teamId));
@@ -477,6 +477,13 @@ function StaffForm({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email) return;
+    if (isCoach && form.coachKind === 'assistant' && form.supervisingCoachId) {
+      const supervisor = staff.find(s => s.id === form.supervisingCoachId);
+      if (!supervisor || supervisor.id === member?.id || supervisor.role !== 'coach' || supervisor.status !== 'active' || !['team', 'goalkeeper'].includes(supervisor.coachKind || 'team')) {
+        setSaveError(isAr ? 'المدرب المشرف غير متاح. اختر مدرب فريق أو مدرب حراس نشط.' : 'Invalid supervisor. Select an active team or goalkeeper coach.');
+        return;
+      }
+    }
     if (saving) return;
     setSaving(true); setSaveError('');
     try {
@@ -774,4 +781,5 @@ function InfoRow({ label, value, ltr }: { label: string; value: string; ltr?: bo
     </div>
   );
 }
+
 

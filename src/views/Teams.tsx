@@ -267,6 +267,18 @@ function TeamForm({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.coachId) return;
+    const teamCoach = staff.find(s => s.id === form.coachId);
+    if (!teamCoach || teamCoach.role !== 'coach' || teamCoach.status !== 'active' || (teamCoach.coachKind && teamCoach.coachKind !== 'team')) {
+      setSaveError(isAr ? 'يجب اختيار مدرب فريق نشط.' : 'Select an active team coach.');
+      return;
+    }
+    if (form.goalkeeperCoachId) {
+      const goalkeeperCoach = staff.find(s => s.id === form.goalkeeperCoachId);
+      if (!goalkeeperCoach || goalkeeperCoach.role !== 'coach' || goalkeeperCoach.status !== 'active' || goalkeeperCoach.coachKind !== 'goalkeeper') {
+        setSaveError(isAr ? 'مدرب الحراس المحدد غير متاح.' : 'Selected goalkeeper coach is not available.');
+        return;
+      }
+    }
     if (saving) return;
     setSaving(true); setSaveError('');
     try {
@@ -324,7 +336,7 @@ function TeamForm({
               <option value="">{isAr ? 'غير معيّن' : 'Not assigned'}</option>
               {staff.filter(s => s.role === 'coach' && s.status === 'active' && s.coachKind === 'goalkeeper').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            <p className="text-xs text-slate-500 mt-1">{isAr ? 'يظهر حراس هذا الفريق تلقائيًا لدى المدرب المحدد ومساعده.' : 'This team’s goalkeepers automatically appear for the selected coach and their assistant.'}</p>
+            <p className="text-xs text-slate-500 mt-1">{isAr ? 'يُسمح لمدرب الحراس المحدد ومساعده المرتبط به برؤية حراس هذا الفريق فقط.' : 'Only the assigned goalkeeper coach and their linked assistant can access this team’s goalkeepers.'}</p>
           </Field>
           <Field label={t.pitchNumber}>
             <input
@@ -392,4 +404,5 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
+
 
