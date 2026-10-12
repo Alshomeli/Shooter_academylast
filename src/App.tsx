@@ -287,9 +287,9 @@ export default function App() {
         auditLogs, loginLogs,
       ] = await Promise.all([
         db.getSettings(),
-        parent ? [] : db.getStaff(), parent ? [] : db.getTeams(), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
+        parent ? [] : db.getStaff(), db.getTeams(), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
         role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
-        parent ? [] : db.getTrainings(), finance ? db.getTransactions() : [], parent ? [] : db.getTournaments(),
+        db.getTrainings(), finance ? db.getTransactions() : [], parent ? [] : db.getTournaments(),
         db.getEvaluations(), db.getNotifications(),
         manager ? db.getAuditLogs() : [], manager ? db.getLoginAuditLogs() : [],
       ]);
@@ -488,7 +488,7 @@ export default function App() {
   const roleLabels: Record<Role, string> = {
     manager: t.manager,
     accountant: t.accountant,
-    coach: t.coach,
+    coach: currentUser?.coachKind === 'assistant' ? (lang === 'ar' ? 'مساعد مدرب' : 'Assistant coach') : currentUser?.coachKind === 'goalkeeper' ? (lang === 'ar' ? 'مدرب حراس' : 'Goalkeeper coach') : t.coach,
     receptionist: t.receptionist,
     parent: t.parent,
   };
@@ -651,7 +651,7 @@ export default function App() {
 
   if (currentUser.role === 'parent') {
     return <ParentPortal key={currentUser.authUserId} openRegistration={currentTab === 'registration'} user={currentUser} players={data.players} subscriptions={data.subscriptions}
-      attendance={data.attendance} evaluations={data.evaluations} settings={data.settings} lang={lang} setLang={setLang} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />;
+      attendance={data.attendance} teams={data.teams} trainings={data.trainings} evaluations={data.evaluations} settings={data.settings} lang={lang} setLang={setLang} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />;
   }
 
   return (
@@ -805,3 +805,4 @@ export default function App() {
 function supabaseUnsubscribe(channel: ReturnType<typeof db.subscribe>) {
   try { supabase.removeChannel(channel); } catch { /* ignore */ }
 }
+

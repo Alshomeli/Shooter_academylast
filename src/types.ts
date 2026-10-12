@@ -1,6 +1,10 @@
 export type Role = 'manager' | 'accountant' | 'coach' | 'receptionist' | 'parent';
 
+export type CoachKind = 'team' | 'assistant' | 'goalkeeper';
+
 export interface Staff {
+  coachKind?: CoachKind;
+  supervisingCoachId?: string;
   version?: number;
   id: string;
   name: string;
@@ -23,6 +27,7 @@ export interface Staff {
 }
 
 export interface Team {
+  goalkeeperCoachId?: string;
   version?: number;
   id: string;
   name: string;
@@ -251,6 +256,7 @@ export interface StaffDocument {
 }
 
 export interface CurrentUser {
+  coachKind?: CoachKind;
   authUserId?: string;
   registrationOnly?: boolean;
   registrationMode?: 'parent' | 'staff';
@@ -264,7 +270,7 @@ export interface CurrentUser {
 export interface StaffApplication {
   id: string;
   applicantUserId: string;
-  requestedRole: 'manager' | 'coach' | 'accountant' | 'receptionist';
+  requestedRole: 'manager' | 'coach' | 'assistant_coach' | 'goalkeeper_coach' | 'accountant' | 'receptionist';
   fullName: string;
   email: string;
   phone: string;
@@ -388,3 +394,4 @@ export interface RegistrationApplication {
   createdAt: string;
   updatedAt: string;
 }
+

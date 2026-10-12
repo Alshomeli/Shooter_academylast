@@ -89,13 +89,16 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
     });
   }, [staff, deferredSearch, roleFilter]);
 
-  const coachTeams = (coachId: string) =>
-    teams.filter((tm) => tm.coachId === coachId).map((tm) => tm.name);
-
-  const coachPlayerCount = (coachId: string) => {
-    const teamIds = teams.filter((tm) => tm.coachId === coachId).map((tm) => tm.id);
-    return players.filter((p) => teamIds.includes(p.teamId)).length;
+  const coachPlayers = (coachId: string) => {
+    const member = staff.find(s => s.id === coachId);
+    const coach = member?.coachKind === 'assistant' ? staff.find(s => s.id === member.supervisingCoachId && s.status === 'active' && s.role === 'coach') : member;
+    if (!coach || member?.status !== 'active') return [];
+    if (coach.coachKind === 'goalkeeper') return players.filter(p => teams.some(t => t.id === p.teamId && t.goalkeeperCoachId === coach.id) && ['حارس مرمى','حارس','goalkeeper','gk'].includes(p.position.trim().toLowerCase()));
+    const teamIds = teams.filter(t => t.coachId === coach.id).map(t => t.id);
+    return players.filter(p => teamIds.includes(p.teamId));
   };
+  const coachTeams = (coachId: string) => teams.filter(t => coachPlayers(coachId).some(p => p.teamId === t.id)).map(t => t.name);
+  const coachPlayerCount = (coachId: string) => coachPlayers(coachId).length;
 
   const handleSave = async (data: Omit<Staff, 'id'>, id?: string) => {
     if (id) {
@@ -240,7 +243,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
 
                 {/* Role badge */}
                 <div className="flex items-center gap-2 mb-3">
-                  <Badge color={ROLE_COLORS[s.role] || 'slate'}>{roleLabel(s.role, lang)}</Badge>
+                  <Badge color={ROLE_COLORS[s.role] || 'slate'}>{s.role === 'coach' && s.coachKind === 'assistant' ? (isAr ? 'مساعد مدرب' : 'Assistant coach') : s.role === 'coach' && s.coachKind === 'goalkeeper' ? (isAr ? 'مدرب حراس' : 'Goalkeeper coach') : roleLabel(s.role, lang)}</Badge>
                   {canSeeSalary && (
                     <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                       {s.salary.toLocaleString()} {t.currency}
@@ -344,6 +347,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
       {(showAdd || editMember) && (
         <StaffForm
           member={editMember}
+          staff={staff}
           onSave={handleSave}
           onClose={() => {
             setShowAdd(false);
@@ -429,11 +433,13 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
 
 function StaffForm({
   member,
+  staff,
   onSave,
   onClose,
   lang,
 }: {
   member: Staff | null;
+  staff: Staff[];
   onSave: (data: Omit<Staff, 'id'>, id?: string) => void;
   onClose: () => void;
   lang: Lang;
@@ -448,6 +454,8 @@ function StaffForm({
     email: member?.email || '',
     phone: member?.phone || '',
     role: member?.role || 'coach',
+    coachKind: member?.coachKind || 'team',
+    supervisingCoachId: member?.supervisingCoachId || '',
     salary: member?.salary ?? 0,
     specialization: member?.specialization || '',
     status: member?.status || 'active',
@@ -483,6 +491,8 @@ function StaffForm({
         email: form.email,
         phone: form.phone,
         role: form.role as Role,
+        coachKind: isCoach ? form.coachKind : 'team',
+        supervisingCoachId: isCoach && form.coachKind === 'assistant' ? form.supervisingCoachId || undefined : undefined,
         salary: Number(form.salary) || 0,
         specialization: form.specialization,
         status: form.status as Staff['status'],
@@ -527,6 +537,19 @@ function StaffForm({
               <option value="receptionist">{t.receptionist}</option>
             </select>
           </Field>
+          {isCoach && <Field label={isAr ? 'نوع المدرب' : 'Coach type'}>
+            <select value={form.coachKind} onChange={e => set('coachKind', e.target.value as Staff['coachKind'] & string)} className={inputCls}>
+              <option value="team">{isAr ? 'مدرب فريق' : 'Team coach'}</option>
+              <option value="assistant">{isAr ? 'مساعد مدرب' : 'Assistant coach'}</option>
+              <option value="goalkeeper">{isAr ? 'مدرب حراس' : 'Goalkeeper coach'}</option>
+            </select>
+          </Field>}
+          {isCoach && form.coachKind === 'assistant' && <Field label={isAr ? 'المدرب المرتبط بالمساعد' : 'Supervising coach'}>
+            <select value={form.supervisingCoachId} onChange={e => set('supervisingCoachId', e.target.value)} className={inputCls}>
+              <option value="">{isAr ? 'بانتظار تحديد المدرب — لا وصول للاعبين' : 'Unassigned — no player access'}</option>
+              {staff.filter(s => s.id !== member?.id && s.role === 'coach' && s.status === 'active' && s.coachKind !== 'assistant').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </Field>}
           <Field label={isAr ? 'الراتب الشهري' : 'Monthly salary'}>
             <input
               type="number"
@@ -638,7 +661,7 @@ function StaffDetail({
         <div className="min-w-0">
           <h3 className="text-lg font-black text-slate-900 dark:text-white truncate">{member.name}</h3>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <Badge color={ROLE_COLORS[member.role] || 'slate'}>{roleLabel(member.role, lang)}</Badge>
+            <Badge color={ROLE_COLORS[member.role] || 'slate'}>{member.role === 'coach' && member.coachKind === 'assistant' ? (isAr ? 'مساعد مدرب' : 'Assistant coach') : member.role === 'coach' && member.coachKind === 'goalkeeper' ? (isAr ? 'مدرب حراس' : 'Goalkeeper coach') : roleLabel(member.role, lang)}</Badge>
             <Badge color={member.status === 'active' ? 'emerald' : member.status === 'pending' ? 'amber' : 'slate'}>
               {member.status === 'active' ? t.active : member.status === 'pending' ? t.pending : t.inactive}
             </Badge>
@@ -751,3 +774,4 @@ function InfoRow({ label, value, ltr }: { label: string; value: string; ltr?: bo
     </div>
   );
 }
+

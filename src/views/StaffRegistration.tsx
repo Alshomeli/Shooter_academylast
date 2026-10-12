@@ -108,6 +108,8 @@ export function StaffRegistration({ user, lang, onLogout, onApproved }: {
                   <select className={inputCls} value={form.requestedRole} onChange={e => setForm({ ...form, requestedRole: e.target.value as StaffApplication['requestedRole'] })}>
                     <option value="manager">{text('مدير', 'Manager')}</option>
                     <option value="coach">{text('مدرب', 'Coach')}</option>
+                    <option value="assistant_coach">{text('مساعد مدرب', 'Assistant coach')}</option>
+                    <option value="goalkeeper_coach">{text('مدرب حراس', 'Goalkeeper coach')}</option>
                     <option value="accountant">{text('محاسب', 'Accountant')}</option>
                     <option value="receptionist">{text('استقبال', 'Receptionist')}</option>
                   </select>
@@ -139,3 +141,4 @@ export function StaffRegistration({ user, lang, onLogout, onApproved }: {
     </main>
   );
 }
+

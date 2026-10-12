@@ -1083,6 +1083,8 @@ export function roleLabel(role: string, lang: Lang): string {
   const t = tr(lang);
   const map: Record<string, string> = {
     manager: t.manager, accountant: t.accountant, coach: t.coach,
+    assistant_coach: lang === 'ar' ? 'مساعد مدرب' : 'Assistant coach',
+    goalkeeper_coach: lang === 'ar' ? 'مدرب حراس' : 'Goalkeeper coach',
     receptionist: t.receptionist, parent: t.parent,
   };
   return map[role] || role;
@@ -1147,3 +1149,4 @@ export function dayLabel(day: string, lang: Lang): string {
   };
   return map[day] || day;
 }
+

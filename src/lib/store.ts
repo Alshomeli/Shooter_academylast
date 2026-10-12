@@ -62,7 +62,7 @@ async function fetchAll<T>(table: string, mapper: (r: Record<string, unknown>) =
 }
 
 const TABLE_PUBLIC_COLUMNS: Record<string, string> = {
-  staff: 'row_version,id,name,email,phone,role,specialization,status,joined_date,avatar_url,licenses,experience_years,rating,tactical_style,notes,user_id,created_at',
+  staff: 'row_version,id,name,email,phone,role,coach_kind,supervising_coach_id,specialization,status,joined_date,avatar_url,licenses,experience_years,rating,tactical_style,notes,user_id,created_at',
   parents: 'row_version,user_id,id,name,nationality,phone,whatsapp_phone,email,address,occupation,workplace,avatar_url,status,notes,joined_date,created_at',
   players: 'row_version,id,name,birth_date,blood_type,jersey_number,position,team_id,parent_name,parent_phone,parent_email,parent_id,status,joined_date,created_at',
 };
@@ -159,10 +159,10 @@ export const db = {
     if (error) throw error;
     if (!user) return null;
     const { data: staff, error: staffError } = await supabase.from('staff')
-      .select('id,name,email,role,status').eq('user_id', user.id).maybeSingle();
+      .select('id,name,email,role,status,coach_kind').eq('user_id', user.id).maybeSingle();
     if (staffError) throw staffError;
     if (staff) {
-      if (staff.status === 'active') return { ...staff, authUserId: user.id } as CurrentUser;
+      if (staff.status === 'active') return { ...staff, coachKind: staff.coach_kind, authUserId: user.id } as CurrentUser;
       // A linked staff profile is an existing account even when disabled.
       // Do not route it back into onboarding as if it were a new applicant.
       return { ...staff, authUserId: user.id, accountDisabled: true } as CurrentUser;
@@ -188,7 +188,7 @@ export const db = {
         authUserId: user.id,
         name: staffApplication.full_name || user.email || '',
         email: staffApplication.email || user.email || '',
-        role: staffApplication.requested_role as CurrentUser['role'],
+        role: (['assistant_coach', 'goalkeeper_coach'].includes(staffApplication.requested_role) ? 'coach' : staffApplication.requested_role) as CurrentUser['role'],
         registrationOnly: true,
         registrationMode: 'staff',
       };
@@ -517,3 +517,4 @@ export const db = {
       .subscribe();
   },
 };
+

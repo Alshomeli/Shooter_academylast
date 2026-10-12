@@ -5,10 +5,11 @@ import { Badge, Modal } from '@/components/ui';
 import { errorMessage, fetchMyApplications } from '@/lib/registration';
 import type { RegistrationApplication } from '@/types';
 import { planLabel } from '@/lib/i18n';
-import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerDocument, PlayerEvaluation, Settings, Subscription } from '@/types';
+import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerDocument, PlayerEvaluation, Settings, Subscription, Team, Training } from '@/types';
 import { db } from '@/lib/store';
-import { uploadPlayerFile } from '@/lib/uploads';
 import { tr } from '@/lib/i18n';
+import { uploadPlayerFile } from '@/lib/uploads';
+import { Home, Users, Upload, Shield } from 'lucide-react';
 
 const bahrainToday = () => {
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Bahrain', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -17,8 +18,8 @@ const bahrainToday = () => {
 };
 const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
 
-export function ParentPortal({ user, players, subscriptions, attendance, evaluations, settings, lang, setLang, onLogout, onRefresh, openRegistration = false }: {
-  openRegistration?: boolean; user: CurrentUser; players: Player[]; subscriptions: Subscription[]; attendance: Attendance[]; evaluations: PlayerEvaluation[]; settings: Settings | null; lang: Lang;
+export function ParentPortal({ user, players, subscriptions, attendance, teams, trainings, evaluations, settings, lang, setLang, onLogout, onRefresh, openRegistration = false }: {
+  openRegistration?: boolean; user: CurrentUser; players: Player[]; subscriptions: Subscription[]; attendance: Attendance[]; teams: Team[]; trainings: Training[]; evaluations: PlayerEvaluation[]; settings: Settings | null; lang: Lang;
   setLang: (lang: Lang) => void; onLogout: () => void; onRefresh: () => Promise<void>;
 }) {
   const ar = lang === 'ar';
@@ -29,13 +30,30 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
   const text = (a: string, e: string) => ar ? a : e;
   const [apps, setApps] = useState<RegistrationApplication[]>([]);
   const [error, setError] = useState('');
+  const [uploadCategory, setUploadCategory] = useState<'photo' | 'document' | null>(null);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
+  const [attachmentError, setAttachmentError] = useState('');
+  const [activeSection, setActiveSection] = useState('overview');
+  const sections = [
+    { id: 'overview', ar: 'الرئيسية', en: 'Home', icon: Home },
+    { id: 'children', ar: 'أبنائي', en: 'My children', icon: Users },
+    { id: 'subscriptions', ar: 'الاشتراكات', en: 'Subscriptions', icon: CreditCard },
+    { id: 'documents', ar: 'المستندات', en: 'Documents', icon: FileText },
+    { id: 'evaluations', ar: 'التقييمات', en: 'Evaluations', icon: Star },
+    { id: 'attendance', ar: 'الحضور', en: 'Attendance', icon: CalendarCheck2 },
+  ];
+  const navigate = (id: string) => {
+    setActiveSection(id);
+    document.getElementById('parent-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const [ready, setReady] = useState(false);
   const [registrationBusy, setRegistrationBusy] = useState(false);
   const [editor, setEditor] = useState<RegistrationApplication | 'new' | null>(openRegistration ? 'new' : null);
   const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || '');
   const [paymentProofs, setPaymentProofs] = useState<PaymentProof[]>([]);
   const [playerDocuments, setPlayerDocuments] = useState<PlayerDocument[]>([]);
-  const [uploadingCategory, setUploadingCategory] = useState<'photo' | 'document' | null>(null);
   const [photoUrls, setPhotoUrls] = useState<Record<string,string>>({});
   const [payingSubscription, setPayingSubscription] = useState<Subscription | null>(null);
   const [resubmittingProof, setResubmittingProof] = useState<PaymentProof | null>(null);
@@ -49,12 +67,14 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
   const playerEvaluations = selectedPlayer ? evaluations.filter((e) => e.playerId === selectedPlayer.id && e.status === 'published').sort((a,b) => b.evaluationDate.localeCompare(a.evaluationDate)) : [];
   const presentCount = playerAttendance.filter(a=>a.status==='present').length;
   const attendanceRate = playerAttendance.length ? Math.round((presentCount/playerAttendance.length)*100) : 0;
+  const selectedTeam = teams.find(t => t.id === selectedPlayer?.teamId);
+  const nextTraining = trainings.filter(t => t.teamId === selectedPlayer?.teamId && t.sessionDate.slice(0,10) >= bahrainToday()).sort((a,b) => a.sessionDate.localeCompare(b.sessionDate))[0];
   const latestEvaluation = playerEvaluations[0];
   const currentSubscription = playerSubscriptions.find(s=>s.status==='unpaid') || playerSubscriptions[0];
   const approvedPayments = playerSubscriptions.filter(s=>s.status==='paid');
   const selectedDocuments = selectedPlayer ? playerDocuments.filter(d=>d.playerId===selectedPlayer.id&&d.fileCategory!=='photo') : [];
   const load = useCallback(async () => {
-    try { const [myApps, proofs, docs] = await Promise.all([fetchMyApplications(), db.getPaymentProofs(), db.getPlayerDocuments()]); setApps(myApps); setPaymentProofs(proofs); setPlayerDocuments(docs); const photos=docs.filter(d=>d.playerId&&d.fileCategory==='photo'); const pairs=await Promise.all(photos.map(async d=>[d.playerId!,await db.getPlayerDocumentUrl(d.filePath)] as const)); setPhotoUrls(Object.fromEntries(pairs)); setError(''); setReady(true); }
+    try { const [myApps, proofs, docs] = await Promise.all([fetchMyApplications(), db.getPaymentProofs(), db.getPlayerDocuments()]); setApps(myApps); setPaymentProofs(proofs); setPlayerDocuments(docs); const photos=docs.filter(d=>d.playerId&&d.fileCategory==='photo'); const newest=photos.filter((d,i)=>photos.findIndex(p=>p.playerId===d.playerId)===i); const pairs=await Promise.all(newest.map(async d=>[d.playerId!,await db.getPlayerDocumentUrl(d.filePath)] as const)); setPhotoUrls(Object.fromEntries(pairs)); setError(''); setReady(true); }
     catch (e) { setError(errorMessage(e, lang === 'ar')); }
   }, [lang]);
   useEffect(() => {
@@ -66,19 +86,6 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
   }, [load]);
   const statusLabel = (status: RegistrationApplication['status']) => ({ draft: text('مسودة', 'Draft'), pending: text('بانتظار المراجعة', 'Pending review'), under_review: text('قيد المراجعة', 'Under review'), needs_info: text('يحتاج استكمال', 'More information needed'), approved: text('مقبول', 'Approved'), rejected: text('مرفوض', 'Rejected') })[status];
   const refresh = async () => { await load(); await onRefresh(); };
-  const uploadChildFile = async (category: 'photo' | 'document', file: File | undefined) => {
-    if (!selectedPlayer || !file || uploadingCategory) return;
-    setUploadingCategory(category);
-    setError('');
-    try {
-      await uploadPlayerFile(selectedPlayer.id, file, category);
-      await load();
-    } catch (e) {
-      setError(errorMessage(e, ar));
-    } finally {
-      setUploadingCategory(null);
-    }
-  };
   const submitProof = async () => {
     if (!payingSubscription || !selectedPlayer || !paymentFile) return;
     try {
@@ -89,6 +96,18 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
       await refresh();
     } catch (e) { setError(errorMessage(e, ar)); }
     finally { setPaymentBusy(false); }
+  };
+  const uploadAttachment = async () => {
+    if (!attachment || !uploadCategory || !selectedPlayer || attachmentBusy) return;
+    if (uploadCategory === 'photo' && !['image/jpeg','image/png','image/webp'].includes(attachment.type)) {
+      setAttachmentError(text('اختر صورة بصيغة JPG أو PNG أو WebP.', 'Choose a JPG, PNG or WebP image.')); return;
+    }
+    setAttachmentBusy(true); setAttachmentError('');
+    try {
+      await uploadPlayerFile(selectedPlayer.id, attachment, uploadCategory);
+      setUploadCategory(null); setAttachment(null); await load();
+    } catch (e) { setAttachmentError(errorMessage(e, ar)); }
+    finally { setAttachmentBusy(false); }
   };
   const printReceipt = (proof: PaymentProof, sub: Subscription) => {
     if (!proof.receiptNumber || !selectedPlayer) return;
@@ -110,27 +129,34 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
     rejected: text('مرفوض', 'Rejected'),
     needs_info: text('يحتاج استكمال', 'More information needed'),
   })[status];
-  return <main className="parent-portal min-h-screen bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-100 p-4 sm:p-8" dir={ar ? 'rtl' : 'ltr'}>
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white/90 px-5 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/90"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-900 text-white dark:bg-slate-700"><UserRound className="h-5 w-5" /></div><div><p className="text-[11px] font-bold text-slate-500">{text('حساب ولي الأمر', 'Guardian account')}</p><p className="font-black text-slate-900 dark:text-white">{user.name}</p></div></div><span className="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">{text('بوابة العائلة', 'Family portal')}</span></div>
-      <header className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-brand-950 p-5 sm:p-7 text-white shadow-xl shadow-slate-300/30 dark:shadow-none"><div className="absolute -top-16 -end-10 h-44 w-44 rounded-full bg-brand-400/15 blur-3xl" /><div className="relative flex flex-wrap items-center justify-between gap-5"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-300">{academyName}</p><h1 className="mt-2 text-2xl sm:text-3xl font-black">{text('بوابة ولي الأمر', 'Parent portal')}</h1><p className="mt-1 text-sm text-slate-300">{text(`مرحبًا ${user.name}، هذه متابعة أبنائك في مكان واحد`, `Welcome ${user.name}, your children’s progress at a glance`)}</p></div><div className="flex flex-wrap items-center gap-2"><button onClick={() => setLang(ar ? 'en' : 'ar')} className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/20">{ar ? 'English' : 'العربية'}</button><button onClick={() => void refresh()} className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-white transition hover:bg-white/20" aria-label={text('تحديث البيانات', 'Refresh data')}><RefreshCw className="h-4 w-4" /></button><button onClick={onLogout} className="flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-sm font-bold text-slate-900 transition hover:bg-brand-50"><LogOut className="h-4 w-4" />{text('خروج', 'Sign out')}</button></div></div></header>
+  return <main id="parent-overview" className="parent-portal parent-arena dark min-h-screen text-slate-100 p-3 sm:p-6" dir={ar ? 'rtl' : 'ltr'}>
+    <div className="max-w-7xl mx-auto space-y-4">
+      <header className="arena-header">
+        <a href="#parent-overview" className="arena-brand"><img src={settings?.logoUrl || '/1790474303638.jpg'} alt={academyName} /><span><strong>{text('أكاديمية شوتر', 'Shooter Academy')}</strong><small>SHOOTER ACADEMY</small></span></a>
+        <div className="arena-account"><UserRound className="h-8 w-8"/><div><strong>{text('مرحبًا، ', 'Welcome, ')}{user.name}</strong><small>{text('ولي الأمر', 'Parent')}</small></div></div>
+        <div className="arena-actions"><button onClick={() => setLang(ar ? 'en' : 'ar')}>{ar ? 'English' : 'العربية'}</button><button onClick={() => void refresh()} aria-label={text('تحديث البيانات', 'Refresh data')}><RefreshCw className="h-4 w-4"/></button><button onClick={onLogout} aria-label={text('تسجيل الخروج','Sign out')}><LogOut className="h-4 w-4"/></button></div>
+        <nav className="arena-top-nav" aria-label={text('القائمة الرئيسية لولي الأمر','Parent main navigation')}>
+          {sections.map(item=><button key={item.id} aria-current={activeSection===item.id?'page':undefined} onClick={()=>navigate(item.id)} className={activeSection===item.id?'active':''}><item.icon className="h-4 w-4"/>{ar?item.ar:item.en}</button>)}
+        </nav>
+      </header>
+      <div className="arena-hero"><div><p>{text('شغف اليوم. أبطال الغد.', "Today's passion. Tomorrow's champions.")}</p><h1>{text('كل خطوة تُقرّبه من حلمه', 'Every step brings them closer')}</h1><span>{text('تدريب · شغف · تطوير مهارات · مستقبل أفضل', 'Training · Passion · Skills · A brighter future')}</span></div></div>
       <nav aria-label={text('التواصل مع الأكاديمية', 'Academy social links')} className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
         <a href="https://www.instagram.com/shooter.academy.bh/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-brand-600 dark:text-slate-200" aria-label={text('إنستغرام الأكاديمية', 'Academy Instagram')}><Instagram className="h-5 w-5" /> Instagram</a>
       </nav>
-      <a href="https://wa.me/97332287776" target="_blank" rel="noopener noreferrer" aria-label={text('تواصل مع الأكاديمية عبر واتساب', 'Contact academy on WhatsApp')} className="fixed bottom-5 left-5 z-40 grid h-12 w-12 place-items-center rounded-full bg-emerald-600 text-white shadow-xl transition hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"><MessageCircle className="h-6 w-6" /></a>
+      <a href="https://wa.me/97332287776" target="_blank" rel="noopener noreferrer" aria-label={text('تواصل مع الأكاديمية عبر واتساب', 'Contact academy on WhatsApp')} className="fixed bottom-20 left-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-emerald-600 text-white shadow-xl transition hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"><MessageCircle className="h-6 w-6" /></a>
       {error && <p role="alert" className="text-red-700 bg-red-50 p-3 rounded-lg">{error}</p>}
-      <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">{text('المتابعة العائلية', 'Family overview')}</p><h2 className="mt-1 text-xl font-black">{text('أبنائي', 'My children')}</h2><p className="mt-1 text-sm text-slate-500">{players.length ? text('اختر لاعبًا لعرض الحضور والاشتراكات والتقييمات', 'Select a player to view attendance, subscriptions, and evaluations') : text('ستظهر بيانات الأبناء هنا بعد اعتماد الطلب وربط الحساب.', 'Your children will appear here after the academy approves the application and links your account.')}</p></div><button disabled={!ready} onClick={() => setEditor('new')} className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-500 disabled:opacity-50"><Plus className="h-4 w-4" />{text('طلب تسجيل أبناء', 'Register children')}</button></div>
+      <div id="parent-children" className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">{text('المتابعة العائلية', 'Family overview')}</p><h2 className="mt-1 text-xl font-black">{text('أبنائي', 'My children')}</h2><p className="mt-1 text-sm text-slate-500">{players.length ? text('اختر لاعبًا لعرض الحضور والاشتراكات والتقييمات', 'Select a player to view attendance, subscriptions, and evaluations') : text('ستظهر بيانات الأبناء هنا بعد اعتماد الطلب وربط الحساب.', 'Your children will appear here after the academy approves the application and links your account.')}</p></div><button disabled={!ready} onClick={() => setEditor('new')} className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-500 disabled:opacity-50"><Plus className="h-4 w-4" />{text('طلب تسجيل أبناء', 'Register children')}</button></div>
       {!players.length && <p className="text-slate-500">{text('ستظهر بيانات الأبناء هنا بعد اعتماد الطلب وربط الحساب.', 'Your children will appear here after the academy approves the application and links your account.')}</p>}
-      {players.length > 0 && <div className="grid lg:grid-cols-[260px_1fr] gap-5">
-        <aside className="space-y-3"><div className="flex items-center justify-between px-1"><span className="text-xs font-black text-slate-500">{text('اللاعبون', 'Players')}</span><span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-black text-slate-500 shadow-sm dark:bg-slate-900">{players.length}</span></div>
+      {players.length > 0 && <div className="arena-player-layout">
+        <aside className="arena-children space-y-3"><div className="flex items-center justify-between px-1"><span className="text-xs font-black text-slate-500">{text('اللاعبون', 'Players')}</span><span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-black text-slate-500 shadow-sm dark:bg-slate-900">{players.length}</span></div>
           {players.map((player) => <button key={player.id} onClick={() => setSelectedPlayerId(player.id)} className={`group w-full text-start rounded-2xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${selectedPlayer?.id === player.id ? 'border-brand-500 bg-brand-50 shadow-md shadow-brand-900/10 dark:bg-brand-950/20' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'}`}>
             <div className="flex items-center gap-3"><div className="h-11 w-11 rounded-full bg-slate-100 dark:bg-slate-800 grid place-items-center overflow-hidden">{photoUrls[player.id]?<img src={photoUrls[player.id]} alt="" className="w-full h-full object-cover"/>:<UserRound className="h-5 w-5" />}</div><div><p className="font-black">{player.name}</p><p className="text-xs text-slate-500">#{player.jerseyNumber || '—'} · {player.position || text('لم يحدد المركز','Position pending')}</p></div></div>
           </button>)}
         </aside>
-        {selectedPlayer && <section className="space-y-5">
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="bg-gradient-to-br from-brand-50 via-white to-blue-50 p-5 dark:from-brand-950/30 dark:via-slate-900 dark:to-blue-950/20"><div className="flex flex-wrap justify-between gap-4"><div className="flex flex-wrap items-center gap-4"><div className="h-32 w-32 sm:h-40 sm:w-40 shrink-0 rounded-3xl border-4 border-white bg-white shadow-xl ring-2 ring-brand-200/60 dark:ring-brand-500/30 dark:border-slate-800 dark:bg-slate-800 grid place-items-center overflow-hidden">{photoUrls[selectedPlayer.id]?<img src={photoUrls[selectedPlayer.id]} alt="" className="w-full h-full object-cover"/>:<UserRound className="h-7 w-7"/>}</div><div><h2 className="text-xl sm:text-3xl font-black tracking-tight break-words">{selectedPlayer.name}</h2><p className="text-sm text-slate-500">{text('ملف اللاعب','Player profile')}</p><p className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-300">{text('ولي الأمر: ', 'Guardian: ')}{user.name}</p></div></div><Badge color={selectedPlayer.status === 'active' ? 'green' : 'amber'}>{selectedPlayer.status === 'active' ? text('نشط','Active') : text('غير نشط','Inactive')}</Badge></div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mt-5">
+        {selectedPlayer && <section className="arena-player-content">
+          <div className="arena-profile overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="bg-gradient-to-br from-brand-50 via-white to-blue-50 p-5 dark:from-brand-950/30 dark:via-slate-900 dark:to-blue-950/20"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex flex-wrap items-center gap-4"><div className="h-32 w-32 sm:h-40 sm:w-40 shrink-0 rounded-3xl border-4 border-white bg-white shadow-xl ring-2 ring-brand-200/60 dark:ring-brand-500/30 dark:border-slate-800 dark:bg-slate-800 grid place-items-center overflow-hidden">{photoUrls[selectedPlayer.id]?<img src={photoUrls[selectedPlayer.id]} alt="" className="w-full h-full object-cover"/>:<UserRound className="h-7 w-7"/>}</div><div><h2 className="text-xl sm:text-3xl font-black tracking-tight break-words">{selectedPlayer.name}</h2><p className="text-sm text-slate-500">{text('ملف اللاعب','Player profile')} · #{selectedPlayer.jerseyNumber || '—'}</p><p className="mt-1 text-xs text-slate-400">{selectedTeam?.name} · {selectedTeam?.ageGroup}</p><p className="mt-2 text-sm">{selectedPlayer.position || text('المركز لم يُحدد','Position pending')}</p><button onClick={()=>{setAttachmentError('');setAttachment(null);setUploadCategory('photo')}} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-xs font-bold text-white"><Upload className="h-4 w-4"/>{text('تحميل صورة اللاعب','Upload player photo')}</button><p className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-300">{text('ولي الأمر: ', 'Guardian: ')}{user.name}</p></div></div><Badge color={selectedPlayer.status === 'active' ? 'green' : 'amber'}>{selectedPlayer.status === 'active' ? text('نشط','Active') : text('غير نشط','Inactive')}</Badge></div>
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mt-5">
               <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><div className="flex items-center gap-2 text-xs text-slate-500"><CalendarCheck2 className="h-4 w-4"/>{text('نسبة الحضور','Attendance rate')}</div><p className="font-black text-lg mt-1">{attendanceRate}%</p><p className="text-[10px] text-slate-400">{presentCount}/{playerAttendance.length}</p></div>
               <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><div className="flex items-center gap-2 text-xs text-slate-500"><Star className="h-4 w-4"/>{text('آخر تقييم','Latest evaluation')}</div><p className="font-black text-lg mt-1">{latestEvaluation?.overallScore!=null?latestEvaluation.overallScore.toFixed(1)+'/5':'—'}</p><p className="text-[10px] text-slate-400">{latestEvaluation?.evaluationDate||text('لا يوجد بعد','None yet')}</p></div>
               <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><div className="flex items-center gap-2 text-xs text-slate-500"><CreditCard className="h-4 w-4"/>{text('حالة الاشتراك','Subscription')}</div><p className="font-black text-lg mt-1">{currentSubscription?(currentSubscription.status==='paid'?text('مدفوع','Paid'):text('مطلوب الدفع','Payment due')):'—'}</p><p className="text-[10px] text-slate-400">{currentSubscription?.endDate||''}</p></div>
@@ -138,8 +164,10 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
             </div></div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
+          <div className="arena-card rounded-2xl border p-5 space-y-3"><h3 className="font-black">{text('التدريب القادم','Next training')}</h3>{nextTraining ? <><p className="text-lg font-bold">{nextTraining.title}</p><p className="text-sm text-slate-300" dir="ltr">{nextTraining.sessionDate} {selectedTeam?.trainingTime || ''}</p><p className="text-sm text-slate-400">{text('الملعب: ','Pitch: ')}{selectedTeam?.pitchNumber || '—'}</p><p className="text-sm text-slate-400">{nextTraining.objectives}</p></> : <p className="text-sm text-slate-400">{text('لم يُحدد تدريب قادم بعد.','No upcoming training scheduled.')}</p>}</div>
+          <div id="parent-subscriptions" className="arena-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
             <div className="flex items-center gap-2"><CreditCard className="h-5 w-5 text-brand-600"/><h3 className="font-black">{text('الاشتراكات والمدفوعات','Subscriptions & payments')}</h3></div>
+            {playerSubscriptions.length === 0 && <p className="text-sm text-slate-400">{text('لا توجد اشتراكات بعد.', 'No subscriptions yet.')}</p>}
             {playerSubscriptions.map((sub) => {
               const relatedProofs = paymentProofs.filter((p) => p.subscriptionId === sub.id).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
               const proof = relatedProofs.find((p) => ['pending','needs_info','approved'].includes(p.status));
@@ -158,40 +186,35 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
             {approvedPayments.length===0?<p className="text-sm text-slate-500 py-3">{text('لا توجد مدفوعات معتمدة حتى الآن.','No approved payments yet.')}</p>:approvedPayments.map(sub=><div key={sub.id} className="border-t dark:border-slate-700 pt-3 flex items-center justify-between gap-3"><div><p className="font-bold text-sm">{planLabel(sub.planType,lang)}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p></div><div className="text-end"><p className="font-black text-brand-600">{sub.amount} {text('د.ب','BHD')}</p><Badge color="green">{text('مدفوع','Paid')}</Badge>{(()=>{const approved=paymentProofs.find(p=>p.subscriptionId===sub.id&&p.status==='approved'&&p.receiptNumber);return approved?<button onClick={()=>printReceipt(approved,sub)} className="mt-2 flex items-center gap-1 text-xs font-bold text-blue-600"><Printer className="h-3.5 w-3.5"/>{text('الإيصال','Receipt')} SA-{String(approved.receiptNumber).padStart(6,'0')}</button>:null})()}</div></div>)}
           </div>
 
-          <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3">
-            <h3 className="font-black">{text('صور ومستندات اللاعب','Player photos and documents')}</h3>
-            <p className="text-sm text-slate-500">{text('يمكنك إضافة صور أو مستندات لطفلك بعد اعتماد التسجيل. لا يمكن رفع ملفات لأبناء حساب آخر.', 'Add photos or documents for your child after registration approval. Files for other accounts are not permitted.')}</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block rounded-xl border border-dashed border-brand-300 p-3 text-sm font-bold cursor-pointer focus-within:ring-2 focus-within:ring-brand-500">
-                <span className="flex items-center gap-2"><FileUp className="h-4 w-4" />{text('رفع صورة (JPG، PNG، WebP)', 'Upload photo (JPG, PNG, WebP)')}</span>
-                <input type="file" accept="image/jpeg,image/png,image/webp" className="mt-2 w-full text-xs" disabled={uploadingCategory !== null} onChange={e => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ''; void uploadChildFile('photo', file); }} />
-              </label>
-              <label className="block rounded-xl border border-dashed border-brand-300 p-3 text-sm font-bold cursor-pointer focus-within:ring-2 focus-within:ring-brand-500">
-                <span className="flex items-center gap-2"><FileText className="h-4 w-4" />{text('رفع مستند (PDF أو صورة)', 'Upload document (PDF or image)')}</span>
-                <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="mt-2 w-full text-xs" disabled={uploadingCategory !== null} onChange={e => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ''; void uploadChildFile('document', file); }} />
-              </label>
-            </div>
-            {uploadingCategory && <p role="status" className="text-sm text-brand-700">{text('جارٍ رفع الملف، يرجى الانتظار…','Uploading your file, please wait…')}</p>}
-            {selectedDocuments.length===0 && <p className="text-sm text-slate-500">{text('لا توجد مستندات مضافة بعد.','No documents uploaded yet.')}</p>}
-            {selectedDocuments.length > 0 && <>
-            <h4 className="font-bold text-sm">{text('المستندات المحفوظة','Saved documents')}</h4>
-            {selectedDocuments.map(d=><button key={d.id} onClick={async()=>window.open(await db.getPlayerDocumentUrl(d.filePath),'_blank','noopener,noreferrer')} className="w-full flex justify-between gap-3 border-t dark:border-slate-700 pt-3 text-sm"><span className="font-bold">{d.fileName}</span><span className="text-brand-600">{text('عرض','View')}</span></button>)}
-            </>}
+          <div id="parent-documents" className="arena-card bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-black">{text('الصور والمستندات','Photos & documents')}</h3><button className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-xs font-bold text-white" onClick={()=>{setAttachmentError('');setAttachment(null);setUploadCategory('document')}}><Plus className="h-4 w-4"/>{text('إضافة مستند','Add document')}</button></div>
+            <p className="text-xs text-slate-400">{text('يمكنك إضافة المرفقات بعد موافقة المدير. تظهر فقط للحسابات المخوّلة.', 'You can add attachments after approval. Only authorized accounts can view them.')}</p>
+            {selectedDocuments.length===0 && <p className="text-sm text-slate-400">{text('لم تُرفع مستندات بعد.','No documents uploaded yet.')}</p>}
+            {selectedDocuments.map(d=><button key={d.id} onClick={async()=>{try {const url=await db.getPlayerDocumentUrl(d.filePath);window.open(url,'_blank','noopener,noreferrer');}catch(e){setError(errorMessage(e,ar));}}} className="w-full flex justify-between gap-3 border-t dark:border-slate-700 pt-3 text-sm"><span className="font-bold break-all">{d.fileName}</span><span className="text-brand-400 shrink-0">{text('عرض','View')}</span></button>)}
           </div>
 
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
+          <div id="parent-attendance" className="arena-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
             <div className="flex items-center gap-2"><CalendarCheck2 className="h-5 w-5 text-brand-600"/><div><h3 className="font-black">{text('آخر سجلات الحضور','Recent attendance')}</h3><p className="text-xs text-slate-500">{text('آخر الأنشطة المسجلة للاعب','Latest recorded player sessions')}</p></div></div>
-            {playerAttendance.length===0?<p className="text-sm text-slate-500 py-3">{text('لا يوجد حضور مسجل حتى الآن.','No attendance has been recorded yet.')}</p>:[...playerAttendance].sort((a,b)=>b.sessionDate.localeCompare(a.sessionDate)).slice(0,5).map(a=><div key={a.id} className="border-t dark:border-slate-700 pt-3 flex items-center justify-between gap-3"><div><p className="font-bold text-sm">{a.sessionType==='match'?text('مباراة','Match'):text('تدريب','Training')}</p><p className="text-xs text-slate-500" dir="ltr">{a.sessionDate}</p></div><Badge color={a.status==='present'?'green':a.status==='absent'?'red':'amber'}>{a.status==='present'?text('حاضر','Present'):a.status==='absent'?text('غائب','Absent'):text('متأخر','Late')}</Badge></div>)}
+            {playerAttendance.length===0?<p className="text-sm text-slate-500 py-3">{text('لا يوجد حضور مسجل حتى الآن.','No attendance has been recorded yet.')}</p>:[...playerAttendance].sort((a,b)=>b.sessionDate.localeCompare(a.sessionDate)).slice(0,5).map(a=><div key={a.id} className="border-t dark:border-slate-700 pt-3 flex items-center justify-between gap-3"><div><p className="font-bold text-sm">{a.sessionType==='match'?text('مباراة','Match'):text('تدريب','Training')}</p><p className="text-xs text-slate-500" dir="ltr">{a.sessionDate}</p></div><Badge color={a.status==='present'?'green':a.status==='absent'?'red':'amber'}>{a.status==='present'?text('حاضر','Present'):a.status==='absent'?text('غائب','Absent'):text('بعذر','Excused')}</Badge></div>)}
           </div>
 
-          {playerEvaluations.length > 0 && <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3"><h3 className="font-black">{tr(lang).playerEvaluations}</h3>
+          <div id="parent-evaluations" className="arena-card bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3"><h3 className="font-black">{tr(lang).playerEvaluations}</h3>{playerEvaluations.length===0 && <p className="text-sm text-slate-400">{text('لا توجد تقييمات منشورة بعد.','No published evaluations yet.')}</p>}
             {playerEvaluations.slice(0,5).map((ev)=><div key={ev.id} className="border-t dark:border-slate-700 pt-3"><div className="flex justify-between"><span className="text-xs text-slate-500">{ev.evaluationDate}</span>{ev.overallScore!=null&&<strong className="text-brand-600">{ev.overallScore.toFixed(1)}/5</strong>}</div>{ev.strengths&&<p className="text-sm mt-1">{ev.strengths}</p>}{ev.coachRecommendation&&<p className="text-xs text-blue-600 mt-1">{ev.coachRecommendation}</p>}</div>)}
-          </div>}
+          </div>
         </section>}
       </div>}
       <div className="flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">{text('الطلبات', 'Requests')}</p><h2 className="mt-1 text-xl font-black">{text('طلبات التسجيل', 'Registration applications')}</h2></div></div>
       {!ready && !error && <p role="status">{text('جارٍ التحميل…', 'Loading…')}</p>}
       {apps.map(app => <article key={app.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-2 shadow-sm"><div className="flex justify-between gap-3"><p className="font-bold">{app.children.map(c => c.fullName).join('، ')}</p><Badge>{statusLabel(app.status)}</Badge></div>{app.reviewNotes && <p className="text-sm text-amber-700">{app.reviewNotes}</p>}{['draft', 'needs_info'].includes(app.status) && <button className="text-brand-700 font-bold text-sm" onClick={() => setEditor(app)}>{text('استكمال الطلب', 'Continue application')}</button>}</article>)}
+      <Modal open={!!uploadCategory} closeDisabled={attachmentBusy} onClose={()=>{if(!attachmentBusy)setUploadCategory(null)}} title={uploadCategory==='photo'?text('تحميل صورة اللاعب','Upload player photo'):text('تحميل مستند','Upload document')}>
+        <div className="space-y-4"><p className="font-bold">{selectedPlayer?.name}</p>
+          <p className="text-sm text-slate-400">{uploadCategory==='photo'?text('JPG، PNG، WebP. تُضغط الصور تلقائيًا.','JPG, PNG, WebP. Images are compressed automatically.'):text('PDF حتى 5 ميغابايت، أو صورة JPG، PNG، WebP.','PDF up to 5 MB, or a JPG, PNG, WebP image.')}</p>
+          <label className="block text-sm font-bold">{text('اختر الملف','Choose file')}<input key={uploadCategory} type="file" disabled={attachmentBusy} accept={uploadCategory==='photo'?'image/jpeg,image/png,image/webp':'application/pdf,image/jpeg,image/png,image/webp'} onChange={e=>setAttachment(e.target.files?.[0]||null)} className="mt-3 block w-full text-sm"/></label>
+          {attachmentError&&<p role="alert" className="text-sm text-red-400">{attachmentError}</p>}
+          <button disabled={!attachment||attachmentBusy} onClick={()=>void uploadAttachment()} className="w-full rounded-xl bg-brand-600 px-4 py-3 font-bold text-white disabled:opacity-50">{attachmentBusy?text('جارٍ الرفع…','Uploading…'):text('رفع وحفظ','Upload & save')}</button>
+          <p className="flex items-center gap-2 text-xs text-slate-400"><Shield className="h-4 w-4"/>{text('مرفق خاص مرتبط بهذا اللاعب فقط.','Private attachment linked to this player.')}</p>
+        </div>
+      </Modal>
       <Modal open={!!payingSubscription} closeDisabled={paymentBusy} onClose={() => { if(!paymentBusy){setPayingSubscription(null);setResubmittingProof(null);} }} title={text('إثبات دفع الاشتراك','Subscription payment proof')}>
         {payingSubscription && <div className="space-y-4">
           <div className="rounded-xl bg-brand-50 dark:bg-brand-950/20 p-4"><p className="text-sm text-slate-500">{text('المبلغ المطلوب','Amount due')}</p><p className="text-2xl font-black">{payingSubscription.amount} {text('د.ب','BHD')}</p></div>
@@ -218,6 +241,8 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
         {registrationBusy && <p role="status" className="mb-3 text-sm text-slate-500">{text('انتظر اكتمال الحفظ أو رفع الملفات قبل إغلاق الطلب.', 'Wait for saving or uploads to finish before closing the application.')}</p>}
         {editor && <Registration key={editor === 'new' ? 'new' : editor.id} initial={editor === 'new' ? undefined : editor} lang={lang} onSaved={refresh} onBusyChange={setRegistrationBusy} onExit={() => { if (!registrationBusy) setEditor(null); }} />}
       </Modal>
+      <nav className="arena-bottom-nav" aria-label={text('التنقل السريع','Quick navigation')}>{sections.filter(x=>x.id!=='attendance').map(item=><button key={item.id} onClick={()=>navigate(item.id)} aria-current={activeSection===item.id?'page':undefined}><item.icon className="h-5 w-5"/><span>{ar?item.ar:item.en}</span></button>)}</nav>
     </div>
   </main>;
 }
+
