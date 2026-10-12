@@ -38,6 +38,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
   const [apps, setApps] = useState<RegistrationApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionNotice, setActionNotice] = useState('');
   const [selectedApp, setSelectedApp] = useState<RegistrationApplication | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -55,14 +56,20 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
   // Photo URLs
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
 
-  const loadApps = useCallback(async () => {
+  const loadApps = useCallback(async (afterSaved = false) => {
     if (activeRole !== 'manager') return [];
     setLoading(true);
     try {
       const data = await fetchAllApplications();
       setApps(data); setError('');
       return data;
-    } catch (e) { setError(errorMessage(e, lang === 'ar')); return null; }
+    } catch (e) {
+      if (afterSaved) {
+        setError('');
+        setActionNotice(lang === 'ar' ? 'تم حفظ القرار، لكن تعذر تحديث القائمة. حدّث الصفحة لعرض الحالة الجديدة؛ لا حاجة لإعادة القرار.' : 'Decision saved, but the list could not refresh. Refresh the page to see the new status; do not repeat the action.');
+      } else setError(errorMessage(e, lang === 'ar'));
+      return null;
+    }
     finally { setLoading(false); }
   }, [activeRole, lang]);
 
@@ -126,16 +133,19 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
   /* ---- Actions ---- */
   const handleAction = async (type: string, appId: string) => {
     if (actionLoading || activeRole !== 'manager') return;
-    setActionLoading(true); setError('');
+    setActionLoading(true); setError(''); setActionNotice('');
     try {
       if ((type === 'needs_info' || type === 'rejected') && !reviewNotes.trim()) throw new Error(isAr ? 'اكتب سبب القرار لولي الأمر.' : 'Add a reason for the parent.');
       if (type === 'approved') await approveApplication(appId);
       else if (type === 'under_review' || type === 'needs_info' || type === 'rejected') await reviewApplication(appId, type, reviewNotes.trim());
       else throw new Error('Unknown registration action.');
-      const updated = await loadApps();
+      setActionNotice(isAr ? 'تم حفظ القرار بنجاح.' : 'Decision saved successfully.');
+      setReviewNotes(''); setConfirmAction(null);
+      const updated = await loadApps(true);
       if (updated && selectedApp?.id === appId) setSelectedApp(updated.find(a => a.id === appId) || null);
       setReviewNotes(''); setConfirmAction(null);
-      await onRefresh();
+      try { await onRefresh(); }
+      catch { setActionNotice(isAr ? 'تم حفظ القرار، لكن تعذر تحديث بيانات الشاشة. حدّث الصفحة دون إعادة القرار.' : 'Decision saved, but screen data could not refresh. Refresh without repeating the action.'); }
     } catch (e) { setError(errorMessage(e, isAr)); throw e; }
     finally { setActionLoading(false); }
   };
@@ -234,6 +244,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
         <label className="text-xs text-slate-500">{isAr ? 'من تاريخ' : 'From'}<input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inputCls} /></label>
         <label className="text-xs text-slate-500">{isAr ? 'إلى تاريخ' : 'To'}<input type="date" min={dateFrom} value={dateTo} onChange={e => setDateTo(e.target.value)} className={inputCls} /></label>
       </div>
+      {actionNotice && <p role="status" className="text-sm text-slate-600 dark:text-slate-300 font-bold">{actionNotice}</p>}
       {error && <p role="alert" className="text-xs text-red-500 font-bold">{error}</p>}
 
       {/* List */}
