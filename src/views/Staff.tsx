@@ -27,6 +27,13 @@ const ROLE_COLORS: Record<string, 'emerald' | 'blue' | 'amber' | 'slate'> = {
   receptionist: 'slate',
 };
 
+const staffAssignmentLabel = (member: Staff, lang: Lang) => {
+  if (member.role !== 'coach') return roleLabel(member.role, lang);
+  if (member.coachKind === 'assistant') return lang === 'ar' ? 'مساعد مدرب' : 'Assistant coach';
+  if (member.coachKind === 'goalkeeper') return lang === 'ar' ? 'مدرب حراس' : 'Goalkeeper coach';
+  return lang === 'ar' ? 'مدرب فئة' : 'Age-group coach';
+};
+
 export function StaffView({ staff, teams, players, onStaffChange, onRefresh, activeRole, lang }: StaffProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
@@ -34,7 +41,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
     { value: 'all', label: isAr ? 'كل الأدوار' : 'All roles' },
     { value: 'manager', label: t.manager },
     { value: 'accountant', label: t.accountant },
-    { value: 'coach', label: t.coach },
+    { value: 'coach', label: isAr ? 'الجهاز الفني' : 'Coaching staff' },
     { value: 'receptionist', label: t.receptionist },
   ];
   const [search, setSearch] = useState('');
@@ -93,21 +100,48 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
     const member = staff.find(s => s.id === coachId);
     const coach = member?.coachKind === 'assistant' ? staff.find(s => s.id === member.supervisingCoachId && s.status === 'active' && s.role === 'coach' && (s.coachKind === 'team' || s.coachKind === 'goalkeeper')) : member;
     if (!coach || member?.status !== 'active' || member.role !== 'coach') return [];
-    if (coach.coachKind === 'goalkeeper') return players.filter(p => teams.some(t => t.id === p.teamId && t.goalkeeperCoachId === coach.id) && ['حارس مرمى','حارس','goalkeeper','gk'].includes(p.position.trim().toLowerCase()));
+    if (coach.coachKind === 'goalkeeper') return players.filter(p => (coach.goalkeeperAllTeams || teams.some(t => t.id === p.teamId && t.goalkeeperCoachId === coach.id)) && ['حارس مرمى','حارس','goalkeeper','gk'].includes(p.position.trim().toLowerCase()));
     const teamIds = teams.filter(t => t.coachId === coach.id).map(t => t.id);
     return players.filter(p => teamIds.includes(p.teamId));
   };
-  const coachTeams = (coachId: string) => teams.filter(t => coachPlayers(coachId).some(p => p.teamId === t.id)).map(t => t.name);
+  const coachTeams = (coachId: string) => {
+    const member = staff.find(s => s.id === coachId);
+    const coach = member?.coachKind === 'assistant' ? staff.find(s => s.id === member.supervisingCoachId) : member;
+    if (!coach || member?.status !== 'active' || coach.status !== 'active') return [];
+    if (coach.coachKind === 'goalkeeper') return teams.filter(team => coach.goalkeeperAllTeams || team.goalkeeperCoachId === coach.id).map(team => team.name);
+    return teams.filter(team => team.coachId === coach.id).map(team => team.name);
+  };
   const coachPlayerCount = (coachId: string) => coachPlayers(coachId).length;
 
-  const handleSave = async (data: Omit<Staff, 'id'>, id?: string) => {
-    if (id) {
-      await onStaffChange(staff.map((s) => (s.id === id ? { ...data, id } : s)));
-    } else {
-      await onStaffChange([...staff, { ...data, id: `staff-${Date.now()}` }]);
+  const handleSave = async (data: Omit<Staff, 'id'>, id?: string, goalkeeperTeamIds: string[] = []) => {
+    const staffId = id || `staff-${Date.now()}`;
+    const previous = id ? staff.find((member) => member.id === id) : undefined;
+    const previousGoalkeeperTeamIds = id ? teams.filter((team) => team.goalkeeperCoachId === id).map((team) => team.id) : [];
+    const keepsGoalkeeperScope = data.role === 'coach' && data.coachKind === 'goalkeeper' && data.status === 'active';
+    const mustClearFirst = !!previous && previous.coachKind === 'goalkeeper' && !keepsGoalkeeperScope
+      && previousGoalkeeperTeamIds.length > 0;
+
+    if (mustClearFirst) await db.setGoalkeeperCoachScope(staffId, false, []);
+    try {
+      if (id) {
+        await onStaffChange(staff.map((member) => (member.id === id ? { ...data, id } : member)));
+      } else {
+        await onStaffChange([...staff, { ...data, id: staffId }]);
+      }
+      if (keepsGoalkeeperScope) {
+        await db.setGoalkeeperCoachScope(staffId, !!data.goalkeeperAllTeams, goalkeeperTeamIds);
+        await onRefresh();
+      }
+      setShowAdd(false);
+      setEditMember(null);
+    } catch (error) {
+      if (mustClearFirst && previous?.status === 'active') {
+        try {
+          await db.setGoalkeeperCoachScope(staffId, !!previous.goalkeeperAllTeams, previousGoalkeeperTeamIds);
+        } catch { /* Preserve the original error; the next refresh shows the saved scope. */ }
+      }
+      throw error;
     }
-    setShowAdd(false);
-    setEditMember(null);
   };
 
   const handleDelete = async () => {
@@ -243,7 +277,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
 
                 {/* Role badge */}
                 <div className="flex items-center gap-2 mb-3">
-                  <Badge color={ROLE_COLORS[s.role] || 'slate'}>{s.role === 'coach' && s.coachKind === 'assistant' ? (isAr ? 'مساعد مدرب' : 'Assistant coach') : s.role === 'coach' && s.coachKind === 'goalkeeper' ? (isAr ? 'مدرب حراس' : 'Goalkeeper coach') : roleLabel(s.role, lang)}</Badge>
+                  <Badge color={ROLE_COLORS[s.role] || 'slate'}>{staffAssignmentLabel(s, lang)}</Badge>
                   {canSeeSalary && (
                     <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                       {s.salary.toLocaleString()} {t.currency}
@@ -348,6 +382,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
         <StaffForm
           member={editMember}
           staff={staff}
+          teams={teams}
           onSave={handleSave}
           onClose={() => {
             setShowAdd(false);
@@ -434,13 +469,15 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
 function StaffForm({
   member,
   staff,
+  teams,
   onSave,
   onClose,
   lang,
 }: {
   member: Staff | null;
   staff: Staff[];
-  onSave: (data: Omit<Staff, 'id'>, id?: string) => void;
+  teams: Team[];
+  onSave: (data: Omit<Staff, 'id'>, id?: string, goalkeeperTeamIds?: string[]) => Promise<void>;
   onClose: () => void;
   lang: Lang;
 }) {
@@ -456,6 +493,8 @@ function StaffForm({
     role: member?.role || 'coach',
     coachKind: member?.coachKind || 'team',
     supervisingCoachId: member?.supervisingCoachId || '',
+    goalkeeperScope: member?.goalkeeperAllTeams ? 'all' : (member ? 'selected' : 'all'),
+    goalkeeperTeamIds: teams.filter((team) => team.goalkeeperCoachId === member?.id).map((team) => team.id),
     salary: member?.salary ?? 0,
     specialization: member?.specialization || '',
     status: member?.status || 'active',
@@ -484,6 +523,14 @@ function StaffForm({
         return;
       }
     }
+    if (isCoach && form.coachKind !== 'team' && member && teams.some((team) => team.coachId === member.id)) {
+      setSaveError(isAr ? 'يجب نقل الفئات التي يدربها هذا المدرب قبل تغيير مهمته الفنية.' : 'Reassign this coach’s teams before changing the coaching assignment.');
+      return;
+    }
+    if (isCoach && form.coachKind === 'goalkeeper' && form.status === 'active' && form.goalkeeperScope === 'selected' && teams.length > 0 && form.goalkeeperTeamIds.length === 0) {
+      setSaveError(isAr ? 'اختر فئة واحدة على الأقل، أو اختر جميع الفئات.' : 'Select at least one team, or choose all teams.');
+      return;
+    }
     if (saving) return;
     setSaving(true); setSaveError('');
     try {
@@ -500,6 +547,7 @@ function StaffForm({
         role: form.role as Role,
         coachKind: isCoach ? form.coachKind : 'team',
         supervisingCoachId: isCoach && form.coachKind === 'assistant' ? form.supervisingCoachId || undefined : undefined,
+        goalkeeperAllTeams: isCoach && form.coachKind === 'goalkeeper' && form.status === 'active' && form.goalkeeperScope === 'all',
         salary: Number(form.salary) || 0,
         specialization: form.specialization,
         status: form.status as Staff['status'],
@@ -513,6 +561,7 @@ function StaffForm({
         notes: form.notes || undefined,
       },
       member?.id,
+      isCoach && form.coachKind === 'goalkeeper' && form.status === 'active' && form.goalkeeperScope === 'selected' ? form.goalkeeperTeamIds : [],
     );
 
     } catch { setSaveError(lang === 'ar' ? 'تعذر حفظ التغيير. راجع الرسالة وحاول مجددًا.' : 'Could not save this change. Review the error and retry.'); }
@@ -536,17 +585,17 @@ function StaffForm({
           <Field label={t.phone}>
             <input value={form.phone} onChange={(e) => set('phone', e.target.value)} className={inputCls} dir="ltr" />
           </Field>
-          <Field label={t.role}>
+          <Field label={isAr ? 'صلاحية النظام' : 'System access role'}>
             <select value={form.role} onChange={(e) => set('role', e.target.value as Role)} className={inputCls}>
               <option value="manager">{t.manager}</option>
               <option value="accountant">{t.accountant}</option>
-              <option value="coach">{t.coach}</option>
+              <option value="coach">{isAr ? 'الجهاز الفني' : 'Coaching staff'}</option>
               <option value="receptionist">{t.receptionist}</option>
             </select>
           </Field>
-          {isCoach && <Field label={isAr ? 'نوع المدرب' : 'Coach type'}>
+          {isCoach && <Field label={isAr ? 'المهمة الفنية' : 'Coaching assignment'}>
             <select value={form.coachKind} onChange={e => set('coachKind', e.target.value as Staff['coachKind'] & string)} className={inputCls}>
-              <option value="team">{isAr ? 'مدرب فريق' : 'Team coach'}</option>
+              <option value="team">{isAr ? 'مدرب فئة' : 'Age-group coach'}</option>
               <option value="assistant">{isAr ? 'مساعد مدرب' : 'Assistant coach'}</option>
               <option value="goalkeeper">{isAr ? 'مدرب حراس' : 'Goalkeeper coach'}</option>
             </select>
@@ -556,7 +605,36 @@ function StaffForm({
               <option value="">{isAr ? 'بانتظار تحديد المدرب — لا وصول للاعبين' : 'Unassigned — no player access'}</option>
               {staff.filter(s => s.id !== member?.id && s.role === 'coach' && s.status === 'active' && s.coachKind !== 'assistant').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
+            <p className="mt-1 text-xs text-slate-500">{isAr ? 'يرث المساعد تلقائيًا نفس اللاعبين والفئات المسموح بها للمدرب المرتبط.' : 'The assistant automatically inherits the linked coach’s permitted players and teams.'}</p>
           </Field>}
+          {isCoach && form.coachKind === 'goalkeeper' && <fieldset className="sm:col-span-2 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+            <legend className="px-2 text-sm font-bold">{isAr ? 'نطاق فئات مدرب الحراس' : 'Goalkeeper coach team scope'}</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className={`cursor-pointer rounded-xl border p-3 ${form.goalkeeperScope === 'all' ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/20' : 'border-slate-200 dark:border-slate-700'}`}>
+                <input type="radio" name="goalkeeperScope" value="all" checked={form.goalkeeperScope === 'all'} onChange={() => set('goalkeeperScope', 'all')} className="me-2" />
+                <span className="font-bold">{isAr ? 'جميع الفئات' : 'All teams'}</span>
+                <span className="mt-1 block text-xs text-slate-500">{isAr ? 'يشمل الفئات الحالية وأي فئة تُضاف مستقبلًا.' : 'Covers current teams and any team added later.'}</span>
+              </label>
+              <label className={`cursor-pointer rounded-xl border p-3 ${form.goalkeeperScope === 'selected' ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/20' : 'border-slate-200 dark:border-slate-700'}`}>
+                <input type="radio" name="goalkeeperScope" value="selected" checked={form.goalkeeperScope === 'selected'} onChange={() => set('goalkeeperScope', 'selected')} className="me-2" />
+                <span className="font-bold">{isAr ? 'فئات محددة' : 'Selected teams'}</span>
+                <span className="mt-1 block text-xs text-slate-500">{isAr ? 'اختر فئة واحدة أو أكثر.' : 'Choose one or more teams.'}</span>
+              </label>
+            </div>
+            {form.goalkeeperScope === 'selected' && <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {teams.length === 0 && <p className="text-xs text-slate-500">{isAr ? 'لا توجد فئات متاحة حاليًا.' : 'No teams are currently available.'}</p>}
+              {teams.map((team) => <label key={team.id} className="flex cursor-pointer items-center gap-2 rounded-lg bg-slate-50 p-2.5 text-sm dark:bg-slate-800">
+                <input
+                  type="checkbox"
+                  checked={form.goalkeeperTeamIds.includes(team.id)}
+                  onChange={() => set('goalkeeperTeamIds', form.goalkeeperTeamIds.includes(team.id) ? form.goalkeeperTeamIds.filter((id) => id !== team.id) : [...form.goalkeeperTeamIds, team.id])}
+                />
+                <span className="font-semibold">{team.name}</span>
+                <span className="text-xs text-slate-500">{team.ageGroup}</span>
+              </label>)}
+            </div>}
+            <p className="mt-3 text-xs text-slate-500">{isAr ? 'أي لاعب مسجل في الفئات المشمولة ومركزه حارس يُضاف تلقائيًا إلى نطاق المدرب؛ بقية اللاعبين لا تظهر له.' : 'Any player in scope whose position is goalkeeper is included automatically; other players remain hidden.'}</p>
+          </fieldset>}
           <Field label={isAr ? 'الراتب الشهري' : 'Monthly salary'}>
             <input
               type="number"
@@ -668,7 +746,7 @@ function StaffDetail({
         <div className="min-w-0">
           <h3 className="text-lg font-black text-slate-900 dark:text-white truncate">{member.name}</h3>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <Badge color={ROLE_COLORS[member.role] || 'slate'}>{member.role === 'coach' && member.coachKind === 'assistant' ? (isAr ? 'مساعد مدرب' : 'Assistant coach') : member.role === 'coach' && member.coachKind === 'goalkeeper' ? (isAr ? 'مدرب حراس' : 'Goalkeeper coach') : roleLabel(member.role, lang)}</Badge>
+            <Badge color={ROLE_COLORS[member.role] || 'slate'}>{staffAssignmentLabel(member, lang)}</Badge>
             <Badge color={member.status === 'active' ? 'emerald' : member.status === 'pending' ? 'amber' : 'slate'}>
               {member.status === 'active' ? t.active : member.status === 'pending' ? t.pending : t.inactive}
             </Badge>
