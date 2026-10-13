@@ -208,3 +208,29 @@ button[class~="bg-brand-600"]:hover {
  .arena-bottom-nav button[aria-current] { color: #ff2e48; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+
+/* The parent portal uses the same saved theme preference as the rest of the app. */
+.parent-arena.arena-light { background: #f3f5f9; color: #172033; color-scheme: light; }
+.parent-arena.arena-light .arena-header { background: #fffffff5; border-color: #dce2ea; box-shadow: 0 6px 24px #17203308; }
+.arena-actions { flex-wrap: wrap; }
+.arena-actions .arena-theme-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+.parent-arena .arena-hero, .parent-arena .arena-hero h1 { color: #fff; }
+.parent-arena.arena-light .arena-brand small,
+.parent-arena.arena-light .arena-account small { color: #526175; }
+.parent-arena.arena-light .arena-actions button { background: #edf1f6; color: #243247; }
+.parent-arena.arena-light .arena-actions button:hover { background: #e2e8f0; }
+.parent-arena.arena-light .arena-top-nav button { color: #526175; }
+.parent-arena.arena-light .arena-top-nav button.active { color: #b81025; background: #fff1f2; }
+.parent-arena.arena-light .arena-profile > div { background: linear-gradient(125deg,#fff1f2,#fff 60%,#f0f5fc) !important; }
+.parent-arena.arena-light .arena-profile [class~="bg-slate-50"] { background: #f1f4f8; border-color: #dce2ea; }
+.parent-arena.arena-light .arena-card { background: #fff; border-color: #dce2ea; box-shadow: 0 4px 16px #17203304; }
+.parent-arena.arena-light .text-slate-300,
+.parent-arena.arena-light .text-slate-400 { color: #526175; }
+.parent-arena.arena-light .text-brand-400 { color: #be123c; }
+.parent-arena.arena-light .arena-bottom-nav { background: #fffffff5; border-color: #dce2ea; box-shadow: 0 -4px 18px #17203308; }
+.parent-arena.arena-light .arena-bottom-nav button { color: #526175; }
+.parent-arena.arena-light .arena-bottom-nav button[aria-current] { color: #be123c; }
+@media (max-width: 800px) {
+ .parent-arena .arena-player-content > div:not(.arena-profile) { padding: 16px; }
+}

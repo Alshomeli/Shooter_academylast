@@ -656,7 +656,7 @@ export default function App() {
     return <ErrorBoundary lang={lang}>
       <Suspense fallback={<ViewLoader />}>
         <ParentPortal key={currentUser.authUserId} openRegistration={currentTab === 'registration'} user={currentUser} players={data.players} subscriptions={data.subscriptions}
-          attendance={data.attendance} teams={data.teams} trainings={data.trainings} evaluations={data.evaluations} settings={data.settings} lang={lang} setLang={setLang} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />
+          attendance={data.attendance} teams={data.teams} trainings={data.trainings} evaluations={data.evaluations} settings={data.settings} lang={lang} setLang={setLang} darkMode={darkMode} setDarkMode={setDarkMode} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />
       </Suspense>
     </ErrorBoundary>;
   }
@@ -812,4 +812,5 @@ export default function App() {
 function supabaseUnsubscribe(channel: ReturnType<typeof db.subscribe>) {
   try { supabase.removeChannel(channel); } catch { /* ignore */ }
 }
+
 
