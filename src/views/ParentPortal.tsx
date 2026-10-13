@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Clipboard, CreditCard, FileText, FileUp, Instagram, MessageCircle, LogOut, Plus, Printer, RefreshCw, Star, UserRound, CalendarCheck2, WalletCards } from 'lucide-react';
+import { CheckCircle2, Clipboard, CreditCard, FileText, FileUp, Instagram, LogOut, Plus, Printer, RefreshCw, Star, UserRound, CalendarCheck2, WalletCards } from 'lucide-react';
 import { Badge, Modal } from '@/components/ui';
 import { errorMessage, fetchMyApplications } from '@/lib/registration';
 import type { RegistrationApplication } from '@/types';
@@ -141,10 +141,20 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
         </nav>
       </header>
       <div className="arena-hero"><div><p>{text('شغف اليوم. أبطال الغد.', "Today's passion. Tomorrow's champions.")}</p><h1>{text('كل خطوة تُقرّبه من حلمه', 'Every step brings them closer')}</h1><span>{text('تدريب · شغف · تطوير مهارات · مستقبل أفضل', 'Training · Passion · Skills · A brighter future')}</span></div></div>
-      <nav aria-label={text('التواصل مع الأكاديمية', 'Academy social links')} className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
-        <a href="https://www.instagram.com/shooter.academy.bh/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-brand-600 dark:text-slate-200" aria-label={text('إنستغرام الأكاديمية', 'Academy Instagram')}><Instagram className="h-5 w-5" /> Instagram</a>
+      <nav aria-label={text('التواصل مع الأكاديمية وموقعها', 'Academy social links and location')} className="arena-social-bar">
+        <a href="https://www.instagram.com/shooter.academy.bh/" target="_blank" rel="noopener noreferrer" className="arena-social-link" aria-label={text('إنستغرام الأكاديمية', 'Academy Instagram')}>
+          <span className="arena-social-icon arena-social-instagram"><Instagram aria-hidden="true" /></span><span>{text('إنستغرام', 'Instagram')}</span>
+        </a>
+        <a href="https://wa.me/97332287776" target="_blank" rel="noopener noreferrer" className="arena-social-link" aria-label={text('واتساب الأكاديمية', 'Academy WhatsApp')}>
+          <span className="arena-social-icon arena-social-whatsapp"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.5 3.5A11.8 11.8 0 0 0 1.9 17.7L.3 23.5l6-1.6A11.8 11.8 0 0 0 20.5 3.5ZM12 21.7a9.7 9.7 0 0 1-4.9-1.3l-.4-.2-3.5.9.9-3.4-.3-.5A9.8 9.8 0 1 1 12 21.7Zm5.4-7.3c-.3-.1-1.7-.8-2-.9-.2-.1-.4-.1-.6.2l-.9 1.1c-.2.2-.3.2-.6.1a8 8 0 0 1-2.4-1.5 9 9 0 0 1-1.6-2c-.2-.3 0-.4.1-.6l.6-.7.3-.5c.1-.2 0-.4 0-.5L9.4 7c-.2-.5-.4-.5-.6-.5h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.7 1.2 2.9c.1.2 2 3.1 4.9 4.4l1.6.6c.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.3.2-.7.2-1.2.2-1.3-.1-.1-.3-.2-.6-.3Z"/></svg></span><span>{text('واتساب', 'WhatsApp')}</span>
+        </a>
+        <a href="https://www.facebook.com/share/19dvUn2fcE/" target="_blank" rel="noopener noreferrer" className="arena-social-link" aria-label={text('فيسبوك الأكاديمية', 'Academy Facebook')}>
+          <span className="arena-social-icon arena-social-facebook"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 22v-9h3l.5-3H14V8c0-.9.3-1.5 1.6-1.5h2V3.8c-.4-.1-1.6-.2-2.9-.2-2.8 0-4.7 1.7-4.7 4.8V10H7v3h3v9z"/></svg></span><span>{text('فيسبوك', 'Facebook')}</span>
+        </a>
+        <a href="https://maps.app.goo.gl/h7MjBm9kDBykRmkKA?g_st=ac" target="_blank" rel="noopener noreferrer" className="arena-social-link" aria-label={text('موقع الأكاديمية على خرائط Google: شارع 28، حالة النعيم 997، البحرين', 'Academy on Google Maps: Road 28, Halat Naim 997, Bahrain')} title="Road 28, Halat Naim 997, Bahrain">
+          <span className="arena-social-icon arena-social-maps"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M12 2a8 8 0 0 0-8 8c0 2.6 1.5 4.8 3.2 7L12 10Z"/><path fill="#EA4335" d="M12 2a8 8 0 0 1 8 8l-8 4-4-4Z"/><path fill="#FBBC04" d="m4.3 12.1 5.1-5.2 5.2 5.2-5.9 6.8c-1.9-2.4-3.7-4.7-4.4-6.8Z"/><path fill="#34A853" d="m20 10-8 12-3.3-3.1 7-8.9Z"/><circle cx="12" cy="10" r="3" fill="#fff"/></svg></span><span>{text('الموقع', 'Location')}</span>
+        </a>
       </nav>
-      <a href="https://wa.me/97332287776" target="_blank" rel="noopener noreferrer" aria-label={text('تواصل مع الأكاديمية عبر واتساب', 'Contact academy on WhatsApp')} className="fixed bottom-20 left-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-emerald-600 text-white shadow-xl transition hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"><MessageCircle className="h-6 w-6" /></a>
       {error && <p role="alert" className="text-red-700 bg-red-50 p-3 rounded-lg">{error}</p>}
       <div id="parent-children" className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">{text('المتابعة العائلية', 'Family overview')}</p><h2 className="mt-1 text-xl font-black">{text('أبنائي', 'My children')}</h2><p className="mt-1 text-sm text-slate-500">{players.length ? text('اختر لاعبًا لعرض الحضور والاشتراكات والتقييمات', 'Select a player to view attendance, subscriptions, and evaluations') : text('ستظهر بيانات الأبناء هنا بعد اعتماد الطلب وربط الحساب.', 'Your children will appear here after the academy approves the application and links your account.')}</p></div><button disabled={!ready} onClick={() => setEditor('new')} className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-500 disabled:opacity-50"><Plus className="h-4 w-4" />{text('طلب تسجيل أبناء', 'Register children')}</button></div>
       {!players.length && <p className="text-slate-500">{text('ستظهر بيانات الأبناء هنا بعد اعتماد الطلب وربط الحساب.', 'Your children will appear here after the academy approves the application and links your account.')}</p>}
