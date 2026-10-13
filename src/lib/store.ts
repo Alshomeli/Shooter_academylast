@@ -62,7 +62,7 @@ async function fetchAll<T>(table: string, mapper: (r: Record<string, unknown>) =
 }
 
 const TABLE_PUBLIC_COLUMNS: Record<string, string> = {
-  staff: 'row_version,id,name,email,phone,role,coach_kind,supervising_coach_id,goalkeeper_all_teams,specialization,status,joined_date,avatar_url,licenses,experience_years,rating,tactical_style,notes,user_id,created_at',
+  staff: 'row_version,id,name,email,phone,role,coach_kind,supervising_coach_id,specialization,status,joined_date,avatar_url,licenses,experience_years,rating,tactical_style,notes,user_id,created_at',
   parents: 'row_version,user_id,id,name,nationality,phone,whatsapp_phone,email,address,occupation,workplace,avatar_url,status,notes,joined_date,created_at',
   players: 'row_version,id,name,birth_date,blood_type,jersey_number,position,team_id,parent_name,parent_phone,parent_email,parent_id,status,joined_date,created_at',
 };
@@ -359,14 +359,6 @@ export const db = {
     return rows.map((r) => (mapStaff as never as (x: Record<string, unknown>) => Staff)(r));
   },
   async saveStaff(s: Staff): Promise<Staff> { return upsertRow('staff', staffToRow(s) as unknown as Record<string, unknown>, mapStaff as never); },
-  async setGoalkeeperCoachScope(staffId: string, allTeams: boolean, teamIds: string[]): Promise<void> {
-    const { error } = await supabase.rpc('set_goalkeeper_coach_scope', {
-      p_staff_id: staffId,
-      p_all_teams: allTeams,
-      p_team_ids: allTeams ? [] : teamIds,
-    });
-    if (error) throw error;
-  },
   async deleteStaff(id: string, reassignCoachId?: string | null): Promise<void> {
     const { error } = await supabase.rpc('delete_staff_member_safely', { p_staff_id: id, p_reassign_coach_id: reassignCoachId ?? null });
     if (error) throw error;

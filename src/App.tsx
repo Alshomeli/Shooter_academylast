@@ -504,7 +504,7 @@ export default function App() {
   const roleLabels: Record<Role, string> = {
     manager: t.manager,
     accountant: t.accountant,
-    coach: currentUser?.coachKind === 'assistant' ? (lang === 'ar' ? 'مساعد مدرب' : 'Assistant coach') : currentUser?.coachKind === 'goalkeeper' ? (lang === 'ar' ? 'مدرب حراس' : 'Goalkeeper coach') : (lang === 'ar' ? 'مدرب فئة' : 'Age-group coach'),
+    coach: currentUser?.coachKind === 'assistant' ? (lang === 'ar' ? 'مساعد مدرب' : 'Assistant coach') : currentUser?.coachKind === 'goalkeeper' ? (lang === 'ar' ? 'مدرب حراس' : 'Goalkeeper coach') : t.coach,
     receptionist: t.receptionist,
     parent: t.parent,
   };

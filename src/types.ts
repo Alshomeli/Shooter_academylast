@@ -5,7 +5,6 @@ export type CoachKind = 'team' | 'assistant' | 'goalkeeper';
 export interface Staff {
   coachKind?: CoachKind;
   supervisingCoachId?: string;
-  goalkeeperAllTeams?: boolean;
   version?: number;
   id: string;
   name: string;
