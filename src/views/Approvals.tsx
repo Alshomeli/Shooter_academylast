@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ShieldCheck, CheckCircle, XCircle, Clock, UserPlus, Search, AlertCircle, Loader2,
 } from 'lucide-react';
@@ -31,11 +31,11 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
   const [reviewTarget, setReviewTarget] = useState<{ id: string; action: 'needs_info' | 'rejected' } | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
 
-  const loadApplications = async () => {
+  const loadApplications = useCallback(async () => {
     if (activeRole !== 'manager') return;
     try { setApplications(await getStaffApplications()); setApplicationError(''); }
     catch { setApplicationError(isAr ? 'تعذر تحميل طلبات الانضمام.' : 'Could not load staff applications.'); }
-  };
+  }, [activeRole, isAr]);
 
   useEffect(() => {
     void loadApplications();
@@ -43,7 +43,7 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
     const timer = setInterval(refreshVisible, 60000);
     window.addEventListener('focus', refreshVisible);
     return () => { clearInterval(timer); window.removeEventListener('focus', refreshVisible); };
-  }, [activeRole, lang]);
+  }, [loadApplications]);
 
   if (activeRole !== 'manager') {
     return (

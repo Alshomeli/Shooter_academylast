@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, Clipboard, CreditCard, FileText, FileUp, Instagram, MessageCircle, LogOut, Plus, Printer, RefreshCw, Star, UserRound, CalendarCheck2, WalletCards } from 'lucide-react';
-import { Registration } from '@/views/Registration';
 import { Badge, Modal } from '@/components/ui';
 import { errorMessage, fetchMyApplications } from '@/lib/registration';
 import type { RegistrationApplication } from '@/types';
@@ -10,6 +9,8 @@ import { db } from '@/lib/store';
 import { tr } from '@/lib/i18n';
 import { uploadPlayerFile } from '@/lib/uploads';
 import { Home, Users, Upload, Shield } from 'lucide-react';
+
+const Registration = lazy(() => import('@/views/Registration').then((module) => ({ default: module.Registration })));
 
 const bahrainToday = () => {
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Bahrain', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -239,7 +240,9 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
       </section>
       <Modal open={editor !== null} closeDisabled={registrationBusy} onClose={() => { if (!registrationBusy) setEditor(null); }} title={text('تسجيل الأبناء', 'Children registration')} size="xl">
         {registrationBusy && <p role="status" className="mb-3 text-sm text-slate-500">{text('انتظر اكتمال الحفظ أو رفع الملفات قبل إغلاق الطلب.', 'Wait for saving or uploads to finish before closing the application.')}</p>}
-        {editor && <Registration key={editor === 'new' ? 'new' : editor.id} initial={editor === 'new' ? undefined : editor} lang={lang} onSaved={refresh} onBusyChange={setRegistrationBusy} onExit={() => { if (!registrationBusy) setEditor(null); }} />}
+        {editor && <Suspense fallback={<p role="status" className="text-sm text-slate-500">{text('جارٍ تحميل نموذج التسجيل…', 'Loading registration form…')}</p>}>
+          <Registration key={editor === 'new' ? 'new' : editor.id} initial={editor === 'new' ? undefined : editor} lang={lang} onSaved={refresh} onBusyChange={setRegistrationBusy} onExit={() => { if (!registrationBusy) setEditor(null); }} />
+        </Suspense>}
       </Modal>
       <nav className="arena-bottom-nav" aria-label={text('التنقل السريع','Quick navigation')}>{sections.filter(x=>x.id!=='attendance').map(item=><button key={item.id} onClick={()=>navigate(item.id)} aria-current={activeSection===item.id?'page':undefined}><item.icon className="h-5 w-5"/><span>{ar?item.ar:item.en}</span></button>)}</nav>
     </div>

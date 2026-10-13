@@ -1,5 +1,5 @@
 import { getDateRange, type DateRangePreset } from '@/lib/report-dates';
-import { useState, useMemo, type ReactNode } from 'react';
+import { useCallback, useState, useMemo, type ReactNode } from 'react';
 import {
   BarChart3, Download, TrendingUp, Users, Trophy, Wallet,
   Activity, Target, Award, Percent, Printer, Calendar,
@@ -131,10 +131,13 @@ export function Reports({
   }, [subscriptions, rangeFrom, rangeTo]);
 
 
-  const inRange = (date: string) => (!rangeFrom || date >= rangeFrom) && (!rangeTo || date <= rangeTo);
-  const filteredMatches = useMemo(() => matches.filter((m) => inRange(m.matchDate)), [matches, rangeFrom, rangeTo]);
-  const filteredAttendance = useMemo(() => attendance.filter((a) => inRange(a.sessionDate)), [attendance, rangeFrom, rangeTo]);
-  const filteredEvaluations = useMemo(() => evaluations.filter((e) => inRange(e.evaluationDate)), [evaluations, rangeFrom, rangeTo]);
+  const inRange = useCallback(
+    (date: string) => (!rangeFrom || date >= rangeFrom) && (!rangeTo || date <= rangeTo),
+    [rangeFrom, rangeTo],
+  );
+  const filteredMatches = useMemo(() => matches.filter((m) => inRange(m.matchDate)), [matches, inRange]);
+  const filteredAttendance = useMemo(() => attendance.filter((a) => inRange(a.sessionDate)), [attendance, inRange]);
+  const filteredEvaluations = useMemo(() => evaluations.filter((e) => inRange(e.evaluationDate)), [evaluations, inRange]);
 
 
 

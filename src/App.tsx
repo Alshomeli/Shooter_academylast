@@ -4,7 +4,6 @@ import { db, prefs, signOut, isRegistering } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { tr } from '@/lib/i18n';
-import { ParentPortal } from '@/views/ParentPortal';
 import { LegalPage } from '@/views/LegalPage';
 import type {
   CurrentUser, Lang, Role, ViewId,
@@ -34,9 +33,17 @@ const Tournaments = lazy(() => import('@/views/Tournaments').then(m => ({ defaul
 const Evaluations = lazy(() => import('@/views/Evaluations').then(m => ({ default: m.Evaluations })));
 const AuditLogs = lazy(() => import('@/views/AuditLogs').then(m => ({ default: m.AuditLogs })));
 const Messages = lazy(() => import('@/views/Messages').then(m => ({ default: m.Messages })));
+const ParentPortal = lazy(() => import('@/views/ParentPortal').then(m => ({ default: m.ParentPortal })));
 const Registration = lazy(() => import('@/views/Registration').then(m => ({ default: m.Registration })));
 const StaffRegistration = lazy(() => import('@/views/StaffRegistration').then(m => ({ default: m.StaffRegistration })));
 const RegistrationAdmin = lazy(() => import('@/views/RegistrationAdmin').then(m => ({ default: m.RegistrationAdmin })));
+
+const ALLOWED_VIEWS_BY_ROLE: Record<Exclude<Role, 'parent'>, ViewId[]> = {
+  manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings'],
+  accountant: ['dashboard', 'subscriptions', 'reports', 'messages', 'ai-center'],
+  coach: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'messages', 'ai-center'],
+  receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
+};
 
 /* ── Error Boundary ── */
 interface ErrorBoundaryProps { children: ReactNode; lang: Lang; }
@@ -315,6 +322,15 @@ export default function App() {
     return run;
   }, [currentUser]);
 
+  const handleStaffApproved = useCallback(async () => {
+    const member = await db.getCurrentUser();
+    if (!member || member.registrationOnly) return;
+    setCurrentUser(member);
+    setActiveRole(member.role);
+    setCurrentTab('dashboard');
+    await loadAllData();
+  }, [loadAllData]);
+
   useEffect(() => {
     if (currentUser) loadAllData();
   }, [currentUser, loadAllData]);
@@ -493,21 +509,14 @@ export default function App() {
     parent: t.parent,
   };
 
-  const allowedViewsByRole: Record<Exclude<Role, 'parent'>, ViewId[]> = {
-    manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings'],
-    accountant: ['dashboard', 'subscriptions', 'reports', 'messages', 'ai-center'],
-    coach: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'messages', 'ai-center'],
-    receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
-  };
-
   const safeCurrentTab: ViewId = activeRole === 'parent'
     ? 'dashboard'
-    : (allowedViewsByRole[activeRole]?.includes(currentTab) ? currentTab : 'dashboard');
+    : (ALLOWED_VIEWS_BY_ROLE[activeRole]?.includes(currentTab) ? currentTab : 'dashboard');
 
   useEffect(() => {
     if (!currentUser || currentUser.registrationOnly || currentUser.role === 'parent') return;
     if (currentTab === 'staff-registration') return;
-    if (!allowedViewsByRole[currentUser.role as Exclude<Role, 'parent'>]?.includes(currentTab)) {
+    if (!ALLOWED_VIEWS_BY_ROLE[currentUser.role as Exclude<Role, 'parent'>]?.includes(currentTab)) {
       setCurrentTab('dashboard');
     }
   }, [currentUser, currentTab]);
@@ -551,10 +560,7 @@ export default function App() {
       case 'registration':
         return <Registration lang={lang} />;
       case 'staff-registration':
-        return currentUser ? <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => {
-          const member = await db.getCurrentUser();
-          if (member && !member.registrationOnly) { setCurrentUser(member); setActiveRole(member.role); setCurrentTab('dashboard'); await loadAllData(); }
-        }} /> : null;
+        return currentUser ? <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={handleStaffApproved} /> : null;
       case 'registration-admin':
         return <RegistrationAdmin lang={lang} activeRole={activeRole} teams={data.teams} players={data.players} onRefresh={loadAllData} />;
       default:
@@ -625,10 +631,7 @@ export default function App() {
   }
 
   if (currentUser.registrationOnly && currentUser.registrationMode === 'staff') {
-    return <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => {
-      const member = await db.getCurrentUser();
-      if (member && !member.registrationOnly) { setCurrentUser(member); setActiveRole(member.role); setCurrentTab('dashboard'); await loadAllData(); }
-    }} />;
+    return <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={handleStaffApproved} />;
   }
 
   // A staff application must belong to the applicant's own Auth account.
@@ -650,8 +653,12 @@ export default function App() {
   }
 
   if (currentUser.role === 'parent') {
-    return <ParentPortal key={currentUser.authUserId} openRegistration={currentTab === 'registration'} user={currentUser} players={data.players} subscriptions={data.subscriptions}
-      attendance={data.attendance} teams={data.teams} trainings={data.trainings} evaluations={data.evaluations} settings={data.settings} lang={lang} setLang={setLang} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />;
+    return <ErrorBoundary lang={lang}>
+      <Suspense fallback={<ViewLoader />}>
+        <ParentPortal key={currentUser.authUserId} openRegistration={currentTab === 'registration'} user={currentUser} players={data.players} subscriptions={data.subscriptions}
+          attendance={data.attendance} teams={data.teams} trainings={data.trainings} evaluations={data.evaluations} settings={data.settings} lang={lang} setLang={setLang} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />
+      </Suspense>
+    </ErrorBoundary>;
   }
 
   return (
