@@ -234,3 +234,20 @@ button[class~="bg-brand-600"]:hover {
 @media (max-width: 800px) {
  .parent-arena .arena-player-content > div:not(.arena-profile) { padding: 16px; }
 }
+
+/* One contact strip for all parent-portal social destinations. */
+.arena-social-bar { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; padding: 12px; border: 1px solid #283742; border-radius: 16px; background: #10171d; }
+.arena-social-link { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; min-width: 0; min-height: 72px; padding: 8px 2px; border-radius: 12px; color: #e2e8f0; font-size: 11px; font-weight: 700; text-align: center; }
+.arena-social-link:hover { background: #ffffff0d; }
+.arena-social-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; color: #fff; }
+.arena-social-icon svg { width: 25px; height: 25px; }
+.arena-social-instagram { background: radial-gradient(circle at 25% 100%,#feda75 0%,#fa7e1e 25%,#d62976 55%,#962fbf 78%,#4f5bd5 100%); }
+.arena-social-whatsapp { background: #25d366; }
+.arena-social-facebook { background: #1877f2; }
+.arena-social-maps { background: #fff; border: 1px solid #e2e8f0; }
+.parent-arena.arena-light .arena-social-bar { background: #fff; border-color: #dce2ea; }
+.parent-arena.arena-light .arena-social-link { color: #243247; }
+.parent-arena.arena-light .arena-social-link:hover { background: #f1f5f9; }
+@media (min-width: 640px) {
+ .arena-social-link { flex-direction: row; gap: 10px; min-height: 56px; font-size: 13px; }
+}
