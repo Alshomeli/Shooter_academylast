@@ -97,7 +97,7 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
   };
 
   return (
-    <div className="space-y-5 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="players-view space-y-5 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <PageHeader title={t.players} subtitle={isAr ? `${players.length} لاعب مسجل في الأكاديمية` : `${players.length} players registered`}>
         {canEdit && (
           <button
@@ -231,7 +231,7 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
       {/* View modal */}
       {viewPlayer && (
         <Modal open onClose={() => setViewPlayer(null)} title={isAr ? 'ملف اللاعب' : 'Player Profile'} size="lg">
-          <PlayerDetail player={viewPlayer} team={teams.find((t) => t.id === viewPlayer.teamId)} evaluations={evaluations ?? []} lang={lang} />
+          <PlayerDetail photoUrl={photoMap[viewPlayer.id]} player={viewPlayer} team={teams.find((t) => t.id === viewPlayer.teamId)} evaluations={evaluations ?? []} lang={lang} />
         </Modal>
       )}
 
@@ -380,9 +380,10 @@ function PlayerForm({ player, parents, teams, players, activeRole, onSave, onClo
   );
 }
 
-function PlayerDetail({ player, team, evaluations, lang }: { player: Player; team?: Team; evaluations: PlayerEvaluation[]; lang: Lang }) {
+function PlayerDetail({ player, team, evaluations, lang, photoUrl }: { photoUrl?: string; player: Player; team?: Team; evaluations: PlayerEvaluation[]; lang: Lang }) {
   const t = tr(lang);
   const isAr = lang === 'ar';
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string | null>(null);
   const playerEvals = useMemo(() => evaluations.filter(e => e.playerId === player.id && e.status === 'published').sort((a, b) => b.evaluationDate.localeCompare(a.evaluationDate)), [evaluations, player.id]);
   const progress = useMemo(() => {
     if (playerEvals.length < 2) return null;
@@ -401,13 +402,17 @@ function PlayerDetail({ player, team, evaluations, lang }: { player: Player; tea
     };
   }, [playerEvals]);
   return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-2xl">
-          #{player.jerseyNumber}
-        </div>
-        <div>
-          <h3 className="text-lg font-black text-slate-900 dark:text-white">{player.name}</h3>
+    <div className="player-detail space-y-5">
+      <div className="flex flex-wrap items-center gap-4">
+        {photoUrl && failedPhotoUrl !== photoUrl ? (
+          <img src={photoUrl} alt={player.name} onError={() => setFailedPhotoUrl(photoUrl)} className="h-24 w-24 sm:h-28 sm:w-28 shrink-0 rounded-2xl object-cover border-2 border-white dark:border-slate-700 shadow-md" />
+        ) : (
+          <div className="w-24 h-24 shrink-0 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-2xl">
+            #{player.jerseyNumber}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <h3 className="text-lg font-black text-slate-900 dark:text-white break-words">{player.name}</h3>
           <p className="text-sm text-slate-400">{team?.name || (isAr ? 'غير محدد' : 'Not specified')}</p>
         </div>
       </div>
@@ -437,7 +442,7 @@ function PlayerDetail({ player, team, evaluations, lang }: { player: Player; tea
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
-            <DocumentUpload playerId={player.id} category="photo" label={isAr ? 'صور اللاعب' : 'Player photos'} compact />
+            <DocumentUpload playerId={player.id} category="photo" label={isAr ? 'صور اللاعب' : 'Player photos'} />
           </div>
           <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
             <DocumentUpload playerId={player.id} category="document" label={isAr ? 'مستندات PDF / PNG' : 'PDF / PNG documents'} />
