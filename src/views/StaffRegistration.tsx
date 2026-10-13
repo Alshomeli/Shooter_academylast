@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ClipboardCheck, Loader2, LogOut, Send } from 'lucide-react';
 import { FormField, inputCls } from '@/components/ui';
 import { getMyStaffApplication, saveStaffApplication, submitStaffApplication } from '@/lib/staff-registration';
@@ -27,7 +27,7 @@ export function StaffRegistration({ user, lang, onLogout, onApproved }: {
     applicantNotes: '',
   });
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
       const current = await getMyStaffApplication();
@@ -46,11 +46,11 @@ export function StaffRegistration({ user, lang, onLogout, onApproved }: {
       }
       if (current?.status === 'approved') await onApproved();
     } catch {
-      setError(text('تعذر تحميل طلبك.', 'Could not load your application.'));
+      setError(ar ? 'تعذر تحميل طلبك.' : 'Could not load your application.');
     } finally { setLoading(false); }
-  };
+  }, [ar, onApproved]);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [load]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();

@@ -121,7 +121,7 @@ export function Subscriptions({
   useEffect(() => {
     if (!canSeeFinance) return;
     db.getPaymentProofs().then(setPaymentProofs).catch((e) => setProofError(errorMessage(e, isAr)));
-  }, [canSeeFinance, subscriptions.length]);
+  }, [canSeeFinance, isAr, subscriptions.length]);
 
   const refreshProofs = async () => setPaymentProofs(await db.getPaymentProofs());
   const approveProof = async (proof: PaymentProof) => {
