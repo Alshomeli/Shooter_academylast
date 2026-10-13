@@ -33,6 +33,8 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
   const canEdit = activeRole === 'manager';
 
   const coachOf = (id: string) => staff.find((s) => s.id === id);
+  const goalkeeperCoachOf = (team: Team) => coachOf(team.goalkeeperCoachId || '')
+    || staff.find((member) => member.role === 'coach' && member.status === 'active' && member.coachKind === 'goalkeeper' && member.goalkeeperAllTeams);
   const playersIn = (teamId: string) => players.filter((p) => p.teamId === teamId).length;
 
   const handleSave = async (data: Omit<Team, 'id'>, id?: string) => {
@@ -113,7 +115,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-500 mb-3">{isAr ? 'مدرب الحراس: ' : 'Goalkeeper coach: '}{coachOf(tm.goalkeeperCoachId || '')?.name || (isAr ? 'غير معيّن' : 'Not assigned')}</p>
+                <p className="text-xs text-slate-500 mb-3">{isAr ? 'مدرب الحراس: ' : 'Goalkeeper coach: '}{goalkeeperCoachOf(tm)?.name || (isAr ? 'غير معيّن' : 'Not assigned')}</p>
                 <div className="space-y-2.5 text-[12px] text-slate-500 dark:text-slate-400 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Calendar className="h-4 w-4 shrink-0 text-brand-500" />
@@ -272,13 +274,6 @@ function TeamForm({
       setSaveError(isAr ? 'يجب اختيار مدرب فريق نشط.' : 'Select an active team coach.');
       return;
     }
-    if (form.goalkeeperCoachId) {
-      const goalkeeperCoach = staff.find(s => s.id === form.goalkeeperCoachId);
-      if (!goalkeeperCoach || goalkeeperCoach.role !== 'coach' || goalkeeperCoach.status !== 'active' || goalkeeperCoach.coachKind !== 'goalkeeper') {
-        setSaveError(isAr ? 'مدرب الحراس المحدد غير متاح.' : 'Selected goalkeeper coach is not available.');
-        return;
-      }
-    }
     if (saving) return;
     setSaving(true); setSaveError('');
     try {
@@ -332,11 +327,10 @@ function TeamForm({
             </select>
           </Field>
           <Field label={isAr ? 'مدرب حراس المرمى' : 'Goalkeeper coach'}>
-            <select aria-label={isAr ? 'مدرب حراس المرمى' : 'Goalkeeper coach'} value={form.goalkeeperCoachId} onChange={e => setForm({...form, goalkeeperCoachId: e.target.value})} className={inputCls}>
-              <option value="">{isAr ? 'غير معيّن' : 'Not assigned'}</option>
-              {staff.filter(s => s.role === 'coach' && s.status === 'active' && s.coachKind === 'goalkeeper').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-            <p className="text-xs text-slate-500 mt-1">{isAr ? 'يُسمح لمدرب الحراس المحدد ومساعده المرتبط به برؤية حراس هذا الفريق فقط.' : 'Only the assigned goalkeeper coach and their linked assistant can access this team’s goalkeepers.'}</p>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-800">
+              <p className="font-bold text-slate-800 dark:text-slate-100">{(staff.find((member) => member.id === team?.goalkeeperCoachId) || staff.find((member) => member.goalkeeperAllTeams && member.status === 'active'))?.name || (isAr ? 'غير معيّن' : 'Not assigned')}</p>
+              <p className="mt-1 text-xs text-slate-500">{isAr ? 'يُدار نطاق مدرب الحراس من صفحة الطاقم والموظفين.' : 'Goalkeeper coach scope is managed from Staff.'}</p>
+            </div>
           </Field>
           <Field label={t.pitchNumber}>
             <input
