@@ -7,7 +7,7 @@ import type {
 /* ---------- Row types (snake_case from Postgres) ---------- */
 
 interface StaffRow {
-  coach_kind?: Staff['coachKind']; supervising_coach_id?: string | null; goalkeeper_all_teams?: boolean;
+  coach_kind?: Staff['coachKind']; supervising_coach_id?: string | null;
   id: string; name: string; email: string; phone: string; role: string;
   salary?: number; private_fields_loaded?: boolean; row_version?: number; specialization: string; status: string; joined_date: string;
   avatar_url: string; national_id?: string | null; licenses: string[] | null;
@@ -92,7 +92,6 @@ interface NotificationRow {
 
 export const mapStaff = (r: StaffRow): Staff => ({
   coachKind: r.coach_kind || 'team', supervisingCoachId: r.supervising_coach_id || undefined,
-  goalkeeperAllTeams: r.goalkeeper_all_teams ?? false,
   id: r.id, version: r.row_version, privateFieldsLoaded: r.private_fields_loaded, name: r.name, email: r.email, phone: r.phone, role: r.role as Staff['role'],
   salary: Number(r.salary) || 0, specialization: r.specialization, status: r.status as Staff['status'],
   joinedDate: r.joined_date, avatarUrl: r.avatar_url, nationalId: r.national_id ?? undefined,
@@ -197,7 +196,6 @@ export const mapNotification = (r: NotificationRow): Notification => ({
 export const staffToRow = (s: Staff): StaffRow => ({
   coach_kind: s.role === 'coach' ? s.coachKind || 'team' : 'team',
   supervising_coach_id: s.role === 'coach' && s.coachKind === 'assistant' ? s.supervisingCoachId || null : null,
-  goalkeeper_all_teams: s.role === 'coach' && s.coachKind === 'goalkeeper' ? !!s.goalkeeperAllTeams : false,
   id: s.id, name: s.name, email: s.email, phone: s.phone, role: s.role,
   ...(s.privateFieldsLoaded === false ? {} : { salary: s.salary }), specialization: s.specialization, status: s.status,
   joined_date: s.joinedDate, avatar_url: s.avatarUrl, ...(s.privateFieldsLoaded === false ? {} : { national_id: s.nationalId ?? null }),

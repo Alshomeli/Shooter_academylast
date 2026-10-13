@@ -3,11 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 const migration = readFileSync(new URL('../supabase/migrations/' + readdirSync(new URL('../supabase/migrations/', import.meta.url)).find(f=>f.endsWith('coach_specialties_and_parent_portal.sql')), import.meta.url),'utf8');
-const goalkeeperScopeMigration = readFileSync(new URL('../supabase/migrations/20261013100000_goalkeeper_coach_scope_management.sql', import.meta.url),'utf8');
 const fixture = readFileSync(new URL('./fixtures/coach-specialties-baseline.sql', import.meta.url),'utf8');
 const uid = n => `00000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
 async function setup(matchAware = false) {
- const db=new PGlite(); await db.exec(fixture); if (matchAware) await db.exec(readFileSync(new URL('../supabase/migrations/20261011035703_attendance_match_identity_rpc.sql',import.meta.url),'utf8')); await db.exec(migration); await db.exec(goalkeeperScopeMigration);
+ const db=new PGlite(); await db.exec(fixture); if (matchAware) await db.exec(readFileSync(new URL('../supabase/migrations/20261011035703_attendance_match_identity_rpc.sql',import.meta.url),'utf8')); await db.exec(migration);
  await db.exec(`insert into staff(id,user_id,name,email,phone,role,status,coach_kind) values
  ('manager','${uid(1)}','Manager','manager@example.test','','manager','active','team'),
  ('coach1','${uid(2)}','Coach 1','coach1@example.test','','coach','active','team'),
@@ -48,29 +47,6 @@ test('goalkeeper coach and linked assistant see only goalkeepers across age team
   const scope=await db.query("select internal.is_coach_of_team('t1') as entire_team");assert.equal(scope.rows[0].entire_team,false);
   assert.equal((await db.query("select internal.has_role(array['manager','accountant']) as financial")).rows[0].financial,false);
  } finally{await db.close();}
-});
-test('manager assigns goalkeeper coach to selected teams or every current and future team',async()=>{
- const db=await setup(); try {
-  await actor(db,1);
-  await db.query("select public.set_goalkeeper_coach_scope('keeper',false,array['t1']::text[])");
-  await actor(db,5); assert.deepEqual(await visible(db),['gk1']);
-  await actor(db,9); assert.deepEqual(await visible(db),['gk1']);
-
-  await actor(db,1);
-  await db.query("select public.set_goalkeeper_coach_scope('keeper',true,array[]::text[])");
-  await db.exec("insert into teams(id,name,coach_id) values('t3','Future Team','coach1'); insert into players(id,name,team_id,parent_id,position,status) values('gk3','GK3','t3','parent1','حارس','active'),('p3','P3','t3','parent1','مهاجم','active');");
-  await actor(db,5); assert.deepEqual(await visible(db),['gk1','gk2','gk3']);
-  assert.equal((await db.query("select goalkeeper_all_teams from staff where id='keeper'")).rows[0].goalkeeper_all_teams,true);
- } finally {await db.close();}
-});
-test('goalkeeper scope changes are manager-only and reject invalid assignments',async()=>{
- const db=await setup(); try {
-  await actor(db,5);
-  await assert.rejects(db.query("select public.set_goalkeeper_coach_scope('keeper',false,array['t1']::text[])"));
-  await actor(db,1);
-  await assert.rejects(db.query("select public.set_goalkeeper_coach_scope('coach1',false,array['t1']::text[])"));
-  await assert.rejects(db.query("select public.set_goalkeeper_coach_scope('keeper',false,array['missing']::text[])"));
- } finally {await db.close();}
 });
 test('only manager can link an assistant; self, assistant chain, and non-coach links rejected',async()=>{
  const db=await setup();try{
