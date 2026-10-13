@@ -251,3 +251,20 @@ button[class~="bg-brand-600"]:hover {
 @media (min-width: 640px) {
  .arena-social-link { flex-direction: row; gap: 10px; min-height: 56px; font-size: 13px; }
 }
+
+/* Five branded destinations; readable labels in both portal themes. */
+.arena-social-bar { grid-template-columns: repeat(5,minmax(0,1fr)); gap: 4px; padding: 10px 6px; }
+.arena-social-tiktok { background: #111; color: #fff; border: 1px solid #475569; }
+.arena-tiktok-note { filter: drop-shadow(-1px -1px 0 #25f4ee) drop-shadow(1px 1px 0 #fe2c55); }
+.parent-arena.arena-light { color: #111827; }
+.parent-arena.arena-light .text-slate-300,
+.parent-arena.arena-light .text-slate-400,
+.parent-arena.arena-light .text-slate-500,
+.parent-arena.arena-light .text-slate-600,
+.parent-arena.arena-light .arena-brand small,
+.parent-arena.arena-light .arena-account small,
+.parent-arena.arena-light .arena-top-nav button:not(.active),
+.parent-arena.arena-light .arena-bottom-nav button:not([aria-current]),
+.parent-arena.arena-light .arena-social-link { color: #1f2937; }
+html:not(.dark) :is(.players-view,.player-detail) :is(.text-slate-400,.text-slate-500,.text-slate-600) { color: #1f2937; }
+.dark .player-detail :is(.text-slate-400,.text-slate-500) { color: #cbd5e1; }

@@ -151,6 +151,9 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
         <a href="https://www.facebook.com/share/19dvUn2fcE/" target="_blank" rel="noopener noreferrer" className="arena-social-link" aria-label={text('فيسبوك الأكاديمية', 'Academy Facebook')}>
           <span className="arena-social-icon arena-social-facebook"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 22v-9h3l.5-3H14V8c0-.9.3-1.5 1.6-1.5h2V3.8c-.4-.1-1.6-.2-2.9-.2-2.8 0-4.7 1.7-4.7 4.8V10H7v3h3v9z"/></svg></span><span>{text('فيسبوك', 'Facebook')}</span>
         </a>
+        <a href="https://www.tiktok.com/@shooter_academy" target="_blank" rel="noopener noreferrer" className="arena-social-link" aria-label={text('تيك توك الأكاديمية', 'Academy TikTok')}>
+          <span className="arena-social-icon arena-social-tiktok"><svg viewBox="0 0 24 24" aria-hidden="true"><path className="arena-tiktok-note" d="M14 3h3a5 5 0 0 0 4 4v3a8 8 0 0 1-4-1.3V16a6 6 0 1 1-6-6v3a3 3 0 1 0 3 3Z" fill="currentColor"/></svg></span><span>{text('تيك توك', 'TikTok')}</span>
+        </a>
         <a href="https://maps.app.goo.gl/h7MjBm9kDBykRmkKA?g_st=ac" target="_blank" rel="noopener noreferrer" className="arena-social-link" aria-label={text('موقع الأكاديمية على خرائط Google: شارع 28، حالة النعيم 997، البحرين', 'Academy on Google Maps: Road 28, Halat Naim 997, Bahrain')} title="Road 28, Halat Naim 997, Bahrain">
           <span className="arena-social-icon arena-social-maps"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M12 2a8 8 0 0 0-8 8c0 2.6 1.5 4.8 3.2 7L12 10Z"/><path fill="#EA4335" d="M12 2a8 8 0 0 1 8 8l-8 4-4-4Z"/><path fill="#FBBC04" d="m4.3 12.1 5.1-5.2 5.2 5.2-5.9 6.8c-1.9-2.4-3.7-4.7-4.4-6.8Z"/><path fill="#34A853" d="m20 10-8 12-3.3-3.1 7-8.9Z"/><circle cx="12" cy="10" r="3" fill="#fff"/></svg></span><span>{text('الموقع', 'Location')}</span>
         </a>
