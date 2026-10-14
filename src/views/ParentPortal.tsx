@@ -1,3 +1,4 @@
+import { PublicHomeLink } from '@/components/PublicHomeLink';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, Clipboard, CreditCard, FileText, FileUp, Instagram, LogOut, Plus, Printer, RefreshCw, Star, UserRound, CalendarCheck2, WalletCards } from 'lucide-react';
 import { Badge, Modal } from '@/components/ui';
@@ -139,7 +140,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
       <header className="arena-header">
         <a href="#parent-overview" className="arena-brand"><img src={settings?.logoUrl || '/1790474303638.jpg'} alt={academyName} /><span><strong>{text('أكاديمية شوتر', 'Shooter Academy')}</strong><small>SHOOTER ACADEMY</small></span></a>
         <div className="arena-account"><UserRound className="h-8 w-8"/><div><strong>{text('مرحبًا، ', 'Welcome, ')}{user.name}</strong><small>{text('ولي الأمر', 'Parent')}</small></div></div>
-        <div className="arena-actions"><button type="button" className="arena-theme-toggle" onClick={() => setDarkMode(!darkMode)} aria-label={text('الوضع النهاري', 'Light mode')} aria-pressed={!darkMode} title={darkMode ? text('تفعيل الوضع النهاري', 'Switch to light mode') : text('تفعيل الوضع الليلي', 'Switch to dark mode')}>{darkMode ? <Sun className="h-4 w-4" aria-hidden="true"/> : <Moon className="h-4 w-4" aria-hidden="true"/>}<span>{darkMode ? text('نهاري', 'Light') : text('ليلي', 'Dark')}</span></button><button onClick={() => setLang(ar ? 'en' : 'ar')}>{ar ? 'English' : 'العربية'}</button><button onClick={() => void refresh()} aria-label={text('تحديث البيانات', 'Refresh data')}><RefreshCw className="h-4 w-4"/></button><button onClick={onLogout} aria-label={text('تسجيل الخروج','Sign out')}><LogOut className="h-4 w-4"/></button></div>
+        <div className="arena-actions"><PublicHomeLink lang={lang} darkMode={darkMode}/><button type="button" className="arena-theme-toggle" onClick={() => setDarkMode(!darkMode)} aria-label={text('الوضع النهاري', 'Light mode')} aria-pressed={!darkMode} title={darkMode ? text('تفعيل الوضع النهاري', 'Switch to light mode') : text('تفعيل الوضع الليلي', 'Switch to dark mode')}>{darkMode ? <Sun className="h-4 w-4" aria-hidden="true"/> : <Moon className="h-4 w-4" aria-hidden="true"/>}<span>{darkMode ? text('نهاري', 'Light') : text('ليلي', 'Dark')}</span></button><button onClick={() => setLang(ar ? 'en' : 'ar')}>{ar ? 'English' : 'العربية'}</button><button onClick={() => void refresh()} aria-label={text('تحديث البيانات', 'Refresh data')}><RefreshCw className="h-4 w-4"/></button><button onClick={onLogout} aria-label={text('تسجيل الخروج','Sign out')}><LogOut className="h-4 w-4"/></button></div>
         <nav className="arena-top-nav" aria-label={text('القائمة الرئيسية لولي الأمر','Parent main navigation')}>
           {sections.map(item=><button key={item.id} aria-current={activeSection===item.id?'page':undefined} onClick={()=>navigate(item.id)} className={activeSection===item.id?'active':''}><item.icon className="h-4 w-4"/>{ar?item.ar:item.en}</button>)}
         </nav>
@@ -266,5 +267,6 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
     </div>
   </main>;
 }
+
 
 

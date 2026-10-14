@@ -1,3 +1,4 @@
+import { PublicHomeLink } from '@/components/PublicHomeLink';
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy, Component, type ReactNode } from 'react';
 import { Menu, Bell, Clock, Target, Loader2, AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { db, prefs, signOut, isRegistering } from '@/lib/store';
@@ -685,7 +686,7 @@ export default function App() {
 
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
         {/* Header */}
-        <header className={`border-b py-3 sm:py-4 px-4 sm:px-6 lg:px-8 flex items-center justify-between shadow-sm shrink-0 transition-colors duration-300 ${
+        <header className={`border-b py-3 sm:py-4 px-4 sm:px-6 lg:px-8 flex flex-wrap gap-3 items-center justify-between shadow-sm shrink-0 transition-colors duration-300 ${
           darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
         }`}>
           <div className="flex items-center gap-3">
@@ -709,7 +710,8 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <PublicHomeLink lang={lang} darkMode={darkMode}/>
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50">
               <Clock className="h-3.5 w-3.5 text-brand-500" />
               <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 tabular-nums">{currentTime}</span>
@@ -812,5 +814,6 @@ export default function App() {
 function supabaseUnsubscribe(channel: ReturnType<typeof db.subscribe>) {
   try { supabase.removeChannel(channel); } catch { /* ignore */ }
 }
+
 
 
