@@ -89,6 +89,7 @@ export function Sidebar({
         { id: 'audit-logs', label: t.auditLogs, icon: ScrollText, allowedRoles: ['manager'] },
         { id: 'messages', label: t.messages, icon: Send, allowedRoles: ['manager', 'coach', 'receptionist', 'accountant'] },
         { id: 'ai-center', label: t.aiCenter, icon: Sparkles, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
+        { id: 'site-content', label: isAr ? 'إدارة الموقع' : 'Website content', icon: FileCheck, allowedRoles: ['manager'] },
         { id: 'settings', label: t.settings, icon: SettingsIcon, allowedRoles: ['manager'] },
       ],
     },
@@ -217,4 +218,5 @@ export function Sidebar({
     </>
   );
 }
+
 

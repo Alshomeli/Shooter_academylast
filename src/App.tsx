@@ -17,6 +17,7 @@ import { Sidebar } from '@/components/Sidebar';
 
 
 /* ── Lazy-loaded views for code splitting ── */
+const SiteContent = lazy(() => import('@/views/SiteContent').then(m => ({ default: m.SiteContent })));
 const Dashboard = lazy(() => import('@/views/Dashboard').then(m => ({ default: m.Dashboard })));
 const Approvals = lazy(() => import('@/views/Approvals').then(m => ({ default: m.Approvals })));
 const Players = lazy(() => import('@/views/Players').then(m => ({ default: m.Players })));
@@ -40,7 +41,7 @@ const StaffRegistration = lazy(() => import('@/views/StaffRegistration').then(m 
 const RegistrationAdmin = lazy(() => import('@/views/RegistrationAdmin').then(m => ({ default: m.RegistrationAdmin })));
 
 const ALLOWED_VIEWS_BY_ROLE: Record<Exclude<Role, 'parent'>, ViewId[]> = {
-  manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings'],
+  manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings', 'site-content'],
   accountant: ['dashboard', 'subscriptions', 'reports', 'messages', 'ai-center'],
   coach: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'messages', 'ai-center'],
   receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
@@ -499,6 +500,7 @@ export default function App() {
     registration: t.registration,
     'staff-registration': lang === 'ar' ? 'طلب موظف / مدرب' : 'Staff / coach application',
     'registration-admin': t.registrationAdmin,
+    'site-content': lang === 'ar' ? 'إدارة الموقع' : 'Website content',
     settings: t.settings,
   };
 
@@ -556,6 +558,8 @@ export default function App() {
         return <AICenter players={data.players} subscriptions={data.subscriptions} transactions={data.transactions} staff={data.staff} teams={data.teams} matches={data.matches} trainings={data.trainings} tournaments={data.tournaments} parents={data.parents} attendance={data.attendance} evaluations={data.evaluations} activeRole={activeRole} lang={lang} onRefresh={loadAllData} />;
       case 'messages':
         return <Messages players={data.players} teams={data.teams} subscriptions={data.subscriptions} activeRole={activeRole} lang={lang} />;
+      case 'site-content':
+        return <SiteContent activeRole={activeRole} lang={lang} staff={data.staff} />;
       case 'settings':
         return data.settings ? <SettingsView settings={data.settings} onSettingsChange={saveSettings} activeRole={activeRole} lang={lang} /> : null;
       case 'registration':
@@ -814,6 +818,7 @@ export default function App() {
 function supabaseUnsubscribe(channel: ReturnType<typeof db.subscribe>) {
   try { supabase.removeChannel(channel); } catch { /* ignore */ }
 }
+
 
 
 

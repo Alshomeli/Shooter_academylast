@@ -2,12 +2,36 @@ import { prefs } from '@/lib/preferences';
 import { AcademyGallery } from '@/components/AcademyGallery';
 import { ArrowUpLeft, ArrowDown, Instagram, MapPin, Phone, Mail, Play, Target, Users, Trophy, Menu, X, Sun, Moon } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { academyContact as links, programImages, publicCoaches, publicNews, publicVideos } from '@/data/public-academy';
+import { academyContact as defaultLinks, programImages, publicCoaches as defaultCoaches, publicNews as defaultNews, publicVideos as defaultVideos, publicGallery as defaultGallery } from '@/data/public-academy';
 import '../academy-home.css';
+import { readPublicContent, type ContentItem } from '@/lib/site-content';
 
 const platform = '/?view=login';
 const navigation = [['about', 'الأكاديمية'], ['programs', 'البرامج'], ['coaches', 'التدريب'], ['media', 'الصور والفيديو'], ['news', 'الأخبار']];
 export default function AcademyHome() {
+  const [content, setContent] = useState<ContentItem[]>([]);
+  const [legacy, setLegacy] = useState(false);
+  const [contentError, setContentError] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    readPublicContent().then(items => { if (!cancelled) setContent(items); }).catch(error => {
+      if (!cancelled) {
+        if (error.code === '42P01' || error.code === 'PGRST205') setLegacy(true);
+        else setContentError(true);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+  const publicCoaches = legacy ? defaultCoaches : content.filter(i => i.kind === 'coach').map(i => ({name:i.payload.title,role:i.payload.role,photo:i.payload.image}));
+  const publicNews = legacy ? defaultNews.map(n => ({...n,date:''})) : content.filter(i => i.kind === 'news').map(i => ({title:i.payload.title,summary:i.payload.body,image:i.payload.image,imageAlt:i.payload.alt||i.payload.title,url:'#media',date:i.payload.date}));
+  const publicVideos = legacy ? defaultVideos : content.filter(i => i.kind === 'video').map(i => ({title:i.payload.title,caption:i.payload.body,src:i.payload.video,poster:i.payload.poster}));
+  const publicGallery = legacy ? defaultGallery : content.filter(i => i.kind === 'gallery').map(i => ({src:i.payload.image,title:i.payload.title,caption:i.payload.body,alt:i.payload.alt||i.payload.title}));
+  const contact = content.find(i => i.kind === 'contact')?.payload;
+  const links = {...defaultLinks};
+  for (const key of Object.keys(links) as (keyof typeof links)[]) {
+    const value = contact?.[key];
+    if (value) { try { if (new URL(value).protocol === 'https:') links[key] = value; } catch { /* Ignore invalid stored links. */ } }
+  }
   const [menu, setMenu] = useState(false);
   const [darkMode, setDarkMode] = useState(prefs.getDarkMode);
   useEffect(() => {
@@ -26,6 +50,7 @@ export default function AcademyHome() {
       <button className="ah-menu" onClick={() => setMenu(v => !v)} aria-expanded={menu} aria-controls="ah-navigation" aria-label={menu ? 'إغلاق القائمة' : 'فتح القائمة'}>{menu ? <X/> : <Menu/>}</button>
     </header>
     <main>
+      {contentError && <p role="status" className="ah-muted">تعذّر تحميل آخر المحتوى. يرجى تحديث الصفحة.</p>}
       <section className="ah-hero" aria-labelledby="ah-title">
         <img className="ah-hero-image" src="/parent-hero.png" alt="تصميم رياضي يعكس شغف كرة القدم"/>
         <div className="ah-hero-shade"/>
@@ -41,15 +66,16 @@ export default function AcademyHome() {
       ].map(([number,title,body],i) => <article className="ah-program" key={number}><img src={programImages[i]} loading="lazy" alt={`صورة توضيحية لبرنامج ${title}`}/><div><span className="ah-number">{number}</span><h3>{title}</h3><p>{body}</p></div></article>)}</div><p className="ah-photo-note">صور البرامج توضيحية من الموقع التعريفي للأكاديمية.</p></section>
       <section className="ah-section ah-coaches" id="coaches"><div><p className="ah-eyebrow">03 / التدريب والتوجيه</p><h2>نتعلّم معًا.<br/><em>ونتطور معًا.</em></h2><p className="ah-muted">التوجيه، الممارسة، والمتابعة. نهج يدعم اللاعب ويعزز روح الفريق.</p></div><div>{publicCoaches.length ? <div className="ah-coach-grid">{publicCoaches.map(c => <article key={c.name}><img src={c.photo} alt={c.name} loading="lazy"/><h3>{c.name}</h3><p>{c.role}</p></article>)}</div> : <div className="ah-principles">{[['01','المهارة','التركيز على الأساسيات وتطوير الأداء.'],['02','الانضباط','الالتزام والاحترام داخل الملعب وخارجه.'],['03','روح الفريق','التعاون والتعلم من كل تجربة.']].map(([n,t,b]) => <div key={n}><span>{n}</span><div><h3>{t}</h3><p>{b}</p></div></div>)}</div>}</div></section>
       <section className="ah-section ah-media" id="media"><div className="ah-section-head"><div><p className="ah-eyebrow">04 / من قلب الملعب</p><h2>لحظات تستحق <em>المشاهدة.</em></h2></div><a className="ah-text-link" href={links.instagram} target="_blank" rel="noopener noreferrer">ألبوم الأكاديمية <Instagram size={18}/></a></div>
-        <AcademyGallery/>
+        <AcademyGallery photos={publicGallery}/>
         {publicVideos.length ? <div className="ah-video-grid">{publicVideos.map(v => <figure key={v.src}><video controls playsInline preload="none" poster={v.poster} aria-label={v.title}><source src={v.src}/>متصفحك لا يدعم الفيديو. <a href={v.src}>افتح الفيديو</a></video><figcaption><h3>{v.title}</h3><p>{v.caption}</p></figcaption></figure>)}</div> : <div className="ah-media-feature"><div><span className="ah-play"><Play size={26}/></span><h3>صور التدريبات ومقاطع الأكاديمية</h3><p>تابع لحظات الملعب والمحتوى المنشور على حساباتنا الرسمية.</p></div><div className="ah-actions"><a className="ah-button" href={links.tiktok} target="_blank" rel="noopener noreferrer">شاهد على TikTok <ArrowUpLeft size={18}/></a><a className="ah-outline" href={links.instagram} target="_blank" rel="noopener noreferrer">الصور على Instagram</a></div></div>}
       </section>
-      <section className="ah-section" id="news"><div className="ah-section-head"><div><p className="ah-eyebrow">05 / أخبار شوتر</p><h2>ابقَ قريبًا من <em>الفريق.</em></h2></div></div>{publicNews.length ? <div className="ah-news-grid">{publicNews.map(n => <article className="ah-news" key={n.title}><img src={n.image} alt={n.imageAlt} loading="lazy"/><h3>{n.title}</h3><p>{n.summary}</p><a href={n.url}>شاهد الصور والفيديو <ArrowUpLeft size={16}/></a></article>)}</div> : <div className="ah-news-strip"><p>آخر أخبار الأكاديمية والتدريبات والمنافسات، عبر حساباتنا الرسمية.</p><a className="ah-text-link" href={links.facebook} target="_blank" rel="noopener noreferrer">أخبارنا على Facebook <ArrowUpLeft size={18}/></a></div>}</section>
+      <section className="ah-section" id="news"><div className="ah-section-head"><div><p className="ah-eyebrow">05 / أخبار شوتر</p><h2>ابقَ قريبًا من <em>الفريق.</em></h2></div></div>{publicNews.length ? <div className="ah-news-grid">{publicNews.map(n => <article className="ah-news" key={n.title}><img src={n.image} alt={n.imageAlt} loading="lazy"/><h3>{n.title}</h3>{n.date && <time dateTime={n.date}>{n.date}</time>}<p>{n.summary}</p><a href={n.url}>شاهد الصور والفيديو <ArrowUpLeft size={16}/></a></article>)}</div> : <div className="ah-news-strip"><p>آخر أخبار الأكاديمية والتدريبات والمنافسات، عبر حساباتنا الرسمية.</p><a className="ah-text-link" href={links.facebook} target="_blank" rel="noopener noreferrer">أخبارنا على Facebook <ArrowUpLeft size={18}/></a></div>}</section>
       <section className="ah-portal-band"><div><p className="ah-eyebrow">الأكاديمية، أقرب إليك.</p><h2>كل المتابعة.<br/>في مكان واحد.</h2><p>بوابة أولياء الأمور وفريق الأكاديمية لمتابعة الأنشطة وبيانات الحساب.</p></div><a className="ah-button" href={platform}>دخول منصة الأكاديمية <ArrowUpLeft size={20}/></a></section>
       <section className="ah-section ah-contact" id="contact"><div><p className="ah-eyebrow">06 / تواصل معنا</p><h2>نلتقي في <em>الملعب.</em></h2><p className="ah-muted">شارع 28، حالة النعيم 997، البحرين</p><a className="ah-text-link" href={links.maps} target="_blank" rel="noopener noreferrer"><MapPin size={18}/> الاتجاهات على خرائط Google</a></div><div className="ah-contact-links"><a href="tel:+97332287776"><Phone size={20}/><bdi>+973 3228 7776</bdi></a><a href="mailto:football.shooter.academy@gmail.com"><Mail size={20}/><span>football.shooter.academy@gmail.com</span></a><div className="ah-social"><a className="instagram" href={links.instagram} target="_blank" rel="noopener noreferrer">Instagram</a><a className="whatsapp" href={links.whatsapp} target="_blank" rel="noopener noreferrer">WhatsApp</a><a className="facebook" href={links.facebook} target="_blank" rel="noopener noreferrer">Facebook</a><a className="tiktok" href={links.tiktok} target="_blank" rel="noopener noreferrer">TikTok</a></div></div></section>
     </main>
     <footer className="ah-footer"><span>© {new Date().getFullYear()} أكاديمية شوتر لكرة القدم</span><nav aria-label="روابط قانونية"><a href="/privacy">الخصوصية</a><a href="/terms">الشروط والأحكام</a><a href="#top">إلى الأعلى ↑</a></nav></footer>
   </div>;
 }
+
 
 

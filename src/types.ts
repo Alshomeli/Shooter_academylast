@@ -306,6 +306,7 @@ export type ViewId =
   | 'mobile'
   | 'ai-center'
   | 'messages'
+  | 'site-content'
   | 'settings'
   | 'registration'
   | 'staff-registration'
@@ -394,4 +395,5 @@ export interface RegistrationApplication {
   createdAt: string;
   updatedAt: string;
 }
+
 
