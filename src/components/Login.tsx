@@ -1,3 +1,5 @@
+import { getLoginScreen } from '@/lib/login-entry';
+import { PublicHomeLink } from '@/components/PublicHomeLink';
 import { useEffect, useState, type FormEvent } from 'react';
 import { AlertCircle, Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
 import { db, signIn, signUp, setRegistering } from '@/lib/store';
@@ -9,7 +11,7 @@ type Screen = 'login' | 'register' | 'forgot' | 'reset';
 export function Login({ onLogin, lang, setLang, recovery = false, registrationEntry = false, staffRegistrationEntry = false }: {
   onLogin: (user: CurrentUser) => void; lang: Lang; setLang: (lang: Lang) => void; recovery?: boolean; registrationEntry?: boolean; staffRegistrationEntry?: boolean;
 }) {
-  const [screen, setScreen] = useState<Screen>(recovery ? 'reset' : (registrationEntry || staffRegistrationEntry) ? 'register' : 'login');
+  const [screen, setScreen] = useState<Screen>(() => getLoginScreen({ recovery, registrationEntry, staffRegistrationEntry, search: window.location.search }));
   const [registrationKind, setRegistrationKind] = useState<'parent' | 'staff'>(staffRegistrationEntry ? 'staff' : 'parent');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -123,7 +125,9 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       {screen === 'register' && <p className="mt-4 text-xs text-slate-500">{registrationKind === 'staff'
         ? text('تراجع الإدارة طلب الموظف أو المدرب ويمكنها الموافقة أو الرفض أو إعادته للتعديل قبل تفعيل أي صلاحية.', 'The academy reviews staff applications and may approve, reject, or request changes before any staff access is activated.')
         : text('تراجع الإدارة طلب تسجيل الأبناء قبل تفعيلهم.', 'The academy reviews children’s applications before activation.')}</p>}
+      <div className="mt-6 flex justify-center"><PublicHomeLink lang={lang} darkMode={document.documentElement.classList.contains('dark')}/></div>
     </div>
   </main>;
 }
+
 
