@@ -19,7 +19,7 @@ export default function AcademyHome() {
     </header>
     <main>
       <section className="ah-hero" aria-labelledby="ah-title">
-        <img className="ah-hero-image" src="/parent-hero.png" alt="تصميم رياضي يعكس شغف كرة القدم" fetchPriority="high"/>
+        <img className="ah-hero-image" src="/parent-hero.png" alt="تصميم رياضي يعكس شغف كرة القدم"/>
         <div className="ah-hero-shade"/>
         <div className="ah-hero-content"><p className="ah-eyebrow">شغف اليوم. أبطال الغد.</p><h1 id="ah-title">هنا تبدأ<br/>رحلتك <em>الكروية.</em></h1><p className="ah-lead">مهارة تتطور. ثقة تكبر. وفريق يجمعنا.<br/>في أكاديمية شوتر، نمنح شغف كرة القدم مساحة للنمو.</p><div className="ah-actions"><a className="ah-button" href={platform}>دخول منصة الأكاديمية <ArrowUpLeft size={20}/></a><a className="ah-text-link" href="#programs">اكتشف برامجنا <ArrowDown size={17}/></a></div></div>
         <span className="ah-hero-caption">FOOTBALL · PASSION · DEVELOPMENT</span>
