@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react';
+import { Sun, Moon } from 'lucide-react';
+import { prefs } from '@/lib/preferences';
 import type { ReactNode } from 'react';
 
 type PolicyPage = 'privacy' | 'terms';
@@ -6,6 +9,11 @@ const contactPhone = '+973 3228 7776';
 
 export function LegalPage({ page }: { page: PolicyPage }) {
   const privacy = page === 'privacy';
+  const [darkMode, setDarkMode] = useState(prefs.getDarkMode);
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    prefs.saveDarkMode(darkMode);
+  }, [darkMode]);
   const sections: { title: string; body: ReactNode }[] = privacy ? [
     { title: 'البيانات التي نجمعها', body: 'قد تشمل بيانات التسجيل اسم ولي الأمر ووسائل التواصل وبيانات اللاعب وصورته وسجلات الحضور والتقييم والاشتراك وإثباتات الدفع والمستندات المقدمة للأكاديمية.' },
     { title: 'أغراض الاستخدام', body: 'نستخدم المعلومات لإدارة طلبات التسجيل، والتواصل بشأن التدريب، ومتابعة الحضور والتقييمات والاشتراكات، ومراجعة إثباتات الدفع.' },
@@ -21,19 +29,20 @@ export function LegalPage({ page }: { page: PolicyPage }) {
     { title: 'استخدام البوابة', body: 'يجب الحفاظ على سرية الحساب واستخدام البوابة للاطلاع على بيانات اللاعبين المرتبطين بولي الأمر فقط. يمنع استخدام حساب شخص آخر دون تصريح.' },
     { title: 'الاستفسارات والشكاوى', body: 'يمكن إرسال الاستفسارات المتعلقة بالاشتراكات أو البيانات أو الخدمات إلى الأكاديمية عبر وسائل التواصل الموضحة أدناه.' },
   ];
-  return <main dir="rtl" className="min-h-screen bg-slate-100 px-4 py-10 text-slate-900">
-    <article className="mx-auto max-w-3xl overflow-hidden rounded-3xl bg-white shadow-xl">
+  return <main dir="rtl" className="min-h-screen bg-slate-100 dark:bg-slate-950 px-4 py-10 text-slate-900 dark:text-slate-100">
+    <article className="mx-auto max-w-3xl overflow-hidden rounded-3xl bg-white dark:bg-slate-900 shadow-xl">
       <header className="bg-gradient-to-l from-slate-950 to-red-950 px-6 py-9 text-white sm:px-10">
-        <p className="text-sm font-bold text-red-200">SHOOTER ACADEMY · أكاديمية شوتر لكرة القدم</p>
+        <button type="button" onClick={() => setDarkMode(v => !v)} aria-label={darkMode ? 'تفعيل الوضع النهاري' : 'تفعيل الوضع الليلي'} className="mb-5 inline-flex items-center gap-2 rounded-lg border border-slate-400 px-3 py-2 text-sm font-bold">{darkMode ? <Sun className="h-4 w-4"/> : <Moon className="h-4 w-4"/>}{darkMode ? 'نهاري' : 'ليلي'}</button><p className="text-sm font-bold text-red-200">SHOOTER ACADEMY · أكاديمية شوتر لكرة القدم</p>
         <h1 className="mt-3 text-3xl font-black">{privacy ? 'سياسة الخصوصية وحماية البيانات' : 'الشروط والأحكام'}</h1>
         <p className="mt-3 text-sm text-slate-200">معلومات موجهة لأولياء الأمور والمستخدمين</p>
       </header>
       <div className="space-y-7 px-6 py-8 sm:px-10">
-        {sections.map(({ title, body }) => <section key={title}><h2 className="text-lg font-black">{title}</h2><p className="mt-2 leading-8 text-slate-600">{body}</p></section>)}
-        <section className="border-t border-slate-200 pt-6"><h2 className="font-black">التواصل مع الأكاديمية</h2><p className="mt-2 text-slate-600"><a className="text-red-700 underline" href={`mailto:${contactEmail}`}>{contactEmail}</a><br/><a className="text-red-700 underline" href="tel:+97332287776">{contactPhone}</a></p></section>
-        <nav className="flex flex-wrap gap-4 border-t border-slate-200 pt-6 text-sm font-bold"><a href="/" className="text-red-700 underline">العودة إلى البوابة</a><a href="/privacy" className="text-red-700 underline">سياسة الخصوصية</a><a href="/terms" className="text-red-700 underline">الشروط والأحكام</a></nav>
-        <p className="text-xs text-slate-500">هذه صياغة تشغيلية أولية تحتاج اعتماد إدارة الأكاديمية ومراجعة قانونية قبل اعتبارها سياسة نهائية.</p>
+        {sections.map(({ title, body }) => <section key={title}><h2 className="text-lg font-black">{title}</h2><p className="mt-2 leading-8 text-slate-600 dark:text-slate-300">{body}</p></section>)}
+        <section className="border-t border-slate-200 dark:border-slate-700 pt-6"><h2 className="font-black">التواصل مع الأكاديمية</h2><p className="mt-2 text-slate-600 dark:text-slate-300"><a className="text-red-700 dark:text-red-300 underline" href={`mailto:${contactEmail}`}>{contactEmail}</a><br/><a className="text-red-700 dark:text-red-300 underline" href="tel:+97332287776">{contactPhone}</a></p></section>
+        <nav className="flex flex-wrap gap-4 border-t border-slate-200 dark:border-slate-700 pt-6 text-sm font-bold"><a href="/" className="text-red-700 dark:text-red-300 underline">الصفحة الرئيسية</a><a href="/?view=login" className="text-red-700 dark:text-red-300 underline">دخول المنصة</a><a href="/privacy" className="text-red-700 dark:text-red-300 underline">سياسة الخصوصية</a><a href="/terms" className="text-red-700 dark:text-red-300 underline">الشروط والأحكام</a></nav>
+        <p className="text-xs text-slate-500 dark:text-slate-400">هذه صياغة تشغيلية أولية تحتاج اعتماد إدارة الأكاديمية ومراجعة قانونية قبل اعتبارها سياسة نهائية.</p>
       </div>
     </article>
   </main>;
 }
+
