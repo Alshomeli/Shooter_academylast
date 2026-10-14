@@ -17,14 +17,7 @@ import {
 
 /* ---------- Preferences (still localStorage, no session data) ---------- */
 
-const PREFIX = 'shooter_';
-
-export const prefs = {
-  getLang: (): Lang => (localStorage.getItem(PREFIX + 'lang') as Lang) || 'ar',
-  saveLang: (v: Lang) => localStorage.setItem(PREFIX + 'lang', v),
-  getDarkMode: (): boolean => localStorage.getItem(PREFIX + 'red_identity_mode') !== 'false',
-  saveDarkMode: (v: boolean) => localStorage.setItem(PREFIX + 'red_identity_mode', String(v)),
-};
+export { prefs } from '@/lib/preferences';
 
 /* ---------- Auth ---------- */
 
@@ -517,4 +510,5 @@ export const db = {
       .subscribe();
   },
 };
+
 

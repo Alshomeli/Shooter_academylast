@@ -1,6 +1,7 @@
+import { prefs } from '@/lib/preferences';
 import { AcademyGallery } from '@/components/AcademyGallery';
-import { ArrowUpLeft, ArrowDown, Instagram, MapPin, Phone, Mail, Play, Target, Users, Trophy, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowUpLeft, ArrowDown, Instagram, MapPin, Phone, Mail, Play, Target, Users, Trophy, Menu, X, Sun, Moon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { academyContact as links, programImages, publicCoaches, publicNews, publicVideos } from '@/data/public-academy';
 import '../academy-home.css';
 
@@ -8,12 +9,19 @@ const platform = '/?view=login';
 const navigation = [['about', 'الأكاديمية'], ['programs', 'البرامج'], ['coaches', 'التدريب'], ['media', 'الصور والفيديو'], ['news', 'الأخبار']];
 export default function AcademyHome() {
   const [menu, setMenu] = useState(false);
-  return <div className="academy-home" dir="rtl" id="top">
+  const [darkMode, setDarkMode] = useState(prefs.getDarkMode);
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
+    prefs.saveDarkMode(darkMode);
+  }, [darkMode]);
+  return <div className={`academy-home ${darkMode ? 'ah-dark' : 'ah-light'}`} dir="rtl" id="top">
     <a className="ah-skip" href="#about">تخطي إلى المحتوى</a>
     <div className="ah-topline"><span>المحرق، مملكة البحرين</span><a href={links.maps} target="_blank" rel="noopener noreferrer">موقع الأكاديمية <MapPin size={13}/></a></div>
     <header className="ah-header">
       <a href="#top" className="ah-brand"><img src="/1790474303638.jpg" width="54" height="60" alt="شعار أكاديمية شوتر"/><span>أكاديمية شوتر<small>SHOOTER ACADEMY</small></span></a>
       <nav className={`ah-nav ${menu ? 'is-open' : ''}`} id="ah-navigation" aria-label="التنقل الرئيسي">{navigation.map(([id,label]) => <a href={`#${id}`} key={id} onClick={() => setMenu(false)}>{label}</a>)}</nav>
+      <button type="button" className="ah-theme-toggle" onClick={() => setDarkMode(v => !v)} aria-label={darkMode ? 'تفعيل الوضع النهاري' : 'تفعيل الوضع الليلي'} aria-pressed={darkMode} title={darkMode ? 'تفعيل الوضع النهاري' : 'تفعيل الوضع الليلي'}>{darkMode ? <Sun size={18}/> : <Moon size={18}/>}<span>{darkMode ? 'نهاري' : 'ليلي'}</span></button>
       <a className="ah-button ah-login" href={platform}>دخول منصة الأكاديمية <ArrowUpLeft size={17}/></a>
       <button className="ah-menu" onClick={() => setMenu(v => !v)} aria-expanded={menu} aria-controls="ah-navigation" aria-label={menu ? 'إغلاق القائمة' : 'فتح القائمة'}>{menu ? <X/> : <Menu/>}</button>
     </header>
@@ -43,4 +51,5 @@ export default function AcademyHome() {
     <footer className="ah-footer"><span>© {new Date().getFullYear()} أكاديمية شوتر لكرة القدم</span><nav aria-label="روابط قانونية"><a href="/privacy">الخصوصية</a><a href="/terms">الشروط والأحكام</a><a href="#top">إلى الأعلى ↑</a></nav></footer>
   </div>;
 }
+
 

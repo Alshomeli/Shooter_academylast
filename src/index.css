@@ -275,3 +275,10 @@ html:not(.dark) :is(.players-view,.player-detail) :is(.text-slate-400,.text-slat
  .parent-arena .arena-top-nav { grid-template-columns: repeat(4,minmax(0,1fr)); }
  .parent-arena .arena-top-nav button { flex-direction: column; gap: 4px; padding: 10px 2px; white-space: normal; overflow-wrap: anywhere; }
 }
+
+
+/* Keep sidebar controls inside the visible mobile viewport. */
+.shooter-sidebar{height:100vh;height:100dvh;max-height:100dvh;min-height:0;overflow:hidden}
+.shooter-sidebar .sidebar-footer{padding-bottom:max(12px,env(safe-area-inset-bottom));background:#10161e;position:relative;z-index:1}
+.shooter-sidebar .sidebar-nav{scrollbar-gutter:stable;touch-action:pan-y}
+.shooter-sidebar .sidebar-brand>button{flex-shrink:0}
