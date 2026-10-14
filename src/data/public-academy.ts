@@ -11,7 +11,7 @@ export const publicVideos: { title: string; src: string; poster: string }[] = []
 export const publicNews: { title: string; date: string; summary: string; url: string }[] = [];
 // Existing website images are illustrative stock photography, not academy/player portraits.
 export const programImages = [
-  'https://shooteracademy.gamer.gd/wp-content/uploads/2026/10/pexels-photo-34970425.jpeg',
-  'https://shooteracademy.gamer.gd/wp-content/uploads/2026/10/pexels-photo-26546638.jpeg',
-  'https://shooteracademy.gamer.gd/wp-content/uploads/2026/10/pexels-photo-10031866.jpeg',
+  '/home/skills.jpg',
+  '/home/fitness.jpg',
+  '/home/finishing.jpg',
 ];
