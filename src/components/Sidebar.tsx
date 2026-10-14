@@ -113,21 +113,21 @@ export function Sidebar({
 
       <aside
         id="sidebar"
-        className={`shooter-sidebar fixed lg:relative inset-y-0 right-0 z-50 lg:z-auto w-72 min-h-screen flex flex-col justify-between shrink-0 shadow-2xl transition-all duration-300 ${
+        className={`shooter-sidebar fixed lg:sticky lg:top-0 inset-y-0 right-0 z-50 lg:z-auto w-72 flex flex-col shrink-0 shadow-2xl transition-all duration-300 ${
           mobileOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
         } ${darkMode ? 'bg-slate-950 text-slate-100 border-l border-slate-900' : 'bg-slate-900 text-white border-l border-slate-800'}`}
       >
-        <div>
+        <div className="flex min-h-0 flex-1 flex-col">
           {/* Logo header */}
-          <div className="relative p-6 border-b border-slate-800 flex flex-col items-center gap-3 bg-brand-950/20 text-center">
-            <div className="relative group shrink-0 w-24 h-24 flex items-center justify-center">
+          <div className="sidebar-brand relative p-3 lg:p-4 border-b border-slate-800 flex items-center gap-3 bg-brand-950/20 text-right lg:flex-col lg:text-center shrink-0">
+            <div className="relative group shrink-0 w-12 h-12 lg:w-16 lg:h-16 flex items-center justify-center">
               <div className="absolute -inset-1 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" style={{ backgroundColor: '#cbd5e1' }} />
-              <img src={selectedLogo} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="relative h-24 w-24 object-contain drop-shadow-lg" />
+              <img src={selectedLogo} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="relative h-12 w-12 lg:h-16 lg:w-16 object-contain drop-shadow-lg" />
             </div>
-            <div className="min-w-0 w-full">
-              <h1 className="font-black text-base text-slate-200 tracking-tight leading-tight">{brandName}</h1>
+            <div className="min-w-0 flex-1 lg:w-full">
+              <h1 className="font-black text-xs lg:text-sm text-slate-200 tracking-tight leading-tight">{brandName}</h1>
               <p className="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5 uppercase">SHOOTER ACADEMY</p>
-              <p className="text-[9px] text-brand-500 font-semibold mt-0.5">{t.systemTitle}</p>
+              <p className="hidden lg:block text-[9px] text-brand-500 font-semibold mt-0.5">{t.systemTitle}</p>
             </div>
             <button onClick={() => setMobileOpen(false)} aria-label={lang === 'ar' ? 'إغلاق القائمة' : 'Close menu'} className="lg:hidden p-1.5 rounded-lg hover:bg-slate-800 transition focus:outline-none focus:ring-2 focus:ring-brand-500/70"
             >
@@ -136,7 +136,7 @@ export function Sidebar({
           </div>
 
           {/* Signed-in identity and permission level (assigned by a manager) */}
-          <div className="p-4 mx-4 my-3 rounded-xl bg-slate-800/40 border border-slate-700/40">
+          <div className="p-3 mx-3 my-2 rounded-xl shrink-0 bg-slate-800/40 border border-slate-700/40">
             <div className="w-full bg-slate-950 text-white text-[11px] font-semibold py-2 px-2.5 rounded-lg border border-slate-700">
               {ROLE_OPTIONS.find((r) => r.value === activeRole)?.label ?? activeRole}
             </div>
@@ -147,10 +147,10 @@ export function Sidebar({
           </div>
 
           {/* Nav items */}
-          <nav className="px-3 pb-4 space-y-4 overflow-y-auto max-h-[calc(100vh-500px)]" aria-label={isAr ? 'أقسام القائمة الرئيسية' : 'Main navigation sections'}>
+          <nav className="sidebar-nav flex-1 min-h-0 px-3 pb-3 space-y-3 overflow-y-auto overscroll-contain" aria-label={isAr ? 'أقسام القائمة الرئيسية' : 'Main navigation sections'}>
             {visibleSections.map((section) => (
               <div key={section.title}>
-                <h2 className="px-3 mb-1.5 text-lg italic text-center font-black tracking-[0.16em] text-brand-500 bg-[#171b22] uppercase">{section.title}</h2>
+                <h2 className="px-3 mb-1.5 text-sm italic text-center font-black tracking-[0.16em] text-brand-500 bg-[#171b22] uppercase">{section.title}</h2>
                 <div className="space-y-0.5">
                   {section.items.map((item) => {
                     const Icon = item.icon;
@@ -159,14 +159,14 @@ export function Sidebar({
                       <button
                         key={item.id}
                         onClick={() => handleNav(item.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-right ${
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-right ${
                           active
                             ? 'bg-brand-600 text-white shadow-lg shadow-brand-900/20'
                             : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
                         }`}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
-                        <span className={`truncate ${item.id === 'dashboard' ? 'text-left text-brand-500' : ''}`}>{item.label}</span>
+                        <span className={`truncate ${item.id === 'dashboard' ? 'text-left' : ''}`}>{item.label}</span>
                       </button>
                     );
                   })}
@@ -175,8 +175,8 @@ export function Sidebar({
             ))}
             {activeRole === 'parent' && (
               <div>
-                <h2 className="px-3 mb-1.5 text-lg italic text-center font-black tracking-[0.16em] text-brand-500 bg-[#171b22] uppercase">{isAr ? 'الإدارة' : 'Administration'}</h2>
-                <button onClick={() => handleNav('registration')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-right text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
+                <h2 className="px-3 mb-1.5 text-sm italic text-center font-black tracking-[0.16em] text-brand-500 bg-[#171b22] uppercase">{isAr ? 'الإدارة' : 'Administration'}</h2>
+                <button onClick={() => handleNav('registration')} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-right text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
                   <ClipboardList className="h-4 w-4 shrink-0" />
                   <span className="truncate">{t.registration}</span>
                 </button>
@@ -186,7 +186,7 @@ export function Sidebar({
         </div>
 
         {/* Footer controls */}
-        <div className="p-4 border-t border-slate-800 space-y-2">
+        <div className="sidebar-footer p-3 border-t border-slate-800 space-y-2 shrink-0">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setDarkMode(!darkMode)}
@@ -217,3 +217,4 @@ export function Sidebar({
     </>
   );
 }
+
