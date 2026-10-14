@@ -3,7 +3,7 @@ import { collectionChanges, type Row } from '@/lib/collection-diff';
 import type {
   Staff, Team, Player, Parent, Subscription, Attendance,
   Match, Training, Transaction, Tournament, PlayerEvaluation,
-  Settings, AuditLog, Notification, Lang, CurrentUser, PaymentProof, PlayerDocument, StaffDocument,
+  Settings, AuditLog, Notification, CurrentUser, PaymentProof, PlayerDocument, StaffDocument,
 } from '@/types';
 import {
   mapStaff, mapTeam, mapPlayer, mapParent, mapSubscription, mapAttendance,
