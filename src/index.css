@@ -268,3 +268,10 @@ button[class~="bg-brand-600"]:hover {
 .parent-arena.arena-light .arena-social-link { color: #1f2937; }
 html:not(.dark) :is(.players-view,.player-detail) :is(.text-slate-400,.text-slate-500,.text-slate-600) { color: #1f2937; }
 .dark .player-detail :is(.text-slate-400,.text-slate-500) { color: #cbd5e1; }
+
+/* Eight parent sections remain compact and reachable on mobile. */
+.parent-arena [id^="parent-"] { scroll-margin-top: 250px; }
+@media (max-width: 800px) {
+ .parent-arena .arena-top-nav { grid-template-columns: repeat(4,minmax(0,1fr)); }
+ .parent-arena .arena-top-nav button { flex-direction: column; gap: 4px; padding: 10px 2px; white-space: normal; overflow-wrap: anywhere; }
+}

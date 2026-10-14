@@ -8,7 +8,9 @@ import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerDocumen
 import { db } from '@/lib/store';
 import { tr } from '@/lib/i18n';
 import { uploadPlayerFile } from '@/lib/uploads';
-import { Home, Users, Upload, Shield, Sun, Moon } from 'lucide-react';
+import { Home, Users, Upload, Shield, Sun, Moon, Trophy } from 'lucide-react';
+
+import { ParentActivities } from '@/components/ParentActivities';
 
 const Registration = lazy(() => import('@/views/Registration').then((module) => ({ default: module.Registration })));
 
@@ -42,6 +44,8 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
     { id: 'subscriptions', ar: 'الاشتراكات', en: 'Subscriptions', icon: CreditCard },
     { id: 'documents', ar: 'المستندات', en: 'Documents', icon: FileText },
     { id: 'evaluations', ar: 'التقييمات', en: 'Evaluations', icon: Star },
+    { id: 'trainings', ar: 'التدريبات', en: 'Training', icon: CalendarCheck2 },
+    { id: 'competitions', ar: 'المنافسات', en: 'Competitions', icon: Trophy },
     { id: 'attendance', ar: 'الحضور', en: 'Attendance', icon: CalendarCheck2 },
   ];
   const navigate = (id: string) => {
@@ -217,6 +221,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           </div>
         </section>}
       </div>}
+      <ParentActivities lang={lang} />
       <div className="flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">{text('الطلبات', 'Requests')}</p><h2 className="mt-1 text-xl font-black">{text('طلبات التسجيل', 'Registration applications')}</h2></div></div>
       {!ready && !error && <p role="status">{text('جارٍ التحميل…', 'Loading…')}</p>}
       {apps.map(app => <article key={app.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-2 shadow-sm"><div className="flex justify-between gap-3"><p className="font-bold">{app.children.map(c => c.fullName).join('، ')}</p><Badge>{statusLabel(app.status)}</Badge></div>{app.reviewNotes && <p className="text-sm text-amber-700">{app.reviewNotes}</p>}{['draft', 'needs_info'].includes(app.status) && <button className="text-brand-700 font-bold text-sm" onClick={() => setEditor(app)}>{text('استكمال الطلب', 'Continue application')}</button>}</article>)}
@@ -257,7 +262,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           <Registration key={editor === 'new' ? 'new' : editor.id} initial={editor === 'new' ? undefined : editor} lang={lang} onSaved={refresh} onBusyChange={setRegistrationBusy} onExit={() => { if (!registrationBusy) setEditor(null); }} />
         </Suspense>}
       </Modal>
-      <nav className="arena-bottom-nav" aria-label={text('التنقل السريع','Quick navigation')}>{sections.filter(x=>x.id!=='attendance').map(item=><button key={item.id} onClick={()=>navigate(item.id)} aria-current={activeSection===item.id?'page':undefined}><item.icon className="h-5 w-5"/><span>{ar?item.ar:item.en}</span></button>)}</nav>
+      <nav className="arena-bottom-nav" aria-label={text('التنقل السريع','Quick navigation')}>{sections.filter(x=>!['attendance','trainings','competitions'].includes(x.id)).map(item=><button key={item.id} onClick={()=>navigate(item.id)} aria-current={activeSection===item.id?'page':undefined}><item.icon className="h-5 w-5"/><span>{ar?item.ar:item.en}</span></button>)}</nav>
     </div>
   </main>;
 }
