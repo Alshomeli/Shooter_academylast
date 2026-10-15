@@ -16,12 +16,12 @@ The **current official public website** is `https://shooter-academy-new-1vvk.bol
 
 1. Open https://search.google.com/search-console and choose **Add property**.
 2. Choose **URL prefix**, not Domain, and enter exactly `https://shooter-academy-new-1vvk.bolt.host/`. The URL-prefix property does not require ownership of the entire `bolt.host` domain.
-3. Choose **HTML tag verification** or **HTML file upload**. Copy the exact unique value Google shows. Do **not** generate a placeholder token. A verified owner can share the tag/file with the project maintainer for adding to `index.html` or `public/`, followed by a Bolt **Publish → Update**.
+3. **HTML tag verification received from academy owner and committed to `index.html`.** Publish the latest `main` version through Bolt **Publish → Update** and verify that the Google tag appears in the deployed page's raw HTML `<head>`. Do not generate another token.
 4. Confirm that Google's verification method is publicly accessible on the Bolt production URL; click **Verify** in Search Console.
 5. In Search Console, open **Sitemaps**, submit `sitemap.xml` and check whether Google can fetch it.
 6. Use **URL Inspection** on `/` and `/?lang=en`. Check selected canonical, JavaScript-rendered content, and indexing. Request indexing if appropriate, understanding that Google controls crawl and ranking. Monitor Coverage/Pages and Performance.
 
-**A Search Console verification token is not an API key for Google Maps or Analytics.** No Google credentials were invented, copied from WordPress, or committed to this repository. A map iframe can be displayed without providing the academy with a secret Maps API key; enable a billable Google Maps API only if actual application functionality requires it.
+**A Search Console verification token is not an API key for Google Maps or Analytics.** The academy owner supplied the HTML verification tag for the official Bolt property; the exact value was placed in `index.html` for verification. This public site-ownership tag is not a secret or a Google Maps/Analytics API credential. No other Google credentials were invented or copied from WordPress. A map iframe can be displayed without providing the academy with a secret Maps API key; enable a billable Google Maps API only if actual application functionality requires it.
 
 ## Retiring the separate WordPress website
 
