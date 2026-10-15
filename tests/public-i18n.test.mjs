@@ -38,7 +38,7 @@ test('each static homepage text node has a deliberate English translation', () =
 
 test('legal pages preserve all text in both languages and section hash IDs', () => {
   const policy = readFileSync(new URL('../src/views/LegalPage.tsx', import.meta.url), 'utf8');
-  for (const heading of ['Information We Collect', 'Registration and Admission', 'Cancellation and Refunds', 'Privacy & Data Protection']) {
+  for (const heading of ['Information We May Collect', 'Registration and Admission', 'Cancellation and Refunds', 'Privacy & Data Protection']) {
     assert.ok(policy.includes(heading), heading);
   }
   assert.ok(policy.includes("id: 'payments'"));
