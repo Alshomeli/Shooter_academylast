@@ -16,6 +16,11 @@ test('official homepage has one static canonical at the Bolt host', () => {
   assert.ok(!index.includes('rel="canonical" href="https://shooter.academy/'));
 });
 
+test('shared app entry does not force indexing of authentication or legal routes', () => {
+  assert.ok(!index.includes('<meta name="robots" content="index,follow'));
+  assert.ok(!index.includes('google-site-verification'));
+});
+
 test('Arabic and English variants have consistent hreflang navigation', () => {
   for (const lang of ['ar','en','x-default']) {
     assert.match(index, new RegExp('rel="alternate" hreflang="' + lang + '"'));
