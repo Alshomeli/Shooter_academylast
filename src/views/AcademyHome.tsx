@@ -11,6 +11,7 @@ import { publicLanguage, publicText } from '@/lib/public-i18n';
 import type { Lang } from '@/types';
 
 const platform = '/?view=login';
+const hiddenNewsTitle = (ar?: string, en?: string) => /junior premier league|شوتر تنضم إلى/i.test(`${ar || ''} ${en || ''}`);
 const navigation = [['about', 'الأكاديمية'], ['programs', 'البرامج'], ['coaches', 'التدريب'], ['media', 'الصور والفيديو'], ['news', 'الأخبار'], ['faq', 'الأسئلة الشائعة']];
 type SocialPlatform = 'instagram' | 'whatsapp' | 'facebook' | 'tiktok';
 function SocialIcon({ kind }: { kind: SocialPlatform }) {
@@ -62,8 +63,8 @@ export default function AcademyHome() {
         photo: i.payload.image,
       }));
   const publicNews = (legacy
-    ? defaultNews.map(n => ({ ...n, id: n.title, date: '', title: tr(n.title), summary: tr(n.summary), imageAlt: tr(n.imageAlt) }))
-    : content.filter(i => i.kind === 'news').map(i => ({
+    ? defaultNews.filter(n => !hiddenNewsTitle(n.title)).map(n => ({ ...n, id: n.title, date: '', title: tr(n.title), summary: tr(n.summary), imageAlt: tr(n.imageAlt) }))
+    : content.filter(i => i.kind === 'news' && !hiddenNewsTitle(i.payload.title, i.payload.title_en)).map(i => ({
         id: i.id,
         title: tr(i.payload.title, i.payload.title_en),
         summary: tr(i.payload.body, i.payload.body_en),
@@ -72,7 +73,7 @@ export default function AcademyHome() {
         url: '#media',
         date: i.payload.date,
       }))
-    ).filter(n => !/junior premier league|شوتر تنضم إلى/i.test(n.title));
+    );
   const publicVideos = (legacy
     ? defaultVideos.map(v => ({ ...v, title: tr(v.title), caption: tr(v.caption), newsId: '' }))
     : content.filter(i => i.kind === 'video').map(i => ({
