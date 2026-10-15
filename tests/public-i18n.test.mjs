@@ -41,8 +41,8 @@ test('legal pages preserve all text in both languages and section hash IDs', () 
   for (const heading of ['Information We May Collect', 'Registration and Admission', 'Cancellation, Refunds and Service Quality', 'Privacy & Data Protection']) {
     assert.ok(policy.includes(heading), heading);
   }
-  assert.ok(policy.includes("id: 'payments'"));
-  assert.ok(policy.includes("id: 'refunds'"));
+  assert.ok(/id:\s*['"]payments['"]/.test(policy));
+  assert.ok(/id:\s*['"]refunds['"]/.test(policy));
   assert.ok(policy.includes("aria-label={english ? 'Legal navigation'"));
 });
 
