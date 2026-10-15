@@ -4,22 +4,18 @@ import test from 'node:test';
 
 const home = readFileSync(new URL('../src/views/AcademyHome.tsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/academy-home.css', import.meta.url), 'utf8');
-const crest = readFileSync(new URL('../public/copilot_image_1776165482483-300x300.png', import.meta.url));
 
-test('homepage uses the existing transparent Shooter Academy logo instead of tiny white-backed JPEG', () => {
-  assert.match(home, /className="ah-brand-logo" src="\/copilot_image_1776165482483-300x300\.png"/);
-  assert.doesNotMatch(home, /className="ah-brand"><img src="\/1790474303638\.jpg"/);
-  assert.ok(crest.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])));
-  assert.equal(crest[25], 6, 'PNG must use RGBA (transparent-background capable)');
-  assert.ok(statSync(new URL('../public/copilot_image_1776165482483-300x300.png', import.meta.url)).size < 120_000);
+test('home header preserves the owner-approved original Shooter Academy badge', () => {
+  assert.match(home, /className="ah-brand"><img src="\/1790474303638\.jpg" width="54" height="60"/);
+  assert.ok(!home.includes('className="ah-brand-logo"'));
+  assert.ok(!home.includes('src="/copilot_image_1776165482483-300x300.png"'));
+  assert.ok(statSync(new URL('../public/1790474303638.jpg', import.meta.url)).size > 1000);
 });
 
-test('header logo has legible dimensions and red-accented backing at mobile breakpoints', () => {
-  assert.match(css, /\.ah-brand \.ah-brand-logo\{/);
-  assert.match(css, /width:68px;height:68px/);
-  assert.match(css, /width:52px;height:52px/);
-  assert.match(css, /border:1px solid #963542/);
-  assert.match(css, /\.ah-brand:focus-visible/);
+test('restores original brand CSS and does not add alternate crest frame', () => {
+  assert.match(css, /\.ah-brand img\{width:48px;height:54px/);
+  assert.match(css, /\.ah-brand img\{width:39px;height:44px/);
+  assert.ok(!css.includes('.ah-brand .ah-brand-logo'));
 });
 
 test('coaching principle cards have visible large descriptions and both color modes', () => {
