@@ -2,7 +2,7 @@
 export const academyContact = {
   instagram: 'https://www.instagram.com/shooter.academy.bh/',
   tiktok: 'https://www.tiktok.com/@shooter_academy',
-  facebook: 'https://www.facebook.com/Shooter.academy.bh/',
+  facebook: 'https://www.facebook.com/share/1Dmp9eq58p/',
   whatsapp: 'https://wa.me/97332287776',
   maps: 'https://maps.app.goo.gl/h7MjBm9kDBykRmkKA?g_st=ac',
 };

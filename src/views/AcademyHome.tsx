@@ -151,7 +151,7 @@ export default function AcademyHome() {
   return <div className={`academy-home ${darkMode ? 'ah-dark' : 'ah-light'}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang} id="top">
     <a className="ah-skip" href="#about">{tr("تخطي إلى المحتوى")}</a>
     <header className="ah-header">
-      <a href="#top" className="ah-brand"><img src="/1790474303638.jpg" width="54" height="60" alt={tr("شعار أكاديمية شوتر")}/><span>{tr("أكاديمية شوتر")}<small>SHOOTER ACADEMY</small></span></a>
+      <a href="#top" className="ah-brand"><img src="/shooter-logo-transparent.png" width="54" height="60" alt={tr("شعار أكاديمية شوتر")}/><span>{tr("أكاديمية شوتر")}<small>SHOOTER ACADEMY</small></span></a>
       <nav className={`ah-nav ${menu ? 'is-open' : ''}`} id="ah-navigation" aria-label={tr("التنقل الرئيسي")}>{navigation.map(([id,label]) => <a href={`#${id}`} key={id} onClick={() => setMenu(false)}>{tr(label)}</a>)}</nav>
       <SocialLinks links={links} header lang={lang}/>
       <button type="button" className="ah-language-toggle" onClick={toggleLanguage} aria-label={lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'} title={lang === 'ar' ? 'Switch to English' : 'العودة إلى العربية'} lang={lang === 'ar' ? 'en' : 'ar'}>{lang === 'ar' ? 'EN' : 'عربي'}</button>
@@ -162,7 +162,7 @@ export default function AcademyHome() {
     <main>
       {contentError && <p role="status" className="ah-muted">{tr("تعذّر تحميل آخر المحتوى. يرجى تحديث الصفحة.")}</p>}
       <section className={featuredPlayer ? 'ah-hero ah-hero-featured' : 'ah-hero'} aria-labelledby="ah-title">
-        <img className="ah-hero-image" src="/parent-hero.png" alt={tr("تصميم رياضي يعكس شغف كرة القدم")}/>
+        <img className="ah-hero-image" fetchPriority="high" src="/parent-hero.png" alt={tr("تصميم رياضي يعكس شغف كرة القدم")}/>
         {featuredPlayer && <img className="ah-featured-cutout" style={featuredImageStyle(contact ?? {})} src={featuredPlayer.image} alt={`${tr("لاعب الشهر")}: ${featuredPlayer.name}`}/>}
         <div className="ah-hero-shade"/>
         <div className="ah-hero-content"><p className="ah-eyebrow">{tr("شغف اليوم. أبطال الغد.")}</p><h1 id="ah-title">{tr("هنا تبدأ")}<br/>{tr("رحلتك")} <em>{tr("الكروية.")}</em></h1><p className="ah-lead">{tr("مهارة تتطور. ثقة تكبر. وفريق يجمعنا.")}<br/>{tr("في أكاديمية شوتر، نمنح شغف كرة القدم مساحة للنمو.")}</p><div className="ah-actions"><a className="ah-button" href={platform}>{tr("دخول منصة الأكاديمية")} <ArrowUpLeft size={20}/></a><a className="ah-text-link" href="#programs">{tr("اكتشف برامجنا")} <ArrowDown size={17}/></a></div>
