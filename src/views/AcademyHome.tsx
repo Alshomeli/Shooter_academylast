@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { academyContact as defaultLinks, programImages, publicCoaches as defaultCoaches, publicNews as defaultNews, publicVideos as defaultVideos, publicGallery as defaultGallery } from '@/data/public-academy';
 import '../academy-home.css';
 import { readPublicContent, type ContentItem } from '@/lib/site-content';
+import { galleryAlbum, galleryNewsId } from '@/lib/home-gallery';
 import { featuredImageStyle } from '@/lib/featured-player';
 
 const platform = '/?view=login';
@@ -44,7 +45,7 @@ export default function AcademyHome() {
   const publicCoaches = legacy ? defaultCoaches : content.filter(i => i.kind === 'coach').map(i => ({name:i.payload.title,role:i.payload.role,photo:i.payload.image}));
   const publicNews = (legacy ? defaultNews.map(n => ({...n, id: n.title, date:''})) : content.filter(i => i.kind === 'news').map(i => ({id:i.id,title:i.payload.title,summary:i.payload.body,image:i.payload.image,imageAlt:i.payload.alt||i.payload.title,url:'#media',date:i.payload.date}))).filter(n => !/junior premier league|شوتر تنضم إلى/i.test(n.title));
   const publicVideos = (legacy ? defaultVideos : content.filter(i => i.kind === 'video').map(i => ({title:i.payload.title,caption:i.payload.body,src:i.payload.video,poster:i.payload.poster,newsId:i.payload.news_id}))).filter(v => Boolean(v.src?.trim()));
-  const publicGallery = legacy ? defaultGallery : content.filter(i => i.kind === 'gallery').map(i => ({src:i.payload.image,title:i.payload.title,caption:i.payload.body,alt:i.payload.alt||i.payload.title,album:i.payload.album,newsId:i.payload.news_id}));
+  const publicGallery = legacy ? defaultGallery : content.filter(i => i.kind === 'gallery').map(i => ({src:i.payload.image,title:i.payload.title,caption:i.payload.body,alt:i.payload.alt||i.payload.title,album:galleryAlbum(i.payload.image,i.payload.album),newsId:galleryNewsId(i.payload.image,i.payload.news_id,publicNews)}));
   const contact = content.find(i => i.kind === 'contact')?.payload;
   const featuredPlayer = contact?.featured_name?.trim() && contact?.featured_image
     ? { name: contact.featured_name.trim(), image: contact.featured_image,
