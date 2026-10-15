@@ -26,7 +26,7 @@ function SocialLinks({ links, header = false, lang = 'ar' }: { links: typeof def
     { kind: 'facebook', label: 'Facebook' }, { kind: 'tiktok', label: 'TikTok' },
   ];
   return <div className={`ah-social ${header ? 'ah-social-top' : ''}`} aria-label={publicText("حسابات أكاديمية شوتر", lang)}>
-    {platforms.map(({ kind, label }) => <a key={kind} className={kind} href={links[kind]} target="_blank" rel="noopener noreferrer" title={label} aria-label={`حساب أكاديمية شوتر على ${label}`}>
+    {platforms.map(({ kind, label }) => <a key={kind} className={kind} href={links[kind]} target="_blank" rel="noopener noreferrer" title={label} aria-label={lang === "en" ? `Shooter Academy on ${label}` : `حساب أكاديمية شوتر على ${label}`}>
       <SocialIcon kind={kind}/><span className="ah-social-label-hidden">{label}</span>
     </a>)}
   </div>;
