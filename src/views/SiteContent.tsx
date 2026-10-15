@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Plus, Save, Eye, Upload, History, Globe } from 'lucide-react';
 import type { Lang, Role, Staff } from '@/types';
 import { publishContent, readContentHistory, readManagerContent, resolveContentMedia, saveContent, uploadContentFile, type ContentItem, type ContentKind, type ContentRevision } from '@/lib/site-content';
+import { featuredImageStyle } from '@/lib/featured-player';
 
 const kinds: {kind:ContentKind; ar:string; en:string}[] = [
   {kind:'news',ar:'الأخبار',en:'News'},{kind:'gallery',ar:'معرض الصور',en:'Gallery'},
@@ -33,7 +34,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   },[]);
   useEffect(()=>{if(activeRole==='manager') void reload();},[activeRole,reload]);
   if(activeRole!=='manager') return <p>{ar?'هذا القسم للمدير فقط.':'Manager access required.'}</p>;
-  const setField=(field:string,value:string)=>setSelected(s=>s?{...s,payload:{...s.payload,[field]:value}}:s);
+  const setField=(field:string,value:string)=>{setPreview(null);setSelected(s=>s?{...s,payload:{...s.payload,[field]:value}}:s);};
   const run=async(task:()=>Promise<void>)=>{
     setBusy(true);setError('');setMessage('');
     try{await task();}catch(e){setError(e instanceof Error?e.message:String((e as {message?:string}).message||e));}finally{setBusy(false);}
@@ -63,11 +64,14 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           {contacts.map(c=>field(c,c,'url'))}
           <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-3">
             <h3 className="font-black text-lg">لاعب الشهر — بطاقة التكريم</h3>
-            <p className="text-xs text-slate-600 dark:text-slate-300">يظهر اللاعب بدل صورة الواجهة الحالية فقط بعد نشر صورة واسم اللاعب. للحصول على فصل بصري نظيف، استخدم صورة PNG أو WebP شفافة الخلفية.</p>
+            <p className="text-xs text-slate-600 dark:text-slate-300">تظل خلفية الواجهة ثابتة، وتظهر فوقها صورة اللاعب الشفافة فقط بعد نشر اسمه وصورته. استخدم PNG أو WebP بخلفية شفافة.</p>
             {field('featured_name','اسم اللاعب')}
             {field('featured_heading','عنوان بطاقة التكريم')}
             <label className="block space-y-1"><span className="text-sm font-bold">نبذة وسبب التميز</span><textarea className={input} rows={3} maxLength={1800} disabled={busy} value={selected.payload.featured_body||''} onChange={e=>setField('featured_body',e.target.value)}/></label>
             {upload('featured_image','صورة اللاعب (PNG / WebP بخلفية شفافة مفضلة)')}
+            <div className="grid gap-3 sm:grid-cols-3">
+              {([['featured_left','الموقع الأفقي',-20,30,1],['featured_width','عرض اللاعب',28,70,50],['featured_height','ارتفاع اللاعب',50,100,94]] as const).map(([key,label,min,max,fallback])=><label key={key} className="block space-y-2 text-sm"><span className="font-bold">{label}: {selected.payload[key] || fallback}%</span><input className="w-full accent-red-700" type="range" min={min} max={max} step={1} value={selected.payload[key] || fallback} disabled={busy} onChange={e=>setField(key,e.target.value)}/></label>)}
+            </div>
             <p className="text-xs text-slate-600 dark:text-slate-300">استعمل معاينة قبل النشر؛ الصور والمسودات لا تظهر للزوار حتى النشر.</p>
           </div>
         </>:<>
@@ -97,7 +101,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           {!isNew&&<button className={`${button} !bg-slate-600`} disabled={busy} onClick={()=>void run(async()=>{setHistory(await readContentHistory(selected.id));setShowHistory(true);})}><History size={16}/>سجل النسخ</button>}
         </div>
         {preview&&<article className="space-y-2 rounded-xl border border-red-200 p-4"><h3 className="font-black">معاينة — غير منشورة</h3>{preview.payload.image&&<img className="max-h-80 w-full object-contain" src={preview.payload.image} alt={preview.payload.alt||preview.payload.title}/>}
-        {preview.payload.featured_image&&<div className="rounded-xl bg-slate-950 p-4 text-white"><img className="mx-auto max-h-64 object-contain" src={preview.payload.featured_image} alt={preview.payload.featured_name||'لاعب الشهر'}/><h4 className="font-bold">{preview.payload.featured_heading||'لاعب الشهر'}</h4><p>{preview.payload.featured_name}</p><p>{preview.payload.featured_body}</p></div>} {preview.payload.video&&<video className="max-h-80 w-full" controls playsInline src={preview.payload.video} poster={preview.payload.poster}/>}<h4 className="font-bold">{preview.payload.title}</h4><p className="whitespace-pre-wrap">{preview.payload.body}</p>{kind==='contact'&&contacts.map(c=><p className="break-all" key={c}>{c}: {preview.payload[c]}</p>)}</article>}
+        {preview.payload.featured_image&&<div className="academy-home"><section className="ah-hero ah-hero-featured ah-featured-preview" aria-label="معاينة واجهة لاعب الشهر"><img className="ah-hero-image" src="/parent-hero.png" alt="خلفية واجهة الأكاديمية"/><div className="ah-hero-shade"/><img className="ah-featured-cutout" style={featuredImageStyle(preview.payload)} src={preview.payload.featured_image} alt={preview.payload.featured_name||'لاعب الشهر'}/><div className="ah-hero-content"><p className="ah-eyebrow">شغف اليوم. أبطال الغد.</p><h2 className="ah-preview-heading">هنا تبدأ رحلتك الكروية</h2><aside className="ah-featured-honor"><span>{preview.payload.featured_heading||'لاعب الشهر'}</span><strong>{preview.payload.featured_name}</strong><p>{preview.payload.featured_body}</p></aside></div></section></div>} {preview.payload.video&&<video className="max-h-80 w-full" controls playsInline src={preview.payload.video} poster={preview.payload.poster}/>}<h4 className="font-bold">{preview.payload.title}</h4><p className="whitespace-pre-wrap">{preview.payload.body}</p>{kind==='contact'&&contacts.map(c=><p className="break-all" key={c}>{c}: {preview.payload[c]}</p>)}</article>}
         {showHistory&&<div className="space-y-2"><h3 className="font-bold">النسخ السابقة — الاسترجاع يحفظ كمسودة</h3>{history.map(h=><div key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2"><span>نسخة {h.version} · {new Date(h.changed_at).toLocaleString('ar-BH')} · {h.action} · {h.changed_by ? staff.find(s=>s.userId===h.changed_by)?.name || 'الإدارة' : 'محتوى أولي'}</span><button className={button} disabled={busy} onClick={()=>void run(async()=>{const saved=await saveContent({...selected,payload:h.payload,sort_order:h.sort_order},false);setSelected(saved);setHistory(await readContentHistory(selected.id));await reload();setMessage('تم استرجاع النسخة كمسودة. اضغط نشر لاعتمادها.');})}>استرجاع كمسودة</button></div>)}</div>}
       </div>:<div className={box}>اختر محتوى للتعديل، أو أضف محتوى جديدًا.</div>}
     </div>
