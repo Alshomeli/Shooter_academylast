@@ -14,7 +14,7 @@ export function AcademyGallery({ photos = publicGallery }: { photos?: GalleryPho
   const dialog = useRef<HTMLDialogElement>(null);
   const [activeAlbum, setActiveAlbum] = useState(0);
   const [activePhoto, setActivePhoto] = useState(0);
-  const albums = photos.reduce<{ title: string; photos: GalleryPhoto[] }[]>((groups, photo) => {
+  const albums = photos.filter(item => Boolean(item.src?.trim())).reduce<{ title: string; photos: GalleryPhoto[] }[]>((groups, photo) => {
     const title = photo.album?.trim() || photo.title;
     const existing = groups.find(group => group.title === title);
     if (existing) existing.photos.push(photo);
