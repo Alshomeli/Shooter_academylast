@@ -121,6 +121,17 @@ export default function AcademyHome() {
     prefs.saveLang(lang);
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    // Give each language its own canonical URL and discoverable alternate.
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (canonical) canonical.href = new URL(lang === 'en' ? '/?lang=en' : '/', window.location.origin).toString();
+    for (const [code, path] of [['ar', '/'], ['en', '/?lang=en'], ['x-default', '/']] as const) {
+      const alternate = document.querySelector<HTMLLinkElement>(`link[rel="alternate"][hreflang="${code}"]`)
+        ?? document.createElement('link');
+      alternate.rel = 'alternate';
+      alternate.hreflang = code;
+      alternate.href = new URL(path, window.location.origin).toString();
+      if (!alternate.parentNode) document.head.appendChild(alternate);
+    }
     document.title = lang === 'en' ? 'Shooter Football Academy | Bahrain' : 'أكاديمية شوتر لكرة القدم | Shooter Academy';
     document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute(
       'content',
