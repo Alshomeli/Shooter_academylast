@@ -133,12 +133,20 @@ export default function AcademyHome() {
       if (!alternate.parentNode) document.head.appendChild(alternate);
     }
     document.title = lang === 'en' ? 'Shooter Football Academy | Bahrain' : 'أكاديمية شوتر لكرة القدم | Shooter Academy';
-    document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute(
-      'content',
-      lang === 'en'
-        ? 'Shooter Academy in Bahrain develops young football talent through skills training, fitness, and teamwork.'
-        : 'أكاديمية شوتر لكرة القدم في البحرين. تطوير مهارات اللاعبين واللياقة البدنية وروح الفريق. اكتشف برامجنا وتابع أخبار الأكاديمية.'
-    );
+    const summary = lang === 'en'
+      ? 'Shooter Academy in Bahrain develops young football talent through skills training, fitness, and teamwork.'
+      : 'أكاديمية شوتر لكرة القدم في البحرين. تطوير مهارات اللاعبين واللياقة البدنية وروح الفريق. اكتشف برامجنا وتابع أخبار الأكاديمية.';
+    document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute('content', summary);
+    // Keep share previews and language metadata aligned with the selected public URL.
+    const shareUrl = new URL(lang === 'en' ? '/?lang=en' : '/', window.location.origin).toString();
+    for (const [selector, value] of [
+      ['meta[property="og:url"]', shareUrl],
+      ['meta[property="og:title"]', document.title],
+      ['meta[property="og:description"]', summary],
+      ['meta[property="og:locale"]', lang === 'en' ? 'en_US' : 'ar_BH'],
+      ['meta[name="twitter:title"]', document.title],
+      ['meta[name="twitter:description"]', summary],
+    ] as const) document.querySelector<HTMLMetaElement>(selector)?.setAttribute('content', value);
   }, [lang]);
   return <div className={`academy-home ${darkMode ? 'ah-dark' : 'ah-light'}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang} id="top">
     <a className="ah-skip" href="#about">{tr("تخطي إلى المحتوى")}</a>
