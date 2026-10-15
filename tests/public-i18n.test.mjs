@@ -61,3 +61,9 @@ test('English homepage has discoverable canonical, alternate language links, and
   }
   assert.match(sitemap, /<loc>https:\/\/shooter-academy-new-1vvk\.bolt\.host\/\?lang=en<\/loc>/);
 });
+
+test('social links expose accessible labels in the selected language', () => {
+  const home = readFileSync(new URL('../src/views/AcademyHome.tsx', import.meta.url), 'utf8');
+  assert.match(home, /lang === "en" \? `Shooter Academy on \$\{label\}`/);
+  assert.match(home, /`حساب أكاديمية شوتر على \$\{label\}`/);
+});
