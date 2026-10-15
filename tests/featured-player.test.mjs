@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { featuredImageStyle } from '../src/lib/featured-player.ts';
+import { featuredImageStyle, featuredPlayerValidationError } from '../src/lib/featured-player.ts';
 
 test('featured player uses stable placement defaults', () => {
   assert.deepEqual(featuredImageStyle({}), {
@@ -32,4 +32,16 @@ test('featured player ignores invalid or non-finite percentages', () => {
     '--featured-width': '50%',
     '--featured-height': '94%',
   });
+});
+
+test('contact links alone do not require a featured-player announcement', () => {
+  assert.equal(featuredPlayerValidationError({ instagram: 'https://example.org' }), null);
+});
+
+test('featured-player details need both a name and an image before publishing', () => {
+  assert.match(featuredPlayerValidationError({ featured_name: 'سلمان' }), /صورة اللاعب/);
+  assert.match(featuredPlayerValidationError({ featured_image_path: 'media/player.webp' }), /اسم اللاعب/);
+  assert.match(featuredPlayerValidationError({ featured_heading: 'لاعب الشهر' }), /اسم اللاعب/);
+  assert.equal(featuredPlayerValidationError({ featured_name: ' سلمان ', featured_image_path: 'media/player.webp' }), null);
+  assert.equal(featuredPlayerValidationError({ featured_name: 'سلمان', featured_image: '/home/player.png' }), null);
 });
