@@ -62,6 +62,15 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           {field('title',kind==='coach'?'اسم المدرب':'العنوان')}
           <label className="block space-y-1"><span className="text-sm font-bold">{kind==='coach'?'نبذة المدرب':'الوصف / التعليق'}</span><textarea className={input} rows={4} maxLength={6000} disabled={busy} value={selected.payload.body||''} onChange={e=>setField('body',e.target.value)}/></label>
           {kind==='news'&&field('date','تاريخ الخبر','date')}
+          {kind==='gallery'&&field('album','اسم النشاط / الألبوم (الصور التي لها نفس الاسم تظهر ضمن مجموعة واحدة)')}
+          {(kind==='gallery'||kind==='video')&&<label className="block space-y-1">
+            <span className="text-sm font-bold">الخبر المرتبط بهذا {kind==='gallery'?'الصورة':'الفيديو'} (اختياري)</span>
+            <select className={input} value={selected.payload.news_id||''} disabled={busy} onChange={e=>setField('news_id',e.target.value)}>
+              <option value="">بدون خبر مرتبط</option>
+              {items.filter(i=>i.kind==='news').map(n=><option key={n.id} value={n.id}>{n.payload.title}</option>)}
+            </select>
+            <span className="text-xs text-slate-600 dark:text-slate-300">المرفق يظهر في تفاصيل الخبر عند نشر الاثنين، وليس في أخبار أخرى.</span>
+          </label>}
           {kind==='coach'&&field('role','التخصص / الدور')}
           {field('alt','وصف الصورة للقارئ')}
           {kind==='video'?<>{upload('video','رفع الفيديو',true)}{upload('poster','صورة غلاف الفيديو')}</>:upload('image','رفع الصورة')}
