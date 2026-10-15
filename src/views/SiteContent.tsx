@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Plus, Save, Eye, Upload, History, Globe } from 'lucide-react';
 import type { Lang, Role, Staff } from '@/types';
 import { publishContent, readContentHistory, readManagerContent, resolveContentMedia, saveContent, uploadContentFile, type ContentItem, type ContentKind, type ContentRevision } from '@/lib/site-content';
-import { featuredImageStyle } from '@/lib/featured-player';
+import { featuredImageStyle, featuredPlayerValidationError } from '@/lib/featured-player';
 import { hasReviewedCurrentDraft } from '@/lib/content-review';
 import '../academy-home.css';
 
@@ -45,6 +45,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   const save=async()=>{
     if(!selected) throw new Error('اختر محتوى أولًا.');
     if(selected.kind!=='contact'&&!selected.payload.title?.trim()) throw new Error('العنوان مطلوب.');
+    if(selected.kind==='contact') {const issue=featuredPlayerValidationError(selected.payload);if(issue) throw new Error(issue);}
     if(selected.kind==='contact') for(const key of contacts){const value=selected.payload[key];if(value){const url=new URL(value);if(url.protocol!=='https:') throw new Error('روابط التواصل يجب أن تبدأ بـ HTTPS.');}}
     const saved=await saveContent(selected,isNew);setSelected(saved);setIsNew(false);await reload();return saved;
   };
