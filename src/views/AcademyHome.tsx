@@ -12,7 +12,7 @@ const platform = '/?view=login';
 const navigation = [['about', 'الأكاديمية'], ['programs', 'البرامج'], ['coaches', 'التدريب'], ['media', 'الصور والفيديو'], ['news', 'الأخبار'], ['faq', 'الأسئلة الشائعة']];
 type SocialPlatform = 'instagram' | 'whatsapp' | 'facebook' | 'tiktok';
 function SocialIcon({ kind }: { kind: SocialPlatform }) {
-  if (kind === 'instagram') return <Instagram size={19} aria-hidden="true"/>;
+  if (kind === 'instagram') return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.6" r="1" fill="currentColor" stroke="none"/></svg>;
   if (kind === 'facebook') return <Facebook size={19} aria-hidden="true"/>;
   if (kind === 'whatsapp') return <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.9-1.3A10 10 0 1 0 12 2Zm0 18a8 8 0 0 1-4-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1 1 12 20Zm4.1-6.2c-.2-.1-1.3-.7-1.5-.8-.2-.1-.3-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.4 6.4 0 0 1-2.8-2.5c-.1-.2 0-.3.1-.5l.5-.6c.1-.1.2-.3.1-.5L10 8.1c-.1-.3-.3-.3-.5-.3H9c-.2 0-.5.1-.7.3-.2.3-.8.9-.8 2.1s.8 2.3 1 2.5a9 9 0 0 0 3.7 3.3c.5.2 1 .4 1.4.5.5.1 1 .1 1.4.1.4-.1 1.3-.5 1.5-1.1.2-.5.2-1 .1-1.1-.1-.2-.2-.2-.5-.4Z"/></svg>;
   return <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor" aria-hidden="true"><path d="M16.7 2c.2 2.5 1.7 4 4.3 4.2v3.9a8.9 8.9 0 0 1-4.3-1.1v6c0 4.3-3.3 7-7.2 7a7 7 0 1 1 1.5-13.8v4a3 3 0 0 0-1.5-.2 3.1 3.1 0 1 0 3.2 3.1V2h4Z"/></svg>;
@@ -23,8 +23,8 @@ function SocialLinks({ links, header = false }: { links: typeof defaultLinks; he
     { kind: 'facebook', label: 'Facebook' }, { kind: 'tiktok', label: 'TikTok' },
   ];
   return <div className={`ah-social ${header ? 'ah-social-top' : ''}`} aria-label="حسابات أكاديمية شوتر">
-    {platforms.map(({ kind, label }) => <a key={kind} className={kind} href={links[kind]} target="_blank" rel="noopener noreferrer" title={label} aria-label={label}>
-      <SocialIcon kind={kind}/><span className={header ? 'ah-social-label-hidden' : ''}>{label}</span>
+    {platforms.map(({ kind, label }) => <a key={kind} className={kind} href={links[kind]} target="_blank" rel="noopener noreferrer" title={label} aria-label={`حساب أكاديمية شوتر على ${label}`}>
+      <SocialIcon kind={kind}/><span className="ah-social-label-hidden">{label}</span>
     </a>)}
   </div>;
 }
@@ -118,16 +118,16 @@ export default function AcademyHome() {
         <iframe title="خريطة موقع أكاديمية شوتر في حالة النعيم، البحرين" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=Shooter%20Academy%2C%20Halat%20Naim%2C%20Bahrain&output=embed"/>
         <p className="ah-map-note">للوصول إلى الموقع المحدد للأكاديمية، استخدم زر الاتجاهات المرتبط بالخريطة المعتمدة.</p>
       </section>
-      <section className="ah-section ah-contact" id="contact"><div><p className="ah-eyebrow">06 / تواصل معنا</p><h2>نلتقي في <em>الملعب.</em></h2><p className="ah-muted">شارع 28، حالة النعيم 997، البحرين</p><a className="ah-text-link" href={links.maps} target="_blank" rel="noopener noreferrer"><MapPin size={18}/> الاتجاهات على خرائط Google</a></div><div className="ah-contact-links"><a href="tel:+97332287776"><Phone size={20}/><bdi>+973 3228 7776</bdi></a><a href="mailto:football.shooter.academy@gmail.com"><Mail size={20}/><span>football.shooter.academy@gmail.com</span></a><SocialLinks links={links}/></div></section>
+      <section className="ah-section ah-contact" id="contact"><div><p className="ah-eyebrow">06 / تواصل معنا</p><h2>نلتقي في <em>الملعب.</em></h2><p className="ah-muted">شارع 28، حالة النعيم 997، البحرين</p><a className="ah-text-link" href={links.maps} target="_blank" rel="noopener noreferrer"><MapPin size={18}/> الاتجاهات على خرائط Google</a></div><div className="ah-contact-links"><a href="tel:+97332287776"><Phone size={20}/><bdi>+973 3228 7776</bdi></a><a href="mailto:shooter.academy.bh@gmail.com"><Mail size={20}/><span>shooter.academy.bh@gmail.com</span></a></div></section>
     </main>
     <section className="ah-section ah-faq" id="faq" aria-labelledby="ah-faq-title"><p className="ah-eyebrow">مساعدة أولياء الأمور</p><h2 id="ah-faq-title">الأسئلة الشائعة</h2>
       <details><summary>كيف أسجل لاعبًا في الأكاديمية؟</summary><p>ادخل إلى منصة الأكاديمية ثم اختر تسجيل ولي الأمر. بعد تقديم البيانات، تراجع الإدارة طلب التسجيل.</p></details>
       <details><summary>كيف أتابع معلومات اللاعب والتدريبات؟</summary><p>يمكن لولي الأمر متابعة بيانات اللاعبين المرتبطين بحسابه من بوابة أولياء الأمور بعد تسجيل الدخول.</p></details>
-      <details><summary>كيف أتواصل مع إدارة الأكاديمية؟</summary><p>يمكنك استخدام رقم الاتصال أو واتساب أو حسابات الأكاديمية الرسمية في قسم التواصل.</p></details>
+      <details><summary>كيف أتواصل مع إدارة الأكاديمية؟</summary><p>يمكنك استخدام رقم الاتصال أو البريد الإلكتروني في قسم التواصل، وروابط حسابات الأكاديمية الرسمية في أعلى الصفحة وأسفلها.</p></details>
     </section>
     <footer className="ah-footer">
       <div className="ah-footer-grid">
-        <div><strong>أكاديمية شوتر</strong><p>تطوير المهارة والانضباط وروح الفريق في مملكة البحرين.</p><a href="#about">عن الأكاديمية</a><SocialLinks links={links}/></div>
+        <div><strong>أكاديمية شوتر</strong><p>تطوير المهارة والانضباط وروح الفريق في مملكة البحرين.</p><a href="#about">عن الأكاديمية</a><div className="ah-footer-social"><span className="ah-footer-social-title">تابع أخبارنا على</span><SocialLinks links={links}/></div></div>
         <nav aria-label="السياسات"><strong>السياسات</strong><a href="/privacy">سياسة الخصوصية</a><a href="/terms">الشروط والأحكام</a><a href="/terms#payments">الدفع والاشتراكات</a><a href="/terms#refunds">الإلغاء والاسترداد</a></nav>
         <nav aria-label="المساعدة"><strong>المساعدة</strong><a href="#faq">الأسئلة الشائعة</a><a href="#contact">الاستفسارات والتواصل</a><a href={links.maps} target="_blank" rel="noopener noreferrer">موقع الأكاديمية</a></nav>
       </div>

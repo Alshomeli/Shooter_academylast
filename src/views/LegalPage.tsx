@@ -4,7 +4,7 @@ import { prefs } from '@/lib/preferences';
 import type { ReactNode } from 'react';
 
 type PolicyPage = 'privacy' | 'terms';
-const contactEmail = 'football.shooter.academy@gmail.com';
+const contactEmail = 'shooter.academy.bh@gmail.com';
 const contactPhone = '+973 3228 7776';
 
 export function LegalPage({ page }: { page: PolicyPage }) {
