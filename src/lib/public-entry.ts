@@ -3,5 +3,5 @@ export function isPublicHome(pathname: string, search: string, hash: string): bo
   if ((pathname.replace(/\/+$/, '') || '/') !== '/') return false;
   const query = new URLSearchParams(search);
   if (['view', 'code', 'error', 'token_hash', 'type', 'authorization_id', 'oauth_return'].some(key => query.has(key))) return false;
-  return !hash || ['#about', '#programs', '#coaches', '#media', '#news', '#contact', '#faq', '#top'].includes(hash);
+  return !hash || ['#about', '#programs', '#coaches', '#media', '#news', '#contact', '#top'].includes(hash);
 }

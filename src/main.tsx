@@ -12,28 +12,6 @@ const legal = legalPath === '/privacy' || legalPath === '/terms';
 const oauthConsent = window.location.pathname === '/oauth/consent';
 const home = isPublicHome(window.location.pathname, window.location.search, window.location.hash);
 
-// Keep authenticated areas out of search results. Public legal text stays
-// accessible without login but is not indexed until the academy approves it.
-const robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]') ?? document.createElement('meta');
-robots.name = 'robots';
-robots.content = home && !legal && !oauthConsent ? 'index,follow' : 'noindex,nofollow';
-if (!robots.parentNode) document.head.appendChild(robots);
-
-if (home && !legal && !oauthConsent) {
-  const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]') ?? document.createElement('link');
-  canonical.rel = 'canonical';
-  canonical.href = new URL('/', window.location.origin).toString();
-  if (!canonical.parentNode) document.head.appendChild(canonical);
-} else if (legal) {
-  document.title = legalPath === '/privacy' ? 'سياسة الخصوصية | أكاديمية شوتر' : 'الشروط والأحكام | أكاديمية شوتر';
-  document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute(
-    'content',
-    legalPath === '/privacy'
-      ? 'سياسة الخصوصية وحماية البيانات في أكاديمية شوتر لكرة القدم.'
-      : 'الشروط والأحكام والتسجيل والاشتراكات في أكاديمية شوتر لكرة القدم.'
-  );
-}
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Suspense fallback={<p role="status" className="p-8 text-center">جارٍ التحميل…</p>}>
