@@ -4,5 +4,7 @@ Disallow: /admin
 Disallow: /coach
 Disallow: /parent
 Disallow: /dashboard
+Disallow: /oauth/
+Disallow: /*?view=
 
 Sitemap: https://shooter-academy-new-1vvk.bolt.host/sitemap.xml
