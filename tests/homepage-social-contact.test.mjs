@@ -21,7 +21,8 @@ test('each linked social network has a recognizable symbol and a text alternativ
     assert.match(home, new RegExp("kind: '" + platform + "'"));
     assert.match(css, new RegExp('\\.ah-social \\.' + platform));
   }
-  assert.match(home, /aria-label=\{`حساب أكاديمية شوتر على/);
+  assert.match(home, /aria-label=\{lang === "en" \? `Shooter Academy on/);
+  assert.match(home, /: `حساب أكاديمية شوتر على/);
   assert.match(home, /<rect x="3" y="3" width="18" height="18" rx="5"\/>/);
 });
 
