@@ -131,3 +131,13 @@
 .ah-featured-preview .ah-featured-honor{max-width:58%;padding:12px 14px}
 @media(max-width:800px){.ah-featured-cutout{height:min(var(--featured-height,94%),78%);opacity:.68}.ah-hero-featured .ah-hero-shade{background:linear-gradient(270deg,#080d14fa,#080d14c9 54%,#080d1466)}.ah-featured-honor{max-width:95%;margin-top:20px}.ah-featured-preview .ah-featured-honor{max-width:65%}}
 @media(max-width:430px){.ah-featured-cutout{height:min(var(--featured-height,94%),62%);opacity:.42}.ah-hero-featured .ah-hero-content{padding-bottom:50px}.ah-featured-honor{background:#101723f0}.ah-featured-preview .ah-featured-honor,.ah-featured-preview .ah-preview-heading{max-width:95%}}
+
+/* Older iPhone Safari versions use vh when dynamic viewport units are unavailable. */
+@supports not (height: 100dvh){
+  .ah-photo-dialog{max-height:95vh}
+  .ah-photo-dialog>img{height:min(68vh,800px)}
+  .ah-news-dialog{max-height:90vh}
+}
+@supports not (overflow: clip){
+  .academy-home{overflow-x:hidden}
+}
