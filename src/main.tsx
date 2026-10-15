@@ -29,6 +29,8 @@ if (home && !legal && !oauthConsent) {
   // Remove public-home search identity tags from restricted/non-home routes.
   document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.remove();
   document.querySelectorAll<HTMLLinkElement>('link[rel="alternate"][hreflang]').forEach(link => link.remove());
+  // Organization/WebSite data describes the public academy, not a private account view.
+  document.getElementById('academy-organization-schema')?.remove();
 }
 if (legal) {
   document.title = legalPath === '/privacy' ? 'سياسة الخصوصية | أكاديمية شوتر' : 'الشروط والأحكام | أكاديمية شوتر';

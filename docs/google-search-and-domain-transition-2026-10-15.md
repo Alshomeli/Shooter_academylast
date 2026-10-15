@@ -53,3 +53,22 @@ Official Google docs:
 - https://developers.google.com/search/docs/crawling-indexing/block-indexing
 - https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls
 - https://support.bolt.new/cloud/domains/third-party-guides
+
+## Continued indexation review — 15 October 2026
+
+- Search Console: the academy owner verified the official Bolt URL-prefix property and submitted a valid sitemap. Google **successfully processed** `sitemap.xml` and discovered **two** homepage URLs (Arabic/English).
+- The latest submitted URL Inspection screenshot showed the root page as **Crawled — currently not indexed**. It confirmed that Googlebot Smartphone successfully fetched the page, was permitted to crawl and was permitted to index. A subsequent **Request Indexing** attempt failed due to the daily quota; no indexing request can be made through this GitHub project. Wait for Google, review URL Inspection the next day and retry only when available; repeated submissions do not guarantee indexing.
+- Public web searches with `site:shooter-academy-new-1vvk.bolt.host` yielded no results during this review; that search is not a complete substitute for the Search Console property report.
+- Independent HTTP fetch shows that initial `index.html` contains a Vite/React app shell (`<div id="root"></div>`), with actual homepage text rendered later by JavaScript. Google documents that it renders JavaScript but this is a separate crawl/render/index pipeline. Do not claim this alone caused "crawled, not indexed" or promise automatic ranking from metadata.
+- Added **Organization + WebSite** JSON-LD to the initial HTML containing the academy's already public name, old approved red/white logo, contacts, location and links. Kept the original JPG logo, which is **1200×896** and publicly crawlable. No trade registry number or unverifiable legal identity claimed. The metadata is removed from private/legal views after SPA routing.
+- The added structured data assists search engines in understanding the academy; **it does not guarantee indexing or rich results**. Site content remains JavaScript-rendered. If Google later reports rendered-content issues, investigate static pre-rendering/SSR in a separately reviewed change rather than replacing the live app impulsively.
+
+Google references:
+- https://developers.google.com/search/docs/appearance/structured-data/organization
+- https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics
+
+### Next checks in Search Console
+1. After the daily request limit clears, inspect the Arabic homepage. Use **Test live URL** and view the rendered HTML or screenshot to confirm the main heading and primary copy are visible to Googlebot.
+2. Retry **Request Indexing** once if offered, not repeatedly.
+3. Inspect `/?lang=en` as a separate URL. Check Google-selected canonical against `/?lang=en` and confirm the English page is rendered in English.
+4. Review the Page indexing and Performance reports over the following days. "Discovered" does not equal "Indexed".
