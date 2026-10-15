@@ -29,5 +29,5 @@ export function galleryNewsId(
 ): string | undefined {
   if (savedNewsId?.trim()) return savedNewsId.trim();
   if (!isAcademyFestivalPhoto(value)) return undefined;
-  return news.find(item => /مهرجان الاتحاد الآسيوي/.test(item.title))?.id;
+  return news.find(item => /مهرجان الاتحاد الآسيوي|AFC Festival/i.test(item.title))?.id;
 }

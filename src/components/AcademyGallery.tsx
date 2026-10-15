@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { X, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react';
 import { publicGallery } from '@/data/public-academy';
+import { publicText } from '@/lib/public-i18n';
+import type { Lang } from '@/types';
 
 export interface GalleryPhoto {
   src: string;
@@ -10,7 +12,8 @@ export interface GalleryPhoto {
   album?: string;
 }
 
-export function AcademyGallery({ photos = publicGallery }: { photos?: GalleryPhoto[] }) {
+export function AcademyGallery({ photos = publicGallery, lang = 'ar' }: { photos?: GalleryPhoto[]; lang?: Lang }) {
+  const tr = (text: string) => publicText(text, lang);
   const dialog = useRef<HTMLDialogElement>(null);
   const [activeAlbum, setActiveAlbum] = useState(0);
   const [activePhoto, setActivePhoto] = useState(0);
@@ -35,23 +38,23 @@ export function AcademyGallery({ photos = publicGallery }: { photos?: GalleryPho
     <div className="ah-gallery">{albums.map((album, index) => {
       const cover = album.photos[0];
       return <figure key={album.title}>
-        <button type="button" onClick={() => open(index)} aria-label={`عرض ألبوم ${album.title}، ${album.photos.length} صور`}>
+        <button type="button" onClick={() => open(index)} aria-label={lang === 'en' ? `Open album ${album.title}, ${album.photos.length} photos` : `عرض ألبوم ${album.title}، ${album.photos.length} صور`}>
           <img src={cover.src} alt={cover.alt} loading="lazy" width="1200" height="860"/>
-          <span><Maximize2 size={16}/> عرض صور النشاط ({album.photos.length})</span>
+          <span><Maximize2 size={16}/> {tr("عرض صور النشاط")} ({album.photos.length})</span>
         </button>
         <figcaption><h3>{album.title}</h3><p>{cover.caption}</p></figcaption>
       </figure>;
     })}</div>
-    <dialog className="ah-photo-dialog" ref={dialog} aria-label={`ألبوم ${group?.title || 'صور الأكاديمية'}`}
+    <dialog className="ah-photo-dialog" ref={dialog} aria-label={lang === 'en' ? `Album: ${group?.title || 'Academy Photos'}` : `ألبوم ${group?.title || 'صور الأكاديمية'}`}
       onKeyDown={e => { if (e.key === 'ArrowLeft') change(1); if (e.key === 'ArrowRight') change(-1); }}
       onClick={e => { if (e.target === e.currentTarget) dialog.current?.close(); }}>
-      <button type="button" className="ah-photo-close" autoFocus onClick={() => dialog.current?.close()} aria-label="إغلاق الصور"><X/></button>
+      <button type="button" className="ah-photo-close" autoFocus onClick={() => dialog.current?.close()} aria-label={tr("إغلاق الصور")}><X/></button>
       <h3 className="ah-photo-heading">{group.title}</h3>
       <img src={photo.src} alt={photo.alt}/><p>{photo.title}</p>
       <div className="ah-photo-controls">
-        <button type="button" onClick={() => change(-1)} disabled={currentPhotos.length < 2} aria-label="الصورة السابقة"><ChevronRight/></button>
+        <button type="button" onClick={() => change(-1)} disabled={currentPhotos.length < 2} aria-label={tr("الصورة السابقة")}><ChevronRight/></button>
         <span>{activePhoto + 1} / {currentPhotos.length}</span>
-        <button type="button" onClick={() => change(1)} disabled={currentPhotos.length < 2} aria-label="الصورة التالية"><ChevronLeft/></button>
+        <button type="button" onClick={() => change(1)} disabled={currentPhotos.length < 2} aria-label={tr("الصورة التالية")}><ChevronLeft/></button>
       </div>
     </dialog>
   </>;
