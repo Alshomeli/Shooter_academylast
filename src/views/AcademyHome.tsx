@@ -45,6 +45,11 @@ export default function AcademyHome() {
   const publicVideos = legacy ? defaultVideos : content.filter(i => i.kind === 'video').map(i => ({title:i.payload.title,caption:i.payload.body,src:i.payload.video,poster:i.payload.poster,newsId:i.payload.news_id}));
   const publicGallery = legacy ? defaultGallery : content.filter(i => i.kind === 'gallery').map(i => ({src:i.payload.image,title:i.payload.title,caption:i.payload.body,alt:i.payload.alt||i.payload.title,album:i.payload.album,newsId:i.payload.news_id}));
   const contact = content.find(i => i.kind === 'contact')?.payload;
+  const featuredPlayer = contact?.featured_name?.trim() && contact?.featured_image
+    ? { name: contact.featured_name.trim(), image: contact.featured_image,
+        heading: contact.featured_heading?.trim() || 'لاعب الشهر',
+        body: contact.featured_body?.trim() || '' }
+    : null;
   const links = {...defaultLinks};
   for (const key of Object.keys(links) as (keyof typeof links)[]) {
     const value = contact?.[key];
@@ -74,10 +79,12 @@ export default function AcademyHome() {
     </header>
     <main>
       {contentError && <p role="status" className="ah-muted">تعذّر تحميل آخر المحتوى. يرجى تحديث الصفحة.</p>}
-      <section className="ah-hero" aria-labelledby="ah-title">
-        <img className="ah-hero-image" src="/parent-hero.png" alt="تصميم رياضي يعكس شغف كرة القدم"/>
+      <section className={featuredPlayer ? 'ah-hero ah-hero-featured' : 'ah-hero'} aria-labelledby="ah-title">
+        {featuredPlayer ? <img className="ah-featured-cutout" src={featuredPlayer.image} alt={`لاعب الشهر: ${featuredPlayer.name}`}/> : <img className="ah-hero-image" src="/parent-hero.png" alt="تصميم رياضي يعكس شغف كرة القدم"/>}
         <div className="ah-hero-shade"/>
-        <div className="ah-hero-content"><p className="ah-eyebrow">شغف اليوم. أبطال الغد.</p><h1 id="ah-title">هنا تبدأ<br/>رحلتك <em>الكروية.</em></h1><p className="ah-lead">مهارة تتطور. ثقة تكبر. وفريق يجمعنا.<br/>في أكاديمية شوتر، نمنح شغف كرة القدم مساحة للنمو.</p><div className="ah-actions"><a className="ah-button" href={platform}>دخول منصة الأكاديمية <ArrowUpLeft size={20}/></a><a className="ah-text-link" href="#programs">اكتشف برامجنا <ArrowDown size={17}/></a></div></div>
+        <div className="ah-hero-content"><p className="ah-eyebrow">شغف اليوم. أبطال الغد.</p><h1 id="ah-title">هنا تبدأ<br/>رحلتك <em>الكروية.</em></h1><p className="ah-lead">مهارة تتطور. ثقة تكبر. وفريق يجمعنا.<br/>في أكاديمية شوتر، نمنح شغف كرة القدم مساحة للنمو.</p><div className="ah-actions"><a className="ah-button" href={platform}>دخول منصة الأكاديمية <ArrowUpLeft size={20}/></a><a className="ah-text-link" href="#programs">اكتشف برامجنا <ArrowDown size={17}/></a></div>
+          {featuredPlayer && <aside className="ah-featured-honor" aria-label="بطاقة تكريم لاعب الشهر"><span>{featuredPlayer.heading}</span><strong>{featuredPlayer.name}</strong>{featuredPlayer.body && <p>{featuredPlayer.body}</p>}</aside>}
+        </div>
         <span className="ah-hero-caption">FOOTBALL · PASSION · DEVELOPMENT</span>
       </section>
       <div className="ah-values"><span><Target/> تطوير المهارات</span><span><Users/> روح الفريق</span><span><Trophy/> شغف المنافسة</span><span>SHOOTER ACADEMY — BAHRAIN</span></div>
