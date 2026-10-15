@@ -51,3 +51,13 @@ test('festival images remain attached to their news when English is selected', (
   assert.equal(galleryNewsId('/home/festival-team.jpg', undefined, enNews), 'story-1');
   assert.equal(galleryNewsId('/home/festival-team.jpg', 'explicit-story', enNews), 'explicit-story');
 });
+
+test('English homepage has discoverable canonical, alternate language links, and sitemap URL', () => {
+  const home = readFileSync(new URL('../src/views/AcademyHome.tsx', import.meta.url), 'utf8');
+  const sitemap = readFileSync(new URL('../public/sitemap.xml', import.meta.url), 'utf8');
+  assert.match(home, /lang === 'en' \? '\/\?lang=en' : '\/'/);
+  for (const code of ['ar', 'en', 'x-default']) {
+    assert.match(sitemap, new RegExp('hreflang="' + code + '"'));
+  }
+  assert.match(sitemap, /<loc>https:\/\/shooter-academy-new-1vvk\.bolt\.host\/\?lang=en<\/loc>/);
+});
