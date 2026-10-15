@@ -45,7 +45,6 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   const save=async()=>{
     if(!selected) throw new Error('اختر محتوى أولًا.');
     if(selected.kind!=='contact'&&!selected.payload.title?.trim()) throw new Error('العنوان مطلوب.');
-    if(selected.kind==='contact') {const issue=featuredPlayerValidationError(selected.payload);if(issue) throw new Error(issue);}
     if(selected.kind==='contact') for(const key of contacts){const value=selected.payload[key];if(value){const url=new URL(value);if(url.protocol!=='https:') throw new Error('روابط التواصل يجب أن تبدأ بـ HTTPS.');}}
     const saved=await saveContent(selected,isNew);setSelected(saved);setIsNew(false);await reload();return saved;
   };
@@ -99,8 +98,8 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
         <p className="text-xs text-slate-500 dark:text-slate-400">الملفات المرفوعة خاصة حتى نشر المحتوى. تغيير المحتوى لا يغيّر النسخة المنشورة تلقائيًا. اضغط «معاينة» بعد أي تغيير لتفعيل زر النشر.</p>
         <div className="flex flex-wrap gap-2">
           <button className={button} disabled={busy} onClick={()=>void run(async()=>{await save();setMessage('تم حفظ المسودة.');})}><Save size={16}/>حفظ مسودة</button>
-          <button className={`${button} !bg-slate-600`} disabled={busy} onClick={()=>void run(async()=>{const resolved=await resolveContentMedia([selected]);setPreview(resolved[0]);})}><Eye size={16}/>معاينة</button>
-          <button className={button} disabled={busy||!canPublish} title={canPublish?'نشر النسخة التي عاينتها':'راجع النسخة الحالية بزر معاينة أولًا'} onClick={()=>void run(async()=>{if(!hasReviewedCurrentDraft(selected,preview)) throw new Error('افتح المعاينة للنسخة الحالية قبل النشر.');const saved=await save();await publishContent(saved!,true);await reload();setSelected(null);setPreview(null);setMessage('تم نشر المحتوى على الصفحة العامة.');})}>نشر بعد المعاينة</button>
+          <button className={`${button} !bg-slate-600`} disabled={busy} onClick={()=>void run(async()=>{const resolved=await resolveContentMedia([selected]);if(selected.kind==='contact'&&(selected.payload.featured_image_path||selected.payload.featured_image)&&!resolved[0]?.payload.featured_image) throw new Error('تعذّر تحميل صورة لاعب الشهر للمعاينة. تأكد من صلاحيات الملف قبل النشر.');setPreview(resolved[0]);})}><Eye size={16}/>معاينة</button>
+          <button className={button} disabled={busy||!canPublish} title={canPublish?'نشر النسخة التي عاينتها':'راجع النسخة الحالية بزر معاينة أولًا'} onClick={()=>void run(async()=>{if(!hasReviewedCurrentDraft(selected,preview)) throw new Error('افتح المعاينة للنسخة الحالية قبل النشر.');if(selected.kind==='contact'){const issue=featuredPlayerValidationError(selected.payload);if(issue) throw new Error(issue);}const saved=await save();await publishContent(saved!,true);await reload();setSelected(null);setPreview(null);setMessage('تم نشر المحتوى على الصفحة العامة.');})}>نشر بعد المعاينة</button>
           {!isNew&&kind!=='contact'&&published.some(p=>p.id===selected.id)&&<button className={`${button} !bg-slate-600`} disabled={busy} onClick={()=>void run(async()=>{await publishContent(selected,false);await reload();setSelected(null);setMessage('تم إخفاء المحتوى؛ المسودة محفوظة.');})}>إخفاء</button>}
           {!isNew&&<button className={`${button} !bg-slate-600`} disabled={busy} onClick={()=>void run(async()=>{setHistory(await readContentHistory(selected.id));setShowHistory(true);})}><History size={16}/>سجل النسخ</button>}
         </div>
