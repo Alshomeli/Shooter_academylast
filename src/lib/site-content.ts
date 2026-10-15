@@ -15,7 +15,7 @@ export function safeMediaUrl(value: string | undefined): string {
 export async function resolveContentMedia(items: ContentItem[]): Promise<ContentItem[]> {
   return Promise.all(items.map(async item => {
     const payload = { ...item.payload };
-    for (const field of ['image','video','poster']) {
+    for (const field of ['image','video','poster','featured_image']) {
       const path = payload[`${field}_path`];
       if (path) {
         const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
