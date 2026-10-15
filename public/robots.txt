@@ -1,2 +1,13 @@
+# Public academy pages and assets may be crawled.
+# These exclusions are crawl guidance, not access control.
 User-agent: *
-Disallow: /
+Allow: /
+Disallow: /coach
+Disallow: /oauth/
+Disallow: /landing.html
+Disallow: /forgot-password.html
+Disallow: /*?*view=
+Disallow: /*?*screen=
+Disallow: /*?*code=
+Disallow: /*?*token=
+Disallow: /*?*token_hash=
