@@ -11,3 +11,5 @@ Disallow: /*?*screen=
 Disallow: /*?*code=
 Disallow: /*?*token=
 Disallow: /*?*token_hash=
+
+Sitemap: https://shooter-academy-new-1vvk.bolt.host/sitemap.xml
