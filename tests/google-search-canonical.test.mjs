@@ -21,6 +21,13 @@ test('shared app entry does not force indexing of authentication or legal routes
   assert.ok(!index.includes('google-site-verification'));
 });
 
+test('member and policy views drop homepage canonical and hreflang hints during startup', () => {
+  const bootstrap = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
+  assert.match(bootstrap, /robots\.content = home && !legal && !oauthConsent \? 'index,follow' : 'noindex,nofollow'/);
+  assert.match(bootstrap, /document\.querySelector<HTMLLinkElement>\('link\[rel="canonical"\]'\)\?\.remove\(\)/);
+  assert.match(bootstrap, /querySelectorAll<HTMLLinkElement>\('link\[rel="alternate"\]\[hreflang\]'\)/);
+});
+
 test('Arabic and English variants have consistent hreflang navigation', () => {
   for (const lang of ['ar','en','x-default']) {
     assert.match(index, new RegExp('rel="alternate" hreflang="' + lang + '"'));
