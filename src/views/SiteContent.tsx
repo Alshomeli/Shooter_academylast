@@ -3,6 +3,7 @@ import { Plus, Save, Eye, Upload, History, Globe } from 'lucide-react';
 import type { Lang, Role, Staff } from '@/types';
 import { publishContent, readContentHistory, readManagerContent, resolveContentMedia, saveContent, uploadContentFile, type ContentItem, type ContentKind, type ContentRevision } from '@/lib/site-content';
 import { featuredImageStyle } from '@/lib/featured-player';
+import '../academy-home.css';
 
 const kinds: {kind:ContentKind; ar:string; en:string}[] = [
   {kind:'news',ar:'الأخبار',en:'News'},{kind:'gallery',ar:'معرض الصور',en:'Gallery'},
@@ -46,7 +47,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     const saved=await saveContent(selected,isNew);setSelected(saved);setIsNew(false);await reload();return saved;
   };
   const field=(name:string,label:string,type='text')=><label className="block space-y-1" key={name}><span className="text-sm font-bold">{label}</span><input className={input} type={type} maxLength={name==='title'?200:1000} value={selected?.payload[name]||''} onChange={e=>setField(name,e.target.value)} disabled={busy}/></label>;
-  const upload=(name:string,label:string,video=false)=><label className="block space-y-2"><span className="flex items-center gap-2 text-sm font-bold"><Upload size={16}/>{label}</span><input type="file" accept={video?'video/mp4':'image/jpeg,image/png,image/webp'} disabled={busy} onChange={e=>{const file=e.target.files?.[0];if(file)void run(async()=>{const path=await uploadContentFile(file,video);setSelected(s=>s?{...s,payload:{...s.payload,[`${name}_path`]:path,[name]:''}}:s);setMessage('تم رفع الملف. احفظ المسودة لربطه بالمحتوى.');});e.target.value='';}}/><p className="text-xs text-slate-500 dark:text-slate-400">{selected?.payload[`${name}_path`]?'ملف مرفوع':selected?.payload[name]?'ملف من الموقع الحالي':video?'MP4 · 20 MB':'JPG / PNG / WebP · 5 MB'}</p></label>;
+  const upload=(name:string,label:string,video=false)=><label className="block space-y-2"><span className="flex items-center gap-2 text-sm font-bold"><Upload size={16}/>{label}</span><input type="file" accept={video?'video/mp4':'image/jpeg,image/png,image/webp'} disabled={busy} onChange={e=>{const file=e.target.files?.[0];if(file)void run(async()=>{const path=await uploadContentFile(file,video);setPreview(null);setSelected(s=>s?{...s,payload:{...s.payload,[`${name}_path`]:path,[name]:''}}:s);setMessage('تم رفع الملف. احفظ المسودة لربطه بالمحتوى.');});e.target.value='';}}/><p className="text-xs text-slate-500 dark:text-slate-400">{selected?.payload[`${name}_path`]?'ملف مرفوع':selected?.payload[name]?'ملف من الموقع الحالي':video?'MP4 · 20 MB':'JPG / PNG / WebP · 5 MB'}</p></label>;
   return <section className="space-y-5" dir={ar?'rtl':'ltr'}>
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black">{ar?'إدارة الموقع':'Website content'}</h2><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{ar?'المسودات خاصة. التعديلات تظهر للزوار بعد النشر فقط.':'Drafts are private. Visitors see changes only after publishing.'}</p></div><a href="/" target="_blank" rel="noopener noreferrer" className={button}><Globe size={16}/>{ar?'فتح الموقع':'Open website'}</a></div>
     <div className="grid grid-cols-2 gap-3"><div className={box}>{ar?'منشور':'Published'} <b>{published.length}</b></div><div className={box}>{ar?'غير منشور':'Unpublished'} <b>{items.filter(i=>!published.some(p=>p.id===i.id)).length}</b></div></div>
@@ -91,7 +92,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           {field('alt','وصف الصورة للقارئ')}
           {kind==='video'?<>{upload('video','رفع الفيديو',true)}{upload('poster','صورة غلاف الفيديو')}</>:upload('image','رفع الصورة')}
         </>}
-        <label className="block space-y-1"><span className="text-sm font-bold">ترتيب الظهور (الأصغر أولًا)</span><input className={input} type="number" min={0} max={10000} value={selected.sort_order} disabled={busy} onChange={e=>setSelected({...selected,sort_order:Math.max(0,Math.min(10000,Number(e.target.value)||0))})}/></label>
+        <label className="block space-y-1"><span className="text-sm font-bold">ترتيب الظهور (الأصغر أولًا)</span><input className={input} type="number" min={0} max={10000} value={selected.sort_order} disabled={busy} onChange={e=>{setPreview(null);setSelected({...selected,sort_order:Math.max(0,Math.min(10000,Number(e.target.value)||0))});}}/></label>
         <p className="text-xs text-slate-500 dark:text-slate-400">الملفات المرفوعة خاصة حتى نشر المحتوى. تغيير المحتوى لا يغيّر النسخة المنشورة تلقائيًا.</p>
         <div className="flex flex-wrap gap-2">
           <button className={button} disabled={busy} onClick={()=>void run(async()=>{await save();setMessage('تم حفظ المسودة.');})}><Save size={16}/>حفظ مسودة</button>
