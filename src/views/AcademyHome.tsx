@@ -117,7 +117,7 @@ export default function AcademyHome() {
     </section>
     <footer className="ah-footer">
       <div className="ah-footer-grid">
-        <div><strong>أكاديمية شوتر</strong><p>تطوير المهارة والانضباط وروح الفريق في مملكة البحرين.</p><a href="#about">عن الأكاديمية</a></div>
+        <div><strong>أكاديمية شوتر</strong><p>تطوير المهارة والانضباط وروح الفريق في مملكة البحرين.</p><a href="#about">عن الأكاديمية</a><SocialLinks links={links}/></div>
         <nav aria-label="السياسات"><strong>السياسات</strong><a href="/privacy">سياسة الخصوصية</a><a href="/terms">الشروط والأحكام</a><a href="/terms#payments">الدفع والاشتراكات</a><a href="/terms#refunds">الإلغاء والاسترداد</a></nav>
         <nav aria-label="المساعدة"><strong>المساعدة</strong><a href="#faq">الأسئلة الشائعة</a><a href="#contact">الاستفسارات والتواصل</a><a href={links.maps} target="_blank" rel="noopener noreferrer">موقع الأكاديمية</a></nav>
       </div>
