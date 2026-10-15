@@ -24,7 +24,13 @@ if (home && !legal && !oauthConsent) {
   canonical.rel = 'canonical';
   canonical.href = new URL('/', window.location.origin).toString();
   if (!canonical.parentNode) document.head.appendChild(canonical);
-} else if (legal) {
+} else {
+  // The same HTML template serves the member portal and legal pages.
+  // Remove public-home search identity tags from restricted/non-home routes.
+  document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.remove();
+  document.querySelectorAll<HTMLLinkElement>('link[rel="alternate"][hreflang]').forEach(link => link.remove());
+}
+if (legal) {
   document.title = legalPath === '/privacy' ? 'سياسة الخصوصية | أكاديمية شوتر' : 'الشروط والأحكام | أكاديمية شوتر';
   document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute(
     'content',
