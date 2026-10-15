@@ -151,7 +151,7 @@ export default function AcademyHome() {
   return <div className={`academy-home ${darkMode ? 'ah-dark' : 'ah-light'}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang} id="top">
     <a className="ah-skip" href="#about">{tr("تخطي إلى المحتوى")}</a>
     <header className="ah-header">
-      <a href="#top" className="ah-brand"><img className="ah-brand-logo" src="/copilot_image_1776165482483-300x300.png" width="68" height="68" alt={tr("شعار أكاديمية شوتر")}/><span>{tr("أكاديمية شوتر")}<small>SHOOTER ACADEMY</small></span></a>
+      <a href="#top" className="ah-brand"><img src="/1790474303638.jpg" width="54" height="60" alt={tr("شعار أكاديمية شوتر")}/><span>{tr("أكاديمية شوتر")}<small>SHOOTER ACADEMY</small></span></a>
       <nav className={`ah-nav ${menu ? 'is-open' : ''}`} id="ah-navigation" aria-label={tr("التنقل الرئيسي")}>{navigation.map(([id,label]) => <a href={`#${id}`} key={id} onClick={() => setMenu(false)}>{tr(label)}</a>)}</nav>
       <SocialLinks links={links} header lang={lang}/>
       <button type="button" className="ah-language-toggle" onClick={toggleLanguage} aria-label={lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'} title={lang === 'ar' ? 'Switch to English' : 'العودة إلى العربية'} lang={lang === 'ar' ? 'en' : 'ar'}>{lang === 'ar' ? 'EN' : 'عربي'}</button>

@@ -208,21 +208,6 @@
   .academy-home[dir="ltr"] .ah-hero h1{font-size:clamp(31px,8vw,44px)}
 }
 
-/* Shooter Academy brand refresh: replace the white JPEG tile with the
-   existing transparent academy shield, framed for light and dark headers. */
-.ah-brand{gap:13px;min-width:0;text-decoration:none;align-items:center;white-space:nowrap}
-.ah-brand .ah-brand-logo{
-  display:block;width:68px;height:68px;min-width:68px;min-height:68px;
-  box-sizing:border-box;object-fit:contain;object-position:center;
-  padding:5px;border:1px solid #963542;border-radius:15px;
-  background:linear-gradient(145deg,#272b34,#10131b 74%);
-  box-shadow:0 5px 15px #07090c35, inset 0 0 0 1px #f9d46c24;
-}
-.ah-brand>span{display:block;line-height:1.35;font-size:clamp(15px,1.4vw,20px)}
-.ah-brand>span small{display:block;font-size:10px;letter-spacing:1.4px;font-weight:800;line-height:1.5;margin-top:3px}
-.ah-brand:focus-visible{outline:3px solid #f0ba55;outline-offset:5px;border-radius:10px}
-.ah-brand:hover .ah-brand-logo{border-color:#d95365;box-shadow:0 6px 17px #8c1c313b}
-
 /* Distinct, readable cards for skills, discipline and teamwork. */
 .ah-principles{display:grid;gap:12px}
 .ah-principles>div{
@@ -245,20 +230,7 @@
 .ah-dark .ah-principles p{color:#cbd5e1}
 .ah-photo-note{font-size:13px;line-height:1.8}
 
-@media(max-width:800px){
-  .ah-brand .ah-brand-logo{width:58px;height:58px;min-width:58px;min-height:58px;padding:4px}
-  .ah-brand>span{font-size:16px}
-  .ah-brand>span small{font-size:9px;letter-spacing:1.2px}
-  .ah-principles>div{padding:17px 16px}
-  .ah-principles p{font-size:14px}
-}
-@media(max-width:430px){
-  .ah-brand{gap:8px}
-  .ah-brand .ah-brand-logo{width:52px;height:52px;min-width:52px;min-height:52px;padding:4px;border-radius:12px}
-  .ah-brand>span{font-size:14px}
-  .ah-brand>span small{font-size:8px;letter-spacing:.8px}
-  .ah-principles>div>span{width:38px;height:38px;min-width:38px}
-}
-@media(prefers-reduced-motion:reduce){
-  .ah-principles>div{transition:none}
-}
+
+@media(max-width:800px){.ah-principles>div{padding:17px 16px}.ah-principles p{font-size:14px}}
+@media(max-width:430px){.ah-principles>div>span{width:38px;height:38px;min-width:38px}}
+@media(prefers-reduced-motion:reduce){.ah-principles>div{transition:none}}
