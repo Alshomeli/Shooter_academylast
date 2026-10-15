@@ -3,6 +3,7 @@ import { Plus, Save, Eye, Upload, History, Globe } from 'lucide-react';
 import type { Lang, Role, Staff } from '@/types';
 import { publishContent, readContentHistory, readManagerContent, resolveContentMedia, saveContent, uploadContentFile, type ContentItem, type ContentKind, type ContentRevision } from '@/lib/site-content';
 import { featuredImageStyle } from '@/lib/featured-player';
+import { hasReviewedCurrentDraft } from '@/lib/content-review';
 import '../academy-home.css';
 
 const kinds: {kind:ContentKind; ar:string; en:string}[] = [
@@ -35,6 +36,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   },[]);
   useEffect(()=>{if(activeRole==='manager') void reload();},[activeRole,reload]);
   if(activeRole!=='manager') return <p>{ar?'هذا القسم للمدير فقط.':'Manager access required.'}</p>;
+  const canPublish = hasReviewedCurrentDraft(selected, preview);
   const setField=(field:string,value:string)=>{setPreview(null);setSelected(s=>s?{...s,payload:{...s.payload,[field]:value}}:s);};
   const run=async(task:()=>Promise<void>)=>{
     setBusy(true);setError('');setMessage('');
@@ -93,17 +95,17 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           {kind==='video'?<>{upload('video','رفع الفيديو',true)}{upload('poster','صورة غلاف الفيديو')}</>:upload('image','رفع الصورة')}
         </>}
         <label className="block space-y-1"><span className="text-sm font-bold">ترتيب الظهور (الأصغر أولًا)</span><input className={input} type="number" min={0} max={10000} value={selected.sort_order} disabled={busy} onChange={e=>{setPreview(null);setSelected({...selected,sort_order:Math.max(0,Math.min(10000,Number(e.target.value)||0))});}}/></label>
-        <p className="text-xs text-slate-500 dark:text-slate-400">الملفات المرفوعة خاصة حتى نشر المحتوى. تغيير المحتوى لا يغيّر النسخة المنشورة تلقائيًا.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">الملفات المرفوعة خاصة حتى نشر المحتوى. تغيير المحتوى لا يغيّر النسخة المنشورة تلقائيًا. اضغط «معاينة» بعد أي تغيير لتفعيل زر النشر.</p>
         <div className="flex flex-wrap gap-2">
           <button className={button} disabled={busy} onClick={()=>void run(async()=>{await save();setMessage('تم حفظ المسودة.');})}><Save size={16}/>حفظ مسودة</button>
           <button className={`${button} !bg-slate-600`} disabled={busy} onClick={()=>void run(async()=>{const resolved=await resolveContentMedia([selected]);setPreview(resolved[0]);})}><Eye size={16}/>معاينة</button>
-          <button className={button} disabled={busy} onClick={()=>void run(async()=>{const saved=await save();await publishContent(saved!,true);await reload();setSelected(null);setMessage('تم نشر المحتوى على الصفحة العامة.');})}>نشر</button>
+          <button className={button} disabled={busy||!canPublish} title={canPublish?'نشر النسخة التي عاينتها':'راجع النسخة الحالية بزر معاينة أولًا'} onClick={()=>void run(async()=>{if(!hasReviewedCurrentDraft(selected,preview)) throw new Error('افتح المعاينة للنسخة الحالية قبل النشر.');const saved=await save();await publishContent(saved!,true);await reload();setSelected(null);setPreview(null);setMessage('تم نشر المحتوى على الصفحة العامة.');})}>نشر بعد المعاينة</button>
           {!isNew&&kind!=='contact'&&published.some(p=>p.id===selected.id)&&<button className={`${button} !bg-slate-600`} disabled={busy} onClick={()=>void run(async()=>{await publishContent(selected,false);await reload();setSelected(null);setMessage('تم إخفاء المحتوى؛ المسودة محفوظة.');})}>إخفاء</button>}
           {!isNew&&<button className={`${button} !bg-slate-600`} disabled={busy} onClick={()=>void run(async()=>{setHistory(await readContentHistory(selected.id));setShowHistory(true);})}><History size={16}/>سجل النسخ</button>}
         </div>
         {preview&&<article className="space-y-2 rounded-xl border border-red-200 p-4"><h3 className="font-black">معاينة — غير منشورة</h3>{preview.payload.image&&<img className="max-h-80 w-full object-contain" src={preview.payload.image} alt={preview.payload.alt||preview.payload.title}/>}
         {preview.payload.featured_image&&<div className="academy-home"><section className="ah-hero ah-hero-featured ah-featured-preview" aria-label="معاينة واجهة لاعب الشهر"><img className="ah-hero-image" src="/parent-hero.png" alt="خلفية واجهة الأكاديمية"/><div className="ah-hero-shade"/><img className="ah-featured-cutout" style={featuredImageStyle(preview.payload)} src={preview.payload.featured_image} alt={preview.payload.featured_name||'لاعب الشهر'}/><div className="ah-hero-content"><p className="ah-eyebrow">شغف اليوم. أبطال الغد.</p><h2 className="ah-preview-heading">هنا تبدأ رحلتك الكروية</h2><aside className="ah-featured-honor"><span>{preview.payload.featured_heading||'لاعب الشهر'}</span><strong>{preview.payload.featured_name}</strong><p>{preview.payload.featured_body}</p></aside></div></section></div>} {preview.payload.video&&<video className="max-h-80 w-full" controls playsInline src={preview.payload.video} poster={preview.payload.poster}/>}<h4 className="font-bold">{preview.payload.title}</h4><p className="whitespace-pre-wrap">{preview.payload.body}</p>{kind==='contact'&&contacts.map(c=><p className="break-all" key={c}>{c}: {preview.payload[c]}</p>)}</article>}
-        {showHistory&&<div className="space-y-2"><h3 className="font-bold">النسخ السابقة — الاسترجاع يحفظ كمسودة</h3>{history.map(h=><div key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2"><span>نسخة {h.version} · {new Date(h.changed_at).toLocaleString('ar-BH')} · {h.action} · {h.changed_by ? staff.find(s=>s.userId===h.changed_by)?.name || 'الإدارة' : 'محتوى أولي'}</span><button className={button} disabled={busy} onClick={()=>void run(async()=>{const saved=await saveContent({...selected,payload:h.payload,sort_order:h.sort_order},false);setSelected(saved);setHistory(await readContentHistory(selected.id));await reload();setMessage('تم استرجاع النسخة كمسودة. اضغط نشر لاعتمادها.');})}>استرجاع كمسودة</button></div>)}</div>}
+        {showHistory&&<div className="space-y-2"><h3 className="font-bold">النسخ السابقة — الاسترجاع يحفظ كمسودة</h3>{history.map(h=><div key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2"><span>نسخة {h.version} · {new Date(h.changed_at).toLocaleString('ar-BH')} · {h.action} · {h.changed_by ? staff.find(s=>s.userId===h.changed_by)?.name || 'الإدارة' : 'محتوى أولي'}</span><button className={button} disabled={busy} onClick={()=>void run(async()=>{const saved=await saveContent({...selected,payload:h.payload,sort_order:h.sort_order},false);setPreview(null);setSelected(saved);setHistory(await readContentHistory(selected.id));await reload();setMessage('تم استرجاع النسخة كمسودة. اضغط نشر لاعتمادها.');})}>استرجاع كمسودة</button></div>)}</div>}
       </div>:<div className={box}>اختر محتوى للتعديل، أو أضف محتوى جديدًا.</div>}
     </div>
   </section>;
