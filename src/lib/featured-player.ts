@@ -14,3 +14,14 @@ export function featuredImageStyle(payload: Record<string, string>): CSSProperti
     '--featured-height': percentage(payload.featured_height, 94, 50, 100),
   } as CSSProperties;
 }
+
+/** Avoid publishing an incomplete featured-player announcement. */
+export function featuredPlayerValidationError(payload: Record<string, string>): string | null {
+  const name = Boolean(payload.featured_name?.trim());
+  const image = Boolean(payload.featured_image_path?.trim() || payload.featured_image?.trim());
+  const details = Boolean(payload.featured_heading?.trim() || payload.featured_body?.trim());
+  if (!(name || image || details)) return null; // A contact-only entry is valid.
+  if (!name) return 'أدخل اسم اللاعب قبل نشر بطاقة التكريم.';
+  if (!image) return 'ارفع صورة اللاعب قبل نشر بطاقة التكريم.';
+  return null;
+}
