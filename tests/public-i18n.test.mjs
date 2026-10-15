@@ -38,11 +38,11 @@ test('each static homepage text node has a deliberate English translation', () =
 
 test('legal pages preserve all text in both languages and section hash IDs', () => {
   const policy = readFileSync(new URL('../src/views/LegalPage.tsx', import.meta.url), 'utf8');
-  for (const heading of ['Information We Collect', 'Registration and Admission', 'Cancellation and Refunds', 'Privacy & Data Protection']) {
+  for (const heading of ['Information We May Collect', 'Registration and Admission', 'Cancellation, Refunds and Service Quality', 'Privacy & Data Protection']) {
     assert.ok(policy.includes(heading), heading);
   }
-  assert.ok(policy.includes("id: 'payments'"));
-  assert.ok(policy.includes("id: 'refunds'"));
+  assert.ok(/id:\s*['"]payments['"]/.test(policy));
+  assert.ok(/id:\s*['"]refunds['"]/.test(policy));
   assert.ok(policy.includes("aria-label={english ? 'Legal navigation'"));
 });
 
