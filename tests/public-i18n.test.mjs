@@ -32,6 +32,8 @@ test('each static homepage text node has a deliberate English translation', () =
   assert.match(home, /className="ah-language-toggle"/);
   assert.match(home, /dir=\{lang === 'ar' \? 'rtl' : 'ltr'\}/);
   assert.match(home, /<AcademyGallery photos=\{publicGallery\} lang=\{lang\}\/>/);
+  assert.match(home, /hiddenNewsTitle\(i\.payload\.title, i\.payload\.title_en\)/);
+  assert.match(home, /defaultNews\.filter\(n => !hiddenNewsTitle\(n\.title\)\)/);
 });
 
 test('legal pages preserve all text in both languages and section hash IDs', () => {
