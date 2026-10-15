@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { academyContact as defaultLinks, programImages, publicCoaches as defaultCoaches, publicNews as defaultNews, publicVideos as defaultVideos, publicGallery as defaultGallery } from '@/data/public-academy';
 import '../academy-home.css';
 import { readPublicContent, type ContentItem } from '@/lib/site-content';
+import { featuredImageStyle } from '@/lib/featured-player';
 
 const platform = '/?view=login';
 const navigation = [['about', 'الأكاديمية'], ['programs', 'البرامج'], ['coaches', 'التدريب'], ['media', 'الصور والفيديو'], ['news', 'الأخبار'], ['faq', 'الأسئلة الشائعة']];
@@ -80,7 +81,8 @@ export default function AcademyHome() {
     <main>
       {contentError && <p role="status" className="ah-muted">تعذّر تحميل آخر المحتوى. يرجى تحديث الصفحة.</p>}
       <section className={featuredPlayer ? 'ah-hero ah-hero-featured' : 'ah-hero'} aria-labelledby="ah-title">
-        {featuredPlayer ? <img className="ah-featured-cutout" src={featuredPlayer.image} alt={`لاعب الشهر: ${featuredPlayer.name}`}/> : <img className="ah-hero-image" src="/parent-hero.png" alt="تصميم رياضي يعكس شغف كرة القدم"/>}
+        <img className="ah-hero-image" src="/parent-hero.png" alt="تصميم رياضي يعكس شغف كرة القدم"/>
+        {featuredPlayer && <img className="ah-featured-cutout" style={featuredImageStyle(contact ?? {})} src={featuredPlayer.image} alt={`لاعب الشهر: ${featuredPlayer.name}`}/>}
         <div className="ah-hero-shade"/>
         <div className="ah-hero-content"><p className="ah-eyebrow">شغف اليوم. أبطال الغد.</p><h1 id="ah-title">هنا تبدأ<br/>رحلتك <em>الكروية.</em></h1><p className="ah-lead">مهارة تتطور. ثقة تكبر. وفريق يجمعنا.<br/>في أكاديمية شوتر، نمنح شغف كرة القدم مساحة للنمو.</p><div className="ah-actions"><a className="ah-button" href={platform}>دخول منصة الأكاديمية <ArrowUpLeft size={20}/></a><a className="ah-text-link" href="#programs">اكتشف برامجنا <ArrowDown size={17}/></a></div>
           {featuredPlayer && <aside className="ah-featured-honor" aria-label="بطاقة تكريم لاعب الشهر"><span>{featuredPlayer.heading}</span><strong>{featuredPlayer.name}</strong>{featuredPlayer.body && <p>{featuredPlayer.body}</p>}</aside>}
