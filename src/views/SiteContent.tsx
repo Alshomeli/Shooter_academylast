@@ -5,7 +5,7 @@ import { publishContent, readContentHistory, readManagerContent, resolveContentM
 
 const kinds: {kind:ContentKind; ar:string; en:string}[] = [
   {kind:'news',ar:'الأخبار',en:'News'},{kind:'gallery',ar:'معرض الصور',en:'Gallery'},
-  {kind:'video',ar:'الفيديو',en:'Videos'},{kind:'coach',ar:'المدربون',en:'Coaches'},{kind:'contact',ar:'روابط التواصل',en:'Contact links'},
+  {kind:'video',ar:'الفيديو',en:'Videos'},{kind:'coach',ar:'المدربون',en:'Coaches'},{kind:'contact',ar:'التواصل ولاعب الشهر',en:'Contact & featured player'},
 ];
 const contacts = ['instagram','tiktok','facebook','whatsapp','maps'];
 const box='rounded-xl border border-slate-200 bg-white p-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -58,7 +58,19 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
         {!loading&&!items.some(i=>i.kind===kind)&&<p className="text-sm">{ar?'لا يوجد محتوى في هذا القسم.':'No content in this section.'}</p>}
       </div>
       {selected?<div className={`${box} space-y-4`} key={selected.id}>
-        {kind==='contact'?contacts.map(c=>field(c,c,'url')):<>
+        {kind==='contact'?<>
+          <h3 className="font-black text-lg">روابط التواصل</h3>
+          {contacts.map(c=>field(c,c,'url'))}
+          <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-3">
+            <h3 className="font-black text-lg">لاعب الشهر — بطاقة التكريم</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-300">يظهر اللاعب بدل صورة الواجهة الحالية فقط بعد نشر صورة واسم اللاعب. للحصول على فصل بصري نظيف، استخدم صورة PNG أو WebP شفافة الخلفية.</p>
+            {field('featured_name','اسم اللاعب')}
+            {field('featured_heading','عنوان بطاقة التكريم')}
+            <label className="block space-y-1"><span className="text-sm font-bold">نبذة وسبب التميز</span><textarea className={input} rows={3} maxLength={1800} disabled={busy} value={selected.payload.featured_body||''} onChange={e=>setField('featured_body',e.target.value)}/></label>
+            {upload('featured_image','صورة اللاعب (PNG / WebP بخلفية شفافة مفضلة)')}
+            <p className="text-xs text-slate-600 dark:text-slate-300">استعمل معاينة قبل النشر؛ الصور والمسودات لا تظهر للزوار حتى النشر.</p>
+          </div>
+        </>:<>
           {field('title',kind==='coach'?'اسم المدرب':'العنوان')}
           <label className="block space-y-1"><span className="text-sm font-bold">{kind==='coach'?'نبذة المدرب':'الوصف / التعليق'}</span><textarea className={input} rows={4} maxLength={6000} disabled={busy} value={selected.payload.body||''} onChange={e=>setField('body',e.target.value)}/></label>
           {kind==='news'&&field('date','تاريخ الخبر','date')}
@@ -84,7 +96,8 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           {!isNew&&kind!=='contact'&&published.some(p=>p.id===selected.id)&&<button className={`${button} !bg-slate-600`} disabled={busy} onClick={()=>void run(async()=>{await publishContent(selected,false);await reload();setSelected(null);setMessage('تم إخفاء المحتوى؛ المسودة محفوظة.');})}>إخفاء</button>}
           {!isNew&&<button className={`${button} !bg-slate-600`} disabled={busy} onClick={()=>void run(async()=>{setHistory(await readContentHistory(selected.id));setShowHistory(true);})}><History size={16}/>سجل النسخ</button>}
         </div>
-        {preview&&<article className="space-y-2 rounded-xl border border-red-200 p-4"><h3 className="font-black">معاينة — غير منشورة</h3>{preview.payload.image&&<img className="max-h-80 w-full object-contain" src={preview.payload.image} alt={preview.payload.alt||preview.payload.title}/>} {preview.payload.video&&<video className="max-h-80 w-full" controls playsInline src={preview.payload.video} poster={preview.payload.poster}/>}<h4 className="font-bold">{preview.payload.title}</h4><p className="whitespace-pre-wrap">{preview.payload.body}</p>{kind==='contact'&&contacts.map(c=><p className="break-all" key={c}>{c}: {preview.payload[c]}</p>)}</article>}
+        {preview&&<article className="space-y-2 rounded-xl border border-red-200 p-4"><h3 className="font-black">معاينة — غير منشورة</h3>{preview.payload.image&&<img className="max-h-80 w-full object-contain" src={preview.payload.image} alt={preview.payload.alt||preview.payload.title}/>}
+        {preview.payload.featured_image&&<div className="rounded-xl bg-slate-950 p-4 text-white"><img className="mx-auto max-h-64 object-contain" src={preview.payload.featured_image} alt={preview.payload.featured_name||'لاعب الشهر'}/><h4 className="font-bold">{preview.payload.featured_heading||'لاعب الشهر'}</h4><p>{preview.payload.featured_name}</p><p>{preview.payload.featured_body}</p></div>} {preview.payload.video&&<video className="max-h-80 w-full" controls playsInline src={preview.payload.video} poster={preview.payload.poster}/>}<h4 className="font-bold">{preview.payload.title}</h4><p className="whitespace-pre-wrap">{preview.payload.body}</p>{kind==='contact'&&contacts.map(c=><p className="break-all" key={c}>{c}: {preview.payload[c]}</p>)}</article>}
         {showHistory&&<div className="space-y-2"><h3 className="font-bold">النسخ السابقة — الاسترجاع يحفظ كمسودة</h3>{history.map(h=><div key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2"><span>نسخة {h.version} · {new Date(h.changed_at).toLocaleString('ar-BH')} · {h.action} · {h.changed_by ? staff.find(s=>s.userId===h.changed_by)?.name || 'الإدارة' : 'محتوى أولي'}</span><button className={button} disabled={busy} onClick={()=>void run(async()=>{const saved=await saveContent({...selected,payload:h.payload,sort_order:h.sort_order},false);setSelected(saved);setHistory(await readContentHistory(selected.id));await reload();setMessage('تم استرجاع النسخة كمسودة. اضغط نشر لاعتمادها.');})}>استرجاع كمسودة</button></div>)}</div>}
       </div>:<div className={box}>اختر محتوى للتعديل، أو أضف محتوى جديدًا.</div>}
     </div>
