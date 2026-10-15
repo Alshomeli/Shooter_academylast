@@ -18,7 +18,8 @@ test('official homepage has one static canonical at the Bolt host', () => {
 
 test('shared app entry does not force indexing of authentication or legal routes', () => {
   assert.ok(!index.includes('<meta name="robots" content="index,follow'));
-  assert.ok(!index.includes('google-site-verification'));
+  assert.equal((index.match(/name="google-site-verification"/g) || []).length, 1);
+  assert.ok(index.includes('<meta name="google-site-verification" content="hDwrQY5OIS3ainp7Nu4BCo0f6_7A_5plm67ccZURLyc" />'));
 });
 
 test('member and policy views drop homepage canonical and hreflang hints during startup', () => {
@@ -38,11 +39,11 @@ test('Arabic and English variants have consistent hreflang navigation', () => {
   assert.match(home, /canonical\.href = new URL\(lang === 'en' \? '\/\?lang=en' : '\/'/);
 });
 
-test('English/Arabic public page updates its share metadata without claiming Google ownership', () => {
+test('English/Arabic public page updates its share metadata with user-provided verification token', () => {
   assert.ok(home.includes('meta[property="og:locale"]'));
   assert.ok(home.includes('meta[property="og:url"]'));
   assert.ok(home.includes('meta[name="twitter:title"]'));
-  assert.ok(!index.includes('name="google-site-verification"'));
+  assert.ok(index.includes('name="google-site-verification" content="hDwrQY5OIS3ainp7Nu4BCo0f6_7A_5plm67ccZURLyc"'));
   assert.ok(notes.includes('URL prefix'));
   assert.ok(notes.includes('HTML tag verification'));
 });
