@@ -22,6 +22,20 @@ export async function resolveContentMedia(items: ContentItem[]): Promise<Content
         payload[field] = error ? '' : data.signedUrl;
       } else payload[field] = safeMediaUrl(payload[field]);
     }
+    // Resolve uploaded images for editable training program cards (section 02).
+    if (item.kind === 'contact' && payload.programs_v1) {
+      try {
+        const programs = JSON.parse(payload.programs_v1) as Array<Record<string, string>>;
+        if (Array.isArray(programs)) {
+          const resolved = await Promise.all(programs.slice(0, 20).map(async program => {
+            if (!program.image_path) return { ...program, image: safeMediaUrl(program.image) };
+            const { data, error } = await supabase.storage.from(bucket).createSignedUrl(program.image_path, 3600);
+            return { ...program, image: error ? '' : data.signedUrl };
+          }));
+          payload.programs_v1 = JSON.stringify(resolved);
+        }
+      } catch { payload.programs_v1 = '[]'; }
+    }
     return { ...item, payload };
   }));
 }
