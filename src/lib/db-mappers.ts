@@ -16,7 +16,7 @@ interface StaffRow {
 }
 interface TeamRow {
   goalkeeper_coach_id?: string | null;
-  id: string; name: string; age_group: string; coach_id: string;
+  id: string; name: string; age_group: string; coach_id: string | null;
   training_days: string[]; training_time: string; pitch_number: string;
 }
 interface PlayerRow {
@@ -101,7 +101,7 @@ export const mapStaff = (r: StaffRow): Staff => ({
 });
 
 export const mapTeam = (r: TeamRow): Team => ({
-  id: r.id, name: r.name, ageGroup: r.age_group, coachId: r.coach_id, goalkeeperCoachId: r.goalkeeper_coach_id ?? undefined,
+  id: r.id, name: r.name, ageGroup: r.age_group, coachId: r.coach_id ?? '', goalkeeperCoachId: r.goalkeeper_coach_id ?? undefined,
   trainingDays: r.training_days ?? [], trainingTime: r.training_time, pitchNumber: r.pitch_number,
 });
 
@@ -205,7 +205,7 @@ export const staffToRow = (s: Staff): StaffRow => ({
 });
 
 export const teamToRow = (t: Team): TeamRow => ({
-  id: t.id, name: t.name, age_group: t.ageGroup, coach_id: t.coachId, goalkeeper_coach_id: t.goalkeeperCoachId || null,
+  id: t.id, name: t.name, age_group: t.ageGroup, coach_id: t.coachId || null, goalkeeper_coach_id: t.goalkeeperCoachId || null,
   training_days: t.trainingDays, training_time: t.trainingTime, pitch_number: t.pitchNumber,
 });
 
