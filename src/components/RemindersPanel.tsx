@@ -29,7 +29,7 @@ export function RemindersPanel({ reminders, onNavigate, compact, lang = 'ar' }: 
           <CheckCircle className="h-6 w-6" />
         </div>
         <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-          {isAr ? 'جميع الاشتراكات مسددة' : 'All subscriptions are paid'}
+          {isAr ? 'لا توجد تذكيرات اشتراك حالياً' : 'No subscription reminders at this time'}
         </p>
         <p className="text-xs text-slate-400 mt-1">
           {isAr ? 'لا توجد تذكيرات متأخرة حالياً' : 'No overdue reminders at this time'}
@@ -74,7 +74,7 @@ export function RemindersPanel({ reminders, onNavigate, compact, lang = 'ar' }: 
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{playerName}</p>
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  <Badge color={cfg.color}>{cfg.label}</Badge>
+                  <Badge color={cfg.color}>{r.subscription.status === 'paid' ? (isAr ? 'متابعة التجديد' : 'Renewal reminder') : cfg.label}</Badge>
                   <span className="text-[10px] text-slate-400 font-semibold">
                     {r.daysUntilExpiry < 0
                       ? (isAr ? `متأخر ${Math.abs(r.daysUntilExpiry)} يوم` : `${Math.abs(r.daysUntilExpiry)} days overdue`)
@@ -82,7 +82,7 @@ export function RemindersPanel({ reminders, onNavigate, compact, lang = 'ar' }: 
                         ? (isAr ? 'ينتهي اليوم' : 'Expires today')
                         : (isAr ? `باقي ${r.daysUntilExpiry} يوم` : `${r.daysUntilExpiry} days left`)}
                   </span>
-                  <span className="text-[10px] font-black text-slate-600 dark:text-slate-300">{r.subscription.amount} {t.currency}</span>
+                  <span className="text-[10px] font-black text-slate-600 dark:text-slate-300">{r.subscription.status === 'paid' ? (isAr ? 'الفترة مسددة' : 'Period paid') : `${r.subscription.amount} ${t.currency}`}</span>
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">

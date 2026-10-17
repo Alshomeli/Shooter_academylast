@@ -6,6 +6,7 @@ import {
 import type { Player, Team, Subscription, Lang, Role } from '@/types';
 import { PageHeader, Badge, EmptyState, inputCls } from '@/components/ui';
 import { tr } from '@/lib/i18n';
+import { normalizeWhatsAppPhone } from '@/lib/whatsapp-phone';
 
 interface MessagesProps {
   players: Player[];
@@ -30,7 +31,7 @@ const BUSINESS_WHATSAPP_DISPLAY = '0097332287776';
 const BUSINESS_WHATSAPP_LINK = '97332287776';
 
 function cleanPhone(phone: string): string {
-  return phone.replace(/[^0-9]/g, '');
+  return normalizeWhatsAppPhone(phone);
 }
 
 export function Messages({ players, teams, subscriptions, lang }: MessagesProps) {

@@ -304,7 +304,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
             </div>
             <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-900/20">
               <p className="text-[11px] font-bold text-brand-600 dark:text-brand-400">{t.dueAmounts}</p>
-              <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{reminders.reduce((s, r) => s + r.subscription.amount, 0)} {t.currency}</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{reminders.filter(r => r.subscription.status === 'unpaid').reduce((s, r) => s + r.subscription.amount, 0)} {t.currency}</p>
             </div>
             <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20">
               <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400">{t.collectionRate}</p>
