@@ -271,7 +271,7 @@ function TeamForm({
     version: team?.version,
     name: team?.name || '',
     ageGroup: team?.ageGroup || '',
-    coachId: team?.coachId || eligibleCoaches[0]?.id || '',
+    coachId: team?.coachId || '',
     goalkeeperCoachId: team?.goalkeeperCoachId || '',
     trainingDays: team?.trainingDays || ([] as string[]),
     trainingTime: team?.trainingTime || '',
@@ -292,9 +292,9 @@ function TeamForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.coachId) return;
-    const teamCoach = staff.find(s => s.id === form.coachId);
-    if (!teamCoach || teamCoach.role !== 'coach' || teamCoach.status !== 'active' || (teamCoach.coachKind && teamCoach.coachKind !== 'team')) {
+    if (!form.name.trim()) return;
+    const teamCoach = form.coachId ? staff.find(s => s.id === form.coachId) : null;
+    if (form.coachId && (!teamCoach || teamCoach.role !== 'coach' || teamCoach.status !== 'active' || (teamCoach.coachKind && teamCoach.coachKind !== 'team'))) {
       setSaveError(isAr ? 'يجب اختيار مدرب فريق نشط.' : 'Select an active team coach.');
       return;
     }
@@ -347,9 +347,8 @@ function TeamForm({
               value={form.coachId}
               onChange={(e) => setForm({ ...form, coachId: e.target.value })}
               className={inputCls}
-              required
             >
-              {eligibleCoaches.length === 0 && <option value="">{isAr ? 'لا يوجد مدربون' : 'No coaches available'}</option>}
+              <option value="">{isAr ? 'بدون مدرب (يمكن تعيينه لاحقاً)' : 'No coach (assign later)'}</option>
               {eligibleCoaches.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.avatarUrl} {s.name}
