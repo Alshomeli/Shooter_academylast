@@ -74,8 +74,8 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       } else {
         const { error } = await signIn(email.trim(), password);
         if (error) throw new Error(text('تعذر الدخول. تحقق من البريد وكلمة المرور وتأكيد الحساب.', 'Unable to sign in. Check your email, password and email confirmation.'));
-        // The selected portal is presentational only. Never change onboarding
-        // metadata, staff role, or permissions as a side effect of signing in.
+        // Resolve the approved account role after authentication. Signing in must
+        // never change onboarding metadata, roles or permissions.
       }
       const member = await db.getCurrentUser();
       if (!member) throw new Error(text('تعذر تحميل حسابك. حاول مجددًا.', 'Could not load your account. Please try again.'));
@@ -88,7 +88,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
     } finally { setRegistering(false); setBusy(false); }
   };
   const titles = {
-    login: registrationKind === 'staff' ? text('دخول الموظف', 'Staff sign in') : text('دخول ولي الأمر', 'Parent sign in'), register: registrationKind === 'staff' ? text('حساب مدير / موظف / مدرب جديد', 'Create a manager / staff / coach account') : text('حساب ولي أمر جديد', 'Create a parent account'),
+    login: text('تسجيل الدخول', 'Sign in'), register: registrationKind === 'staff' ? text('حساب مدير / موظف / مدرب جديد', 'Create a manager / staff / coach account') : text('حساب ولي أمر جديد', 'Create a parent account'),
     forgot: text('استعادة كلمة المرور', 'Reset password'), reset: text('كلمة مرور جديدة', 'Choose a new password'),
   };
   return <main className="min-h-screen flex items-center justify-center bg-slate-950 p-4" dir={ar ? 'rtl' : 'ltr'}>
@@ -101,12 +101,11 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       <h2 className="font-bold mb-5 text-slate-500">{titles[screen]}</h2>
       {error && <p role="alert" className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm flex gap-2"><AlertCircle className="h-5 w-5 shrink-0" />{error}</p>}
       {message && <p role="status" className="mb-4 p-3 rounded-lg bg-brand-50 text-brand-800 text-sm">{message}</p>}
-      {(screen === 'login' || screen === 'register') && <div className="mb-4">
+      {screen === 'register' && <div className="mb-4">
         <div className="grid grid-cols-2 gap-2" role="group" aria-label={text('نوع البوابة', 'Portal type')}>
           <button type="button" disabled={busy} aria-pressed={registrationKind === 'parent'} onClick={() => setRegistrationKind('parent')} className={`rounded-lg border px-3 py-3 text-sm font-bold disabled:opacity-60 ${registrationKind === 'parent' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200 dark:border-slate-600'}`}>{text('ولي الأمر', 'Parent')}</button>
           <button type="button" disabled={busy} aria-pressed={registrationKind === 'staff'} onClick={() => setRegistrationKind('staff')} className={`rounded-lg border px-3 py-3 text-sm font-bold disabled:opacity-60 ${registrationKind === 'staff' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200 dark:border-slate-600'}`}>{text('الموظف', 'Staff')}</button>
         </div>
-        {screen === 'login' && <p className="mt-2 text-xs text-slate-500">{text('اختيار البوابة لا يغيّر نوع حسابك أو صلاحياتك. سيتم توجيهك حسب دورك المعتمد.', 'Selecting a portal does not change your account or permissions. Access follows your approved role.')}</p>}
         {screen === 'register' && registrationKind === 'staff' && <p className="mt-2 text-xs text-slate-500">{text('يشمل الموظف: المدير والمدرب ومساعد المدرب ومدرب الحراس والاستقبال والمحاسب. جميعها طلبات تحتاج موافقة الإدارة.', 'Staff includes managers, coaches, assistant coaches, goalkeeper coaches, receptionists and accountants. All applications require management approval.')}</p>}
         {screen === 'register' && registrationKind === 'parent' && <p className="mt-2 text-xs text-slate-500">{text('يتم تسجيل اللاعب ضمن حساب ولي الأمر، دون حساب دخول مستقل.', 'Players are registered under the parent account, without a separate sign-in.')}</p>}
       </div>}
