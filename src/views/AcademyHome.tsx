@@ -103,6 +103,23 @@ export default function AcademyHome() {
         newsId: galleryNewsId(i.payload.image, i.payload.news_id, publicNews),
       }));
   const contact = content.find(i => i.kind === 'contact')?.payload;
+  const sectionText = (key: string, fallback: string) => {
+    const arValue = contact?.[key];
+    const enValue = contact?.[`${key}_en`];
+    return arValue === undefined ? tr(fallback) : lang === 'en' && enValue ? enValue : arValue;
+  };
+  const defaultPrograms = [
+    { title: 'تطوير المهارات', body: 'التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.', image: programImages[0] },
+    { title: 'اللياقة البدنية', body: 'تنمية القوة والتحمل والمرونة، لبناء جاهزية بدنية تدعم أداء اللاعب في الملعب.', image: programImages[1] },
+    { title: 'إنهاء الهجمات', body: 'تطوير دقة التسديد والتحرك أمام المرمى، وتعزيز الثقة عند اتخاذ القرار.', image: programImages[2] },
+  ];
+  const programs: Array<{title:string;title_en?:string;body:string;body_en?:string;image:string}> = (() => {
+    if (contact?.programs_v1 === undefined) return defaultPrograms;
+    try {
+      const parsed: unknown = JSON.parse(contact.programs_v1);
+      return Array.isArray(parsed) ? parsed.filter(p => p && typeof p.title === 'string' && typeof p.body === 'string' && typeof p.image === 'string') : [];
+    } catch { return []; }
+  })();
   const links = {...defaultLinks};
   for (const key of Object.keys(links) as (keyof typeof links)[]) {
     const value = contact?.[key];
@@ -195,12 +212,8 @@ export default function AcademyHome() {
         </div>
       </section>
       <div className="ah-values"><span><Target/> {tr("تطوير المهارات")}</span><span><Users/> {tr("روح الفريق")}</span><span><Trophy/> {tr("شغف المنافسة")}</span><span>SHOOTER ACADEMY — BAHRAIN</span></div>
-      <section className="ah-section ah-about" id="about"><div><p className="ah-eyebrow">{tr("01 / عن الأكاديمية")}</p><h2>{tr("كرة القدم أكثر")}<br/>{tr("من مجرد")} <em>{tr("لعبة.")}</em></h2></div><div><p className="ah-copy">{tr("من المحرق في مملكة البحرين، تهدف أكاديمية شوتر إلى تطوير المواهب الناشئة في بيئة تجمع بين التدريب، والانضباط، وحب كرة القدم.")}</p><p className="ah-muted">{tr("نركز على المهارات الفنية واللياقة البدنية وإنهاء الهجمات، ونؤمن بأن الاحترام والعمل الجماعي أساس تطور كل لاعب داخل الملعب وخارجه.")}</p><a href="#contact" className="ah-text-link">{tr("تعرّف علينا أكثر")} <ArrowUpLeft size={18}/></a></div></section>
-      <section className="ah-section ah-programs" id="programs"><div className="ah-section-head"><div><p className="ah-eyebrow">{tr("02 / برامجنا التدريبية")}</p><h2>{tr("خطوة أقرب")} <em>{tr("للتطور.")}</em></h2></div><p className="ah-muted">{tr("تدريب متكامل، من الأساسيات إلى المنافسة.")}</p></div><div className="ah-program-grid">{[
-        ['01','تطوير المهارات','التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.'],
-        ['02','اللياقة البدنية','تنمية القوة والتحمل والمرونة، لبناء جاهزية بدنية تدعم أداء اللاعب في الملعب.'],
-        ['03','إنهاء الهجمات','تطوير دقة التسديد والتحرك أمام المرمى، وتعزيز الثقة عند اتخاذ القرار.'],
-      ].map(([number,title,body],i) => <article className="ah-program" key={number}><img src={programImages[i]} loading="lazy" alt={`${tr("صورة توضيحية لبرنامج")} ${tr(title)}`}/><div><span className="ah-number">{number}</span><h3>{tr(title)}</h3><p>{tr(body)}</p></div></article>)}</div><p className="ah-photo-note">{tr("صور البرامج توضيحية من الموقع التعريفي للأكاديمية.")}</p></section>
+      <section className="ah-section ah-about" id="about"><div><p className="ah-eyebrow">{tr("01 / عن الأكاديمية")}</p><h2>{sectionText('about_title','كرة القدم أكثر من مجرد لعبة.')}</h2></div><div><p className="ah-copy">{sectionText('about_body','من المحرق في مملكة البحرين، تهدف أكاديمية شوتر إلى تطوير المواهب الناشئة في بيئة تجمع بين التدريب، والانضباط، وحب كرة القدم.')}</p><p className="ah-muted">{sectionText('about_extra','نركز على المهارات الفنية واللياقة البدنية وإنهاء الهجمات، ونؤمن بأن الاحترام والعمل الجماعي أساس تطور كل لاعب داخل الملعب وخارجه.')}</p><a href="#contact" className="ah-text-link">{tr("تعرّف علينا أكثر")} <ArrowUpLeft size={18}/></a></div></section>
+      <section className="ah-section ah-programs" id="programs"><div className="ah-section-head"><div><p className="ah-eyebrow">{tr("02 / برامجنا التدريبية")}</p><h2>{sectionText('programs_title','خطوة أقرب للتطور.')}</h2></div><p className="ah-muted">{sectionText('programs_intro','تدريب متكامل، من الأساسيات إلى المنافسة.')}</p></div><div className="ah-program-grid">{programs.map((program,i) => <article className="ah-program" key={i}>{program.image && <img src={program.image} loading="lazy" alt={lang === 'en' && program.title_en ? program.title_en : tr(program.title)}/>}<div><span className="ah-number">{String(i+1).padStart(2,'0')}</span><h3>{lang === 'en' && program.title_en ? program.title_en : tr(program.title)}</h3><p>{lang === 'en' && program.body_en ? program.body_en : tr(program.body)}</p></div></article>)}</div>{contact?.programs_v1 === undefined && <p className="ah-photo-note">{tr("صور البرامج توضيحية من الموقع التعريفي للأكاديمية.")}</p>}</section>
       <section className="ah-section ah-coaches" id="coaches"><div><p className="ah-eyebrow">{tr("03 / التدريب والتوجيه")}</p><h2>{tr("نتعلّم معًا.")}<br/><em>{tr("ونتطور معًا.")}</em></h2><p className="ah-muted">{tr("التوجيه، الممارسة، والمتابعة. نهج يدعم اللاعب ويعزز روح الفريق.")}</p></div><div>{publicCoaches.length ? <div className="ah-coach-grid">{publicCoaches.map(c => <article key={c.name}><img src={c.photo} alt={c.name} loading="lazy"/><h3>{c.name}</h3><p>{c.role}</p></article>)}</div> : <div className="ah-principles">{[['01','المهارة','التركيز على الأساسيات وتطوير الأداء.'],['02','الانضباط','الالتزام والاحترام داخل الملعب وخارجه.'],['03','روح الفريق','التعاون والتعلم من كل تجربة.']].map(([n,t,b]) => <div key={n}><span>{n}</span><div><h3>{tr(t)}</h3><p>{tr(b)}</p></div></div>)}</div>}</div></section>
       <section className="ah-section ah-media" id="media"><div className="ah-section-head"><div><p className="ah-eyebrow">{tr("04 / من قلب الملعب")}</p><h2>{tr("لحظات تستحق")} <em>{tr("المشاهدة.")}</em></h2></div><a className="ah-text-link" href={links.instagram} target="_blank" rel="noopener noreferrer">{tr("ألبوم الأكاديمية")} <Instagram size={18}/></a></div>
         <AcademyGallery photos={publicGallery} lang={lang}/>
