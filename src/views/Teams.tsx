@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import type { Team, Staff, Player, Lang, Role } from '@/types';
 import { db } from '@/lib/store';
-import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, SaveButton } from '@/components/ui';
+import { Modal, ConfirmDialog, PageHeader, EmptyState, SaveButton } from '@/components/ui';
 import { tr, dayLabel } from '@/lib/i18n';
 
 interface TeamsProps {
@@ -85,44 +85,45 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
             return (
               <div
                 key={tm.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow group flex flex-col"
+                className="relative overflow-hidden rounded-[24px] border border-[#4b648d] bg-gradient-to-b from-[#0c213f] to-[#07182e] p-5 text-white shadow-lg transition-shadow hover:shadow-xl group flex flex-col"
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white shrink-0 shadow-lg">
-                      <Trophy className="h-6 w-6" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-black text-slate-900 dark:text-white truncate">
-                        {tm.name}
-                      </p>
-                      <Badge color="emerald">{tm.ageGroup}</Badge>
-                    </div>
+                <div className="relative min-h-[148px] mb-4 flex items-start justify-between gap-3">
+                  <div className="relative z-10 min-w-0 pt-3">
+                    <p className="text-xl font-black leading-relaxed text-white break-words">{tm.name}</p>
+                    <span className="mt-2 inline-flex rounded-xl border border-emerald-400/30 bg-gradient-to-b from-green-500 to-green-700 px-3 py-1 text-sm font-black text-white shadow-lg">{tm.ageGroup}</span>
                   </div>
+                  <svg aria-hidden="true" viewBox="0 0 180 170" className="pointer-events-none absolute -end-6 bottom-0 h-40 w-44 opacity-90">
+                    <defs><radialGradient id={`ball-${tm.id}`} cx="35%" cy="25%" r="75%"><stop offset="0%" stopColor="#fff"/><stop offset="65%" stopColor="#b4bdcc"/><stop offset="100%" stopColor="#4a5671"/></radialGradient></defs>
+                    <path d="M4 140 155 8 139 43 178 16 130 78 171 63 104 126 155 112 92 163Z" fill="#ef244d" opacity=".65"/>
+                    <path d="M1 119 115 17M18 153 168 37M47 162 175 76" stroke="#ff3659" strokeWidth="5" opacity=".6"/>
+                    <circle cx="90" cy="99" r="58" fill={`url(#ball-${tm.id})`} stroke="#d9e0ec" strokeWidth="1.5"/>
+                    <path d="m88 76 22 16-8 26H75l-9-26Z M45 63l18-12 9 17-20 18-12-7Z M119 53l17 16-4 17-23-11 1-19Z M139 107l8 14-15 22-17-8 5-24Z M68 144l-7 6-23-23 9-16 22 14Z M80 44l24 1-9 13-12 1Z" fill="#18263c"/>
+                    <path d="m66 92-14-6m58 6 22-6m-30 32 13 17m-40-17-6 7m19-49-5-17" fill="none" stroke="#5b687e" strokeWidth="1.5"/>
+                  </svg>
                 </div>
 
-                <div className="flex items-center gap-2 mb-4 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                  <span className="text-xl shrink-0" aria-hidden>
+                <div className="relative z-10 flex items-center gap-3 mb-4 p-4 rounded-2xl border border-blue-500/70 bg-gradient-to-br from-[#153c70] to-[#0b2a54] shadow-inner">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-950/60 text-3xl shrink-0" aria-hidden>
                     {coach?.avatarUrl || '👤'}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-slate-400">{t.coach}</p>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
+                    <p className="text-xs font-bold text-blue-200/70">{t.coach}</p>
+                    <p className="text-lg font-black leading-relaxed text-white break-words">
                       {coach ? (isAr ? `مدرب ${tm.name.startsWith('فئة') ? tm.name : `فئة ${tm.name}`}` : `Coach — ${tm.name}`) : (isAr ? 'غير معيّن' : 'Not assigned')}
                     </p>
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{isAr ? 'اسم الكابتن: ' : 'Captain name: '}{coach?.name || (isAr ? 'غير معيّن' : 'Not assigned')}</p>
-                <div className="space-y-2.5 text-[12px] text-slate-500 dark:text-slate-400 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Calendar className="h-4 w-4 shrink-0 text-brand-500" />
+                <p className="text-sm font-bold text-slate-100 mb-3 pb-3 border-b border-blue-400/15">{isAr ? 'اسم الكابتن: ' : 'Captain name: '}{coach?.name || (isAr ? 'غير معيّن' : 'Not assigned')}</p>
+                <div className="divide-y divide-blue-400/15 text-sm text-slate-100 flex-1">
+                  <div className="flex items-center gap-3 flex-wrap py-3">
+                    <Calendar className="h-5 w-5 shrink-0 text-rose-500" />
                     <div className="flex flex-wrap gap-1">
                       {tm.trainingDays.length > 0 ? (
                         tm.trainingDays.map((d) => (
                           <span
                             key={d}
-                            className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300"
+                            className="px-1 py-0.5 text-xs font-bold text-slate-100"
                           >
                             {dayLabel(d, lang)}
                           </span>
@@ -133,28 +134,28 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 shrink-0 text-brand-500" />
+                  <div className="flex items-center gap-3 py-3">
+                    <Clock className="h-5 w-5 shrink-0 text-rose-500" />
                     <span className="font-semibold" dir="ltr">
                       {tm.trainingTime || (isAr ? 'غير محدد' : 'Not specified')}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 shrink-0 text-brand-500" />
+                  <div className="flex items-center gap-3 py-3">
+                    <MapPin className="h-5 w-5 shrink-0 text-rose-500" />
                     <span className="font-semibold">{t.pitchNumber} {tm.pitchNumber}</span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 shrink-0 text-brand-500" />
+                  <div className="flex items-center gap-3 py-3">
+                    <Users className="h-5 w-5 shrink-0 text-rose-500" />
                     <span className="font-semibold">
                       {count} {count === 1 ? (isAr ? 'لاعب' : 'player') : (isAr ? 'لاعبين' : 'players')}
                     </span>
                   </div>
 
                   {coach?.phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 shrink-0 text-brand-500" />
+                    <div className="flex items-center gap-3 py-3">
+                      <Phone className="h-5 w-5 shrink-0 text-rose-500" />
                       <span className="font-semibold" dir="ltr">
                         {coach.phone}
                       </span>
@@ -163,10 +164,10 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
                 </div>
 
                 {canEdit && (
-                  <div className="flex items-center gap-1 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-blue-400/15">
                     <button
                       onClick={() => setEditTeam(tm)}
-                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition cursor-pointer"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-blue-400/60 text-base font-black text-white bg-gradient-to-b from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 shadow-lg transition cursor-pointer"
                     >
                       <Edit2 className="h-3.5 w-3.5" /> {t.edit}
                     </button>
