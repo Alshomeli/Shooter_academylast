@@ -104,7 +104,7 @@ async function fetchParentRows(): Promise<Parent[]> {
 }
 
 async function fetchPlayerRows(): Promise<Player[]> {
-  const { data, error } = await supabase.from('players').select(TABLE_PUBLIC_COLUMNS.players);
+  const { data, error } = await supabase.from('players').select(TABLE_PUBLIC_COLUMNS.players).is('archived_at', null);
   if (error) throw error;
   const rows = (data || []) as unknown as Record<string, unknown>[];
   const { data: privateRows, error: privateError } = await supabase.rpc('get_player_private');
