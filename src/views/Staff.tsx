@@ -480,6 +480,7 @@ function StaffForm({
 
   const [assignTeamId, setAssignTeamId] = useState('');
   const [assigningTeam, setAssigningTeam] = useState(false);
+  const [transferConfirmed, setTransferConfirmed] = useState(false);
   const [assignmentMessage, setAssignmentMessage] = useState('');
   const [assignmentError, setAssignmentError] = useState('');
   const assignmentField = member?.coachKind === 'goalkeeper' ? 'goalkeeperCoachId' : 'coachId';
@@ -487,7 +488,8 @@ function StaffForm({
   const assignTeam = async () => {
     if (!canAssignTeams || !member || assigningTeam || !assignTeamId) return;
     const team = teams.find(item => item.id === assignTeamId);
-    if (!team || (team[assignmentField] && team[assignmentField] !== member.id)) return;
+    if (!team || team[assignmentField] === member.id) return;
+    if (team[assignmentField] && !transferConfirmed) return;
     setAssigningTeam(true); setAssignmentMessage(''); setAssignmentError('');
     try {
       if (typeof team.version !== 'number') throw new Error('STALE_RECORD');
@@ -497,7 +499,7 @@ function StaffForm({
         .eq('row_version', team.version).select('id').maybeSingle();
       if (error) throw error;
       if (!updated) throw new Error('STALE_RECORD');
-      setAssignTeamId('');
+      setAssignTeamId(''); setTransferConfirmed(false);
       setAssignmentMessage(isAr ? 'تم ربط الفئة بالمدرب.' : 'Category assigned to coach.');
       await onTeamsAssigned();
     } catch {
@@ -594,14 +596,20 @@ function StaffForm({
               <p className="text-xs text-slate-500">{isAr ? 'احفظ تغيير نوع المدرب ثم أعد فتح التعديل لتعيين الفئة.' : 'Save the coach type change and reopen this form to assign a category.'}</p>
             ) : <>
               <p className="mb-2 text-xs text-slate-500">{assignedTeams.map(team => team.name).join('، ') || (isAr ? 'لا توجد فئات معيّنة' : 'No assigned categories')}</p>
-              <select aria-label={isAr ? 'اختر فئة للمدرب' : 'Choose coach category'} value={assignTeamId} onChange={event => { setAssignTeamId(event.target.value); setAssignmentMessage(''); setAssignmentError(''); }} disabled={assigningTeam || saving || member.status !== 'active'} className={inputCls}>
+              <select aria-label={isAr ? 'اختر فئة للمدرب' : 'Choose coach category'} value={assignTeamId} onChange={event => { setAssignTeamId(event.target.value); setTransferConfirmed(false); setAssignmentMessage(''); setAssignmentError(''); }} disabled={assigningTeam || saving || member.status !== 'active'} className={inputCls}>
                 <option value="">{isAr ? 'اختر فئة موجودة...' : 'Select an existing category...'}</option>
-                {teams.filter(team => team[assignmentField] !== member.id).map(team => (
-                  <option key={team.id} value={team.id} disabled={!!team[assignmentField]}>{team.name}{team[assignmentField] ? (isAr ? ' — مرتبطة بمدرب آخر' : ' — assigned to another coach') : ''}</option>
-                ))}
+                {[false, true].map(occupied => <optgroup key={String(occupied)} label={occupied ? (isAr ? 'الفئات المرتبطة' : 'Assigned categories') : (isAr ? 'الفئات غير المرتبطة' : 'Unassigned categories')}>
+                  {teams.filter(team => team[assignmentField] !== member.id && !!team[assignmentField] === occupied).map(team => (
+                    <option key={team.id} value={team.id}>{team.name}{occupied ? ` — ${staff.find(coach => coach.id === team[assignmentField])?.name || (isAr ? 'مدرب آخر' : 'Another coach')}` : ''}</option>
+                  ))}
+                </optgroup>)}
               </select>
-              <button type="button" disabled={!assignTeamId || assigningTeam || saving || member.status !== 'active'} onClick={() => void assignTeam()} className="mt-2 rounded-lg bg-brand-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50">{assigningTeam ? (isAr ? 'جارٍ الربط...' : 'Assigning...') : (isAr ? 'ربط الفئة' : 'Assign category')}</button>
-              <p className="mt-1 text-xs text-slate-500">{isAr ? 'يحفظ ربط الفئة مباشرة. لتبديل مدرب فئة مرتبطة، استخدم صفحة الفئات.' : 'Saves the category assignment immediately. Reassign occupied categories from the categories page.'}</p>
+              {!!teams.find(team => team.id === assignTeamId)?.[assignmentField] && <label className="mt-2 flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
+                <input type="checkbox" checked={transferConfirmed} onChange={event => setTransferConfirmed(event.target.checked)} disabled={assigningTeam || saving} />
+                {isAr ? `أؤكد نقل تكليف الفئة من ${staff.find(coach => coach.id === teams.find(team => team.id === assignTeamId)?.[assignmentField])?.name || 'المدرب الحالي'} إلى ${member.name}.` : `I confirm transferring this category from ${staff.find(coach => coach.id === teams.find(team => team.id === assignTeamId)?.[assignmentField])?.name || 'the current coach'} to ${member.name}.`}
+              </label>}
+              <button type="button" disabled={!assignTeamId || assigningTeam || saving || member.status !== 'active' || (!!teams.find(team => team.id === assignTeamId)?.[assignmentField] && !transferConfirmed)} onClick={() => void assignTeam()} className="mt-2 rounded-lg bg-brand-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50">{assigningTeam ? (isAr ? 'جارٍ الربط...' : 'Assigning...') : (isAr ? 'ربط الفئة' : 'Assign category')}</button>
+              <p className="mt-1 text-xs text-slate-500">{isAr ? 'يحفظ الربط مباشرة. اختيار فئة مرتبطة ينقل تكليفها من مدربها الحالي إلى هذا المدرب.' : 'Saves immediately. Selecting an assigned category transfers its assignment from the current coach to this coach.'}</p>
               {assignmentMessage && <p role="status" className="mt-1 text-xs text-emerald-600">{assignmentMessage}</p>}
               {assignmentError && <p role="alert" className="mt-1 text-xs text-red-600">{assignmentError}</p>}
             </>}
