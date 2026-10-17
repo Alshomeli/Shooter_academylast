@@ -524,6 +524,22 @@ export default function App() {
     }
   }, [currentUser, currentTab]);
 
+  // Match the database coach scope, including assistants of team/GK coaches.
+  const sessionTeams = useMemo(() => {
+    if (currentUser?.role !== 'coach') return data.teams;
+    const actor = data.staff.find(member => member.id === currentUser.id);
+    if (!actor || actor.status !== 'active' || actor.role !== 'coach') return [];
+    const supervisor = actor.coachKind === 'assistant'
+      ? data.staff.find(member => member.id === actor.supervisingCoachId)
+      : actor;
+    if (!supervisor || supervisor.status !== 'active' || supervisor.role !== 'coach') return [];
+    if (supervisor.coachKind === 'goalkeeper') {
+      return data.teams.filter(team => team.goalkeeperCoachId === supervisor.id);
+    }
+    if (supervisor.coachKind && supervisor.coachKind !== 'team') return [];
+    return data.teams.filter(team => team.coachId === supervisor.id);
+  }, [currentUser, data.staff, data.teams]);
+
   const renderView = () => {
     switch (safeCurrentTab) {
       case 'dashboard':
@@ -541,9 +557,9 @@ export default function App() {
       case 'subscriptions':
         return <Subscriptions onPayment={async (sub, method) => { await db.recordPayment(sub, method); await loadAllData(); }} subscriptions={data.subscriptions} transactions={data.transactions} players={data.players} parents={data.parents} staff={data.staff} settings={data.settings} onSubscriptionsChange={saveSubscriptions} onTransactionsChange={saveTransactions} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
       case 'attendance':
-        return <AttendanceView players={data.players} teams={data.teams} matches={data.matches} trainings={data.trainings} attendance={data.attendance} onAttendanceChange={saveAttendance} activeRole={activeRole} lang={lang} />;
+        return <AttendanceView players={data.players} teams={sessionTeams} matches={data.matches} trainings={data.trainings} attendance={data.attendance} onAttendanceChange={saveAttendance} activeRole={activeRole} lang={lang} />;
       case 'schedules':
-        return <Schedules matches={data.matches} trainings={data.trainings} teams={data.teams} players={data.players} onMatchesChange={saveMatches} onTrainingsChange={saveTrainings} activeRole={activeRole} lang={lang} />;
+        return <Schedules matches={data.matches} trainings={data.trainings} teams={sessionTeams} players={data.players} onMatchesChange={saveMatches} onTrainingsChange={saveTrainings} activeRole={activeRole} lang={lang} />;
       case 'tournaments':
         return <Tournaments tournaments={data.tournaments} onTournamentsChange={saveTournaments} activeRole={activeRole} lang={lang} />;
       case 'evaluations':
