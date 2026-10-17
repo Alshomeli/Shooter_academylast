@@ -127,7 +127,6 @@ export function Sidebar({
             </div>
             <div className="min-w-0 flex-1 lg:w-full">
               <h1 className="font-black text-xs lg:text-sm text-slate-200 tracking-tight leading-tight">{brandName}</h1>
-              <p className="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5 uppercase">SHOOTER ACADEMY</p>
               <p className="hidden lg:block text-[9px] text-brand-500 font-semibold mt-0.5">{t.systemTitle}</p>
             </div>
             <button onClick={() => setMobileOpen(false)} aria-label={lang === 'ar' ? 'إغلاق القائمة' : 'Close menu'} className="lg:hidden p-1.5 rounded-lg hover:bg-slate-800 transition focus:outline-none focus:ring-2 focus:ring-brand-500/70"
