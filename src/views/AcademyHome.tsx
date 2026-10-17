@@ -170,7 +170,23 @@ export default function AcademyHome() {
         <button type="button" onClick={() => setStaffSubmitted(false)} aria-label={lang === 'ar' ? 'إغلاق التنبيه' : 'Dismiss notification'} className="rounded-lg p-2 hover:bg-emerald-100"><X size={18} aria-hidden="true" /></button>
       </div>}
       {contentError && <p role="status" className="ah-muted">{tr("تعذّر تحميل آخر المحتوى. يرجى تحديث الصفحة.")}</p>}
-      <section className={featuredPlayer ? 'ah-hero ah-hero-featured' : 'ah-hero'} aria-labelledby="ah-title">
+      {lang === 'ar' ? <section className="ah-image-banner" aria-labelledby="ah-title">
+        <figure className="ah-banner-figure">
+          <img src="/images/1000391344.jpg" alt="أكاديمية شوتر لكرة القدم (Shooter Academy) - هنا تبدأ رحلتك الكروية، مهارة تتطور، ثقة تكبر، وفريق يجمعنا" title="أكاديمية شوتر لكرة القدم | Shooter Academy" width={1918} height={820} loading="eager" fetchPriority="high" />
+          <a className="ah-banner-hotspot ah-banner-login" href={platform} aria-label="دخول منصة الأكاديمية" title="دخول منصة أكاديمية شوتر"><span className="sr-only">دخول منصة الأكاديمية</span></a>
+          <a className="ah-banner-hotspot ah-banner-programs" href="#programs" aria-label="اكتشف برامجنا التدريبية" title="اكتشف برامجنا التدريبية"><span className="sr-only">اكتشف برامجنا</span></a>
+        </figure>
+        <div className="sr-only">
+          <p>شغف اليوم. أبطال الغد.</p>
+          <h1 id="ah-title">هنا تبدأ رحلتك الكروية - أكاديمية شوتر لكرة القدم (Shooter Academy)</h1>
+          <p>مهارة تتطور، ثقة تكبر، وفريق يجمعنا. في أكاديمية شوتر، نمنح شغف كرة القدم مساحة للنمو.</p>
+          <span>FOOTBALL · PASSION · DEVELOPMENT</span>
+        </div>
+        <div className="ah-banner-mobile-actions">
+          <a className="ah-button" href={platform}>دخول منصة الأكاديمية <ArrowUpLeft size={18}/></a>
+          <a className="ah-text-link" href="#programs">اكتشف برامجنا <ArrowDown size={18}/></a>
+        </div>
+      </section> : (<section className={featuredPlayer ? 'ah-hero ah-hero-featured' : 'ah-hero'} aria-labelledby="ah-title">
         <img className="ah-hero-image" fetchPriority="high" src="/parent-hero.png" alt={tr("تصميم رياضي يعكس شغف كرة القدم")}/>
         
         <div className="ah-hero-shade"/>
@@ -178,7 +194,7 @@ export default function AcademyHome() {
           
         </div>
         <span className="ah-hero-caption">FOOTBALL · PASSION · DEVELOPMENT</span>
-      </section>
+      </section>)}
       <div className="ah-values"><span><Target/> {tr("تطوير المهارات")}</span><span><Users/> {tr("روح الفريق")}</span><span><Trophy/> {tr("شغف المنافسة")}</span><span>SHOOTER ACADEMY — BAHRAIN</span></div>
       <section className="ah-section ah-about" id="about"><div><p className="ah-eyebrow">{tr("01 / عن الأكاديمية")}</p><h2>{tr("كرة القدم أكثر")}<br/>{tr("من مجرد")} <em>{tr("لعبة.")}</em></h2></div><div><p className="ah-copy">{tr("من المحرق في مملكة البحرين، تهدف أكاديمية شوتر إلى تطوير المواهب الناشئة في بيئة تجمع بين التدريب، والانضباط، وحب كرة القدم.")}</p><p className="ah-muted">{tr("نركز على المهارات الفنية واللياقة البدنية وإنهاء الهجمات، ونؤمن بأن الاحترام والعمل الجماعي أساس تطور كل لاعب داخل الملعب وخارجه.")}</p><a href="#contact" className="ah-text-link">{tr("تعرّف علينا أكثر")} <ArrowUpLeft size={18}/></a></div></section>
       <section className="ah-section ah-programs" id="programs"><div className="ah-section-head"><div><p className="ah-eyebrow">{tr("02 / برامجنا التدريبية")}</p><h2>{tr("خطوة أقرب")} <em>{tr("للتطور.")}</em></h2></div><p className="ah-muted">{tr("تدريب متكامل، من الأساسيات إلى المنافسة.")}</p></div><div className="ah-program-grid">{[

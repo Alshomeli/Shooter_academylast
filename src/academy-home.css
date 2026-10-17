@@ -234,3 +234,14 @@
 @media(max-width:800px){.ah-principles>div{padding:17px 16px}.ah-principles p{font-size:14px}}
 @media(max-width:430px){.ah-principles>div>span{width:38px;height:38px;min-width:38px}}
 @media(prefers-reduced-motion:reduce){.ah-principles>div{transition:none}}
+
+/* Full artwork stays uncropped; hotspots track the buttons inside the image. */
+.ah-image-banner{width:100%;overflow:hidden;background:#0a0d12;color:#fff}
+.ah-banner-figure{position:relative;width:100%;margin:0}
+.ah-banner-figure>img{display:block;width:100%;height:auto}
+.ah-banner-hotspot{position:absolute;top:74.2%;height:9%;border-radius:6px}
+.ah-banner-login{left:76.2%;width:15.8%}
+.ah-banner-programs{left:64.5%;width:10%}
+.ah-banner-hotspot:focus-visible{outline:3px solid #fff;outline-offset:3px;background:#ffffff20}
+.ah-banner-mobile-actions{display:none}
+@media(max-width:800px){.ah-banner-mobile-actions{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:18px;padding:18px 12px}.ah-banner-mobile-actions a{min-height:44px;display:inline-flex;align-items:center}.ah-banner-hotspot{display:none}}
