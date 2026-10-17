@@ -48,6 +48,19 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     if(selected.kind==='contact') for(const key of contacts){const value=selected.payload[key];if(value){const url=new URL(value);if(url.protocol!=='https:') throw new Error('روابط التواصل يجب أن تبدأ بـ HTTPS.');}}
     const saved=await saveContent(selected,isNew);setSelected(saved);setIsNew(false);await reload();return saved;
   };
+  const defaultPrograms = [
+    {title:'تطوير المهارات',body:'التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.',image:'/home/program-skills.jpg'},
+    {title:'اللياقة البدنية',body:'تنمية القوة والتحمل والمرونة، لبناء جاهزية بدنية تدعم أداء اللاعب في الملعب.',image:'/home/program-fitness.jpg'},
+    {title:'إنهاء الهجمات',body:'تطوير دقة التسديد والتحرك أمام المرمى، وتعزيز الثقة عند اتخاذ القرار.',image:'/home/program-finishing.jpg'}
+  ];
+  type Program = {title:string;title_en?:string;body:string;body_en?:string;image:string;image_path?:string};
+  const currentPrograms=():Program[]=>{
+    if(!selected) return [];
+    if(selected.payload.programs_v1===undefined) return defaultPrograms;
+    try { const data:unknown=JSON.parse(selected.payload.programs_v1); return Array.isArray(data)?data as Program[]:[]; }catch{return [];}
+  };
+  const updatePrograms=(rows:Program[])=>setField('programs_v1',JSON.stringify(rows));
+  const programField=(p:Program,i:number,key:keyof Program,label:string)=><label className="block space-y-1"><span className="text-sm font-bold">{label}</span><input className={input} value={p[key]||''} disabled={busy} onChange={e=>{const rows=currentPrograms().map(row=>({...row}));rows[i][key]=e.target.value;updatePrograms(rows);}}/></label>;
   const field=(name:string,label:string,type='text')=><label className="block space-y-1" key={name}><span className="text-sm font-bold">{label}</span><input className={input} type={type} maxLength={name==='title'?200:1000} value={selected?.payload[name]||''} onChange={e=>setField(name,e.target.value)} disabled={busy}/></label>;
   const upload=(name:string,label:string,video=false)=><label className="block space-y-2"><span className="flex items-center gap-2 text-sm font-bold"><Upload size={16}/>{label}</span><input type="file" accept={video?'video/mp4':'image/jpeg,image/png,image/webp'} disabled={busy} onChange={e=>{const file=e.target.files?.[0];if(file)void run(async()=>{const path=await uploadContentFile(file,video);setPreview(null);setSelected(s=>s?{...s,payload:{...s.payload,[`${name}_path`]:path,[name]:''}}:s);setMessage('تم رفع الملف. احفظ المسودة لربطه بالمحتوى.');});e.target.value='';}}/><p className="text-xs text-slate-500 dark:text-slate-400">{selected?.payload[`${name}_path`]?'ملف مرفوع':selected?.payload[name]?'ملف من الموقع الحالي':video?'MP4 · 20 MB':'JPG / PNG / WebP · 5 MB'}</p></label>;
   return <section className="space-y-5" dir={ar?'rtl':'ltr'}>
@@ -63,6 +76,37 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
       </div>
       {selected?<div className={`${box} space-y-4`} key={selected.id}>
         {kind==='contact'?<>
+          <section className="space-y-3 rounded-xl border border-red-300 p-4">
+            <h3 className="font-black text-lg">01 / عن الأكاديمية — إدارة النصوص</h3>
+            <p className="text-xs">يمكنك تغيير أو إفراغ النصوص ثم حفظ المسودة ونشرها. النص الإنجليزي اختياري.</p>
+            {field('about_title','عنوان القسم 01')}
+            {field('about_title_en','Section 01 title (English)')}
+            {field('about_body','الوصف الرئيسي')}
+            {field('about_body_en','Main description (English)')}
+            {field('about_extra','الفقرة الإضافية')}
+            {field('about_extra_en','Additional paragraph (English)')}
+          </section>
+          <section className="space-y-3 rounded-xl border border-red-300 p-4">
+            <h3 className="font-black text-lg">02 / برامجنا التدريبية — إدارة البطاقات</h3>
+            {field('programs_title','عنوان قسم البرامج')}
+            {field('programs_title_en','Programs title (English)')}
+            {field('programs_intro','وصف قسم البرامج')}
+            {field('programs_intro_en','Programs description (English)')}
+            {currentPrograms().map((p,i)=><div key={i} className="space-y-2 rounded-xl border border-slate-300 p-3">
+              <div className="flex justify-between gap-2"><b>برنامج {i+1}</b><button type="button" disabled={busy} className="text-red-700 underline" onClick={()=>updatePrograms(currentPrograms().filter((_,j)=>j!==i))}>حذف البطاقة</button></div>
+              {programField(p,i,'title','اسم البرنامج')}
+              {programField(p,i,'title_en','Program name (English)')}
+              {programField(p,i,'body','الوصف')}
+              {programField(p,i,'body_en','Description (English)')}
+              {programField(p,i,'image','رابط الصورة HTTPS أو مسار موقع محلي')}
+              <label className="block text-sm font-bold">رفع صورة جديدة
+                <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={e=>{const file=e.target.files?.[0];if(file)void run(async()=>{const path=await uploadContentFile(file,false);const rows=currentPrograms().map(row=>({...row}));rows[i].image_path=path;rows[i].image='';updatePrograms(rows);setMessage('تم رفع الصورة؛ احفظ المسودة ثم انشرها.');});e.target.value='';}}/>
+              </label>
+              {p.image_path&&<p className="text-xs">صورة مرفوعة في التخزين: {p.image_path}</p>}
+            </div>)}
+            <button className={button} type="button" disabled={busy||currentPrograms().length>=12} onClick={()=>updatePrograms([...currentPrograms(),{title:'برنامج جديد',body:'',image:''}])}><Plus size={16}/>إضافة برنامج جديد</button>
+            <p className="text-xs text-slate-600 dark:text-slate-300">حذف البطاقة يزيلها من الصفحة بعد النشر فقط، ولا يمسح الصور من التخزين أو النسخ السابقة. حد أقصى 12 برنامجاً.</p>
+          </section>
           <h3 className="font-black text-lg">روابط التواصل</h3>
           {contacts.map(c=>field(c,c,'url'))}
           <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-3">
