@@ -1,6 +1,6 @@
 import { useState, useMemo, type FormEvent } from 'react';
 import {
-  Trophy, Plus, Edit2, Trash2, Users, Calendar, Clock, MapPin, Phone,
+  Trophy, Plus, Edit2, Trash2, Users, Calendar, Clock, MapPin, Phone, Eye,
 } from 'lucide-react';
 import type { Team, Staff, Player, Lang, Role } from '@/types';
 import { db } from '@/lib/store';
@@ -27,6 +27,8 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
   const isAr = lang === 'ar';
   const [showAdd, setShowAdd] = useState(false);
   const [editTeam, setEditTeam] = useState<Team | null>(null);
+  const [viewTeamId, setViewTeamId] = useState<string | null>(null);
+  const viewTeam = teams.find(team => team.id === viewTeamId);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
 
@@ -163,14 +165,16 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
                   )}
                 </div>
 
-                {canEdit && (
                   <div className="flex items-center gap-2 mt-4 pt-4 border-t border-blue-400/15">
-                    <button
+                    <button type="button" onClick={() => setViewTeamId(tm.id)} aria-label={isAr ? `عرض ${tm.name}` : `View ${tm.name}`} className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-blue-400/50 bg-blue-950/70 py-3 text-sm font-bold text-blue-100 hover:bg-blue-900/80 transition">
+                      <Eye className="h-4 w-4" /> {isAr ? 'عرض' : 'View'}
+                    </button>
+                    {canEdit && <button
                       onClick={() => setEditTeam(tm)}
                       className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-blue-400/60 text-base font-black text-white bg-gradient-to-b from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 shadow-lg transition cursor-pointer"
                     >
                       <Edit2 className="h-3.5 w-3.5" /> {t.edit}
-                    </button>
+                    </button>}
                     {activeRole === 'manager' && (
                     <button
                       onClick={() => setDeleteId(tm.id)}
@@ -180,12 +184,33 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
                     </button>
                     )}
                   </div>
-                )}
               </div>
             );
           })}
         </div>
       )}
+
+      {viewTeam && <Modal open onClose={() => setViewTeamId(null)} title={viewTeam.name} size="lg">
+        <div className="space-y-4" dir={isAr ? 'rtl' : 'ltr'}>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            {[
+              [isAr ? 'الفئة العمرية' : 'Age group', viewTeam.ageGroup],
+              [isAr ? 'اسم الكابتن' : 'Captain name', coachOf(viewTeam.coachId)?.name || (isAr ? 'غير معيّن' : 'Not assigned')],
+              [isAr ? 'أيام التدريب' : 'Training days', viewTeam.trainingDays.map(day => dayLabel(day, lang)).join('، ') || '—'],
+              [isAr ? 'وقت التدريب' : 'Training time', viewTeam.trainingTime || '—'],
+              [t.pitchNumber, viewTeam.pitchNumber || '—'],
+              [isAr ? 'عدد اللاعبين' : 'Players', String(playersIn(viewTeam.id))],
+            ].map(([label, value]) => <div key={label} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3">
+              <dt className="text-xs text-slate-500 dark:text-slate-400">{label}</dt>
+              <dd className="mt-1 font-bold text-slate-900 dark:text-white break-words">{value}</dd>
+            </div>)}
+          </dl>
+          <div>
+            <h3 className="mb-2 font-bold text-slate-900 dark:text-white">{isAr ? 'لاعبو الفئة' : 'Category players'}</h3>
+            {playersIn(viewTeam.id) ? <ul tabIndex={0} aria-label={isAr ? 'قائمة لاعبي الفئة' : 'Category player list'} className="max-h-64 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 dark:border-slate-700 px-3 divide-y divide-slate-200 dark:divide-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">{players.filter(player => player.teamId === viewTeam.id).map(player => <li key={player.id} className="py-2 text-sm text-slate-700 dark:text-slate-200">{player.name}</li>)}</ul> : <p className="text-sm text-slate-500 dark:text-slate-400">{isAr ? 'لا يوجد لاعبون في هذه الفئة' : 'No players in this category'}</p>}
+          </div>
+        </div>
+      </Modal>}
 
       {(showAdd || editTeam) && (
         <TeamForm
