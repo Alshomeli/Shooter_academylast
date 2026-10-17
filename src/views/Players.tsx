@@ -10,7 +10,7 @@ import { tr, positionLabel } from '@/lib/i18n';
 import { ContactLinks } from '@/components/ContactLinks';
 import { DocumentUpload } from '@/components/DocumentUpload';
 import { fetchAllPlayerFiles } from '@/lib/uploads';
-import { validateRequired, validatePhone, validateEmail, validateNumber, validateJerseyUnique } from '@/lib/validation';
+import { validateRequired, validatePhone, validateEmail, validateNumber, validateJerseyUnique, validatePlayerParentLink } from '@/lib/validation';
 
 interface PlayersProps {
   players: Player[];
@@ -274,7 +274,7 @@ function PlayerForm({ player, parents, teams, players, activeRole, onSave, onClo
     parentPhone: player?.parentPhone || '',
     parentEmail: player?.parentEmail || '',
     parentId: player?.parentId || '',
-    status: player?.status || 'active',
+    status: player?.status || 'inactive',
     notes: player?.notes || '',
     joinedDate: player?.joinedDate || new Date().toISOString().substring(0, 10),
   });
@@ -289,6 +289,8 @@ function PlayerForm({ player, parents, teams, players, activeRole, onSave, onClo
     if (!nameCheck.valid) e2.name = nameCheck.message!;
     const teamCheck = validateRequired(form.teamId, t.team);
     if (!teamCheck.valid) e2.teamId = teamCheck.message!;
+    const parentCheck = validatePlayerParentLink(form.parentId, parents.map(p => p.id), player?.parentId, lang);
+    if (!parentCheck.valid) e2.parentId = parentCheck.message!;
     const jerseyCheck = validateNumber(form.jerseyNumber, 1, 99, t.jerseyNumber);
     if (!jerseyCheck.valid) e2.jerseyNumber = jerseyCheck.message!;
     else {
@@ -345,11 +347,14 @@ function PlayerForm({ player, parents, teams, players, activeRole, onSave, onClo
               {BLOOD_TYPES.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
           </FormField>
-          <FormField label={isAr ? 'ربط ولي الأمر' : 'Linked parent'}>
-            <select className={inputCls} value={form.parentId} disabled={!canEditSensitive} onChange={e => {
+          <FormField label={isAr ? 'ربط ولي الأمر' : 'Linked parent'} error={errors.parentId}>
+            <select aria-label={isAr ? 'ربط ولي الأمر' : 'Linked parent'} required={!player || !!player.parentId} className={`${inputCls} ${errors.parentId ? 'border-red-400 ring-1 ring-red-400' : ''}`} value={form.parentId} disabled={!canEditSensitive} onChange={e => {
               const selected = parents.find(p => p.id === e.target.value);
               setForm({ ...form, parentId: selected?.id || '', parentName: selected?.name || '', parentPhone: selected?.phone || '', parentEmail: selected?.email || '' });
+              setErrors(previous => ({ ...previous, parentId: '' }));
             }}><option value="">{isAr ? 'اختر ولي الأمر' : 'Select parent'}</option>{parents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+            {!player && parents.length === 0 && <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{isAr ? 'أضف ولي الأمر من صفحة أولياء الأمور أولًا، ثم اربط اللاعب به.' : 'Add a parent on the Parents page first, then link the player.'}</p>}
+            {player && !form.parentId && <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{isAr ? 'هذا اللاعب غير مرتبط بولي أمر. يلزم أن يحدد المدير ولي أمره الصحيح ليظهر في بوابته.' : 'This player is not linked to a parent. A manager must select the correct parent for the player to appear in their portal.'}</p>}
           </FormField>
           <FormField label={t.parentName}>
             <input disabled={!!form.parentId} value={form.parentName} onChange={(e) => setForm({ ...form, parentName: e.target.value })} className={inputCls} />
@@ -362,10 +367,11 @@ function PlayerForm({ player, parents, teams, players, activeRole, onSave, onClo
             {!canEditSensitive && <p className="text-[10px] text-amber-500 mt-1">{isAr ? 'يُتاح تعديل البريد للمدير فقط' : 'Email editing is restricted to managers'}</p>}
           </FormField>
           <FormField label={t.status}>
-            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as 'active' | 'inactive' })} className={inputCls}>
+            <select value={form.status} disabled={activeRole !== 'manager'} onChange={(e) => setForm({ ...form, status: e.target.value as 'active' | 'inactive' })} className={inputCls}>
               <option value="active">{t.active}</option>
               <option value="inactive">{t.inactive}</option>
             </select>
+            {!player && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{isAr ? 'يبدأ اللاعب غير نشط حتى السداد، مع بقاء صلاحية التفعيل اليدوي للمدير.' : 'New players start inactive until payment; managers retain manual activation.'}</p>}
           </FormField>
         </div>
         <FormField label={t.notes}>
