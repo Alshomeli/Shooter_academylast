@@ -3,6 +3,7 @@ import { ClipboardCheck, Loader2, LogOut, Send } from 'lucide-react';
 import { FormField, inputCls } from '@/components/ui';
 import { getMyStaffApplication, saveStaffApplication, submitStaffApplication } from '@/lib/staff-registration';
 import type { CurrentUser, Lang, StaffApplication } from '@/types';
+import { supabase } from '@/lib/supabase';
 
 export function StaffRegistration({ user, lang, onLogout, onApproved }: {
   user: CurrentUser;
@@ -16,6 +17,7 @@ export function StaffRegistration({ user, lang, onLogout, onApproved }: {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [submissionComplete, setSubmissionComplete] = useState(false);
   const [form, setForm] = useState({
     requestedRole: 'coach' as StaffApplication['requestedRole'],
     fullName: '',
@@ -69,6 +71,13 @@ export function StaffRegistration({ user, lang, onLogout, onApproved }: {
       });
       const submitted = await submitStaffApplication(saved.id);
       setApp(submitted);
+      setSubmissionComplete(true);
+      const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
+      if (signOutError) {
+        setError(text('تم إرسال الطلب، لكن تعذر تسجيل الخروج. استخدم زر الخروج للعودة بأمان.', 'Application submitted, but sign-out failed. Use Sign out to leave safely.'));
+        return;
+      }
+      window.location.replace('/?staff_submitted=1');
     } catch (err) {
       setError(err instanceof Error ? err.message : text('تعذر إرسال الطلب.', 'Could not submit the application.'));
     } finally { setBusy(false); }
@@ -98,6 +107,7 @@ export function StaffRegistration({ user, lang, onLogout, onApproved }: {
 
         {loading ? <div className="py-12 text-center"><Loader2 className="mx-auto h-7 w-7 animate-spin text-brand-600" /></div> : (
           <>
+            {submissionComplete && <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 font-bold text-emerald-800">{text('تم إرسال طلبك، بانتظار مراجعة الإدارة.', 'Your application has been submitted and is awaiting management review.')}</p>}
             {statusText && <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">{statusText}</div>}
             {app?.reviewNotes && <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800"><b>{text('ملاحظة المدير:', 'Manager note:')}</b> {app.reviewNotes}</div>}
             {error && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
