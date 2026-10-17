@@ -8,6 +8,18 @@ No production cleanup has been executed or approved by this implementation.
 - Academy settings, teams, coach assignments, published site content, schema, policies, triggers, functions and audit history.
 - Any real operational record or file, and all dependencies of protected records.
 
+## Retired legacy setup endpoint
+
+`setup-academy` is permanently disabled: every POST returns HTTP 410 with
+`destructive_setup_disabled`. It performs no database, Auth admin, Storage or
+network operations, even when the old `ALLOW_DESTRUCTIVE_SETUP` secret is set.
+The former table-wide reset, seed and account replacement code has been removed.
+Keep `verify_jwt = true` when deploying it. Normal reviewed registration flows
+do not call this endpoint.
+
+This closes the legacy bulk-reset route; it is not a blanket database deletion
+guard. Any separately authorized cleanup must still meet every condition below.
+
 ## Blocking conditions before cleanup
 
 1. Obtain a full database backup including Auth and internal schemas and a separate copy of actual Storage object bytes. The public-table JSON snapshot is only a partial backup.
