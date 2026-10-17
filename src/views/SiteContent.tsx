@@ -4,6 +4,7 @@ import type { Lang, Role, Staff } from '@/types';
 import { publishContent, readContentHistory, readManagerContent, resolveContentMedia, saveContent, uploadContentFile, type ContentItem, type ContentKind, type ContentRevision } from '@/lib/site-content';
 import { featuredImageStyle, featuredPlayerValidationError } from '@/lib/featured-player';
 import { hasReviewedCurrentDraft } from '@/lib/content-review';
+import { programImages } from '@/data/public-academy';
 import '../academy-home.css';
 
 const kinds: {kind:ContentKind; ar:string; en:string}[] = [
@@ -49,9 +50,9 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     const saved=await saveContent(selected,isNew);setSelected(saved);setIsNew(false);await reload();return saved;
   };
   const defaultPrograms = [
-    {title:'تطوير المهارات',body:'التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.',image:'/home/program-skills.jpg'},
-    {title:'اللياقة البدنية',body:'تنمية القوة والتحمل والمرونة، لبناء جاهزية بدنية تدعم أداء اللاعب في الملعب.',image:'/home/program-fitness.jpg'},
-    {title:'إنهاء الهجمات',body:'تطوير دقة التسديد والتحرك أمام المرمى، وتعزيز الثقة عند اتخاذ القرار.',image:'/home/program-finishing.jpg'}
+    {title:'تطوير المهارات',body:'التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.',image:programImages[0]},
+    {title:'اللياقة البدنية',body:'تنمية القوة والتحمل والمرونة، لبناء جاهزية بدنية تدعم أداء اللاعب في الملعب.',image:programImages[1]},
+    {title:'إنهاء الهجمات',body:'تطوير دقة التسديد والتحرك أمام المرمى، وتعزيز الثقة عند اتخاذ القرار.',image:programImages[2]}
   ];
   type Program = {title:string;title_en?:string;body:string;body_en?:string;image:string;image_path?:string};
   const currentPrograms=():Program[]=>{
