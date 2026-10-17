@@ -310,7 +310,7 @@ export default function App() {
       });
     } catch (err) {
       console.error('[load]', err);
-      if (stillCurrent()) setLoadError('تعذر تحميل البيانات. يرجى المحاولة مرة أخرى. / Could not load your data. Please try again.');
+      if (stillCurrent()) setLoadError(err instanceof Error ? err.message : JSON.stringify(err));
     } finally {
       if (stillCurrent()) setLoading(false);
       loadInFlight.current = null;
