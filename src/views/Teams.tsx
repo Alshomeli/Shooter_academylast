@@ -22,6 +22,17 @@ const WEEK_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأر
 const inputCls =
   'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
+// Younger age groups first: newer birth years or smaller U-age values.
+const ageOrder = (team: Team): number => {
+  const label = `${team.ageGroup} ${team.name}`;
+  const years = [...label.matchAll(/(?:19|20)\d{2}/g)].map(match => Number(match[0]));
+  if (years.length > 0) return 2100 - Math.max(...years);
+  const underAge = label.match(/(?:\bU\s*[- ]?)(\d{1,2})\b/i);
+  if (underAge) return Number(underAge[1]);
+  const age = label.match(/(\d{1,2})\s*(?:سنة|سنوات|years?)/i);
+  return age ? Number(age[1]) : Number.POSITIVE_INFINITY;
+};
+
 export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeRole, lang }: TeamsProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
@@ -33,6 +44,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
   const [deleteError, setDeleteError] = useState('');
 
   const canEdit = activeRole === 'manager';
+  const sortedTeams = useMemo(() => [...teams].sort((a, b) => ageOrder(a) - ageOrder(b) || a.name.localeCompare(b.name)), [teams]);
 
   const coachOf = (id: string) => staff.find((s) => s.id === id);
   const playersIn = (teamId: string) => players.filter((p) => p.teamId === teamId).length;
@@ -81,7 +93,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {teams.map((tm) => {
+          {sortedTeams.map((tm) => {
             const coach = coachOf(tm.coachId);
             const count = playersIn(tm.id);
             return (
