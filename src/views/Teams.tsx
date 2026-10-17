@@ -113,7 +113,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-500 mb-3">{isAr ? 'مدرب الحراس: ' : 'Goalkeeper coach: '}{coachOf(tm.goalkeeperCoachId || '')?.name || (isAr ? 'غير معيّن' : 'Not assigned')}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{isAr ? 'اسم الكابتن: ' : 'Captain name: '}{coach?.name || (isAr ? 'غير معيّن' : 'Not assigned')}</p>
                 <div className="space-y-2.5 text-[12px] text-slate-500 dark:text-slate-400 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Calendar className="h-4 w-4 shrink-0 text-brand-500" />
