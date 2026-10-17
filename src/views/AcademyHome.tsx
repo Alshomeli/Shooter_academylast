@@ -159,7 +159,6 @@ export default function AcademyHome() {
     <header className="ah-header">
       <a href="#top" className="ah-brand"><img src="/shooter-logo-transparent.png" width="54" height="60" alt={tr("شعار أكاديمية شوتر")}/><span>{tr("أكاديمية شوتر")}<small>SHOOTER ACADEMY</small></span></a>
       <nav className={`ah-nav ${menu ? 'is-open' : ''}`} id="ah-navigation" aria-label={tr("التنقل الرئيسي")}>{navigation.map(([id,label]) => <a href={`#${id}`} key={id} onClick={() => setMenu(false)}>{tr(label)}</a>)}</nav>
-      <SocialLinks links={links} header lang={lang}/>
       <button type="button" className="ah-language-toggle" onClick={toggleLanguage} aria-label={lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'} title={lang === 'ar' ? 'Switch to English' : 'العودة إلى العربية'} lang={lang === 'ar' ? 'en' : 'ar'}>{lang === 'ar' ? 'EN' : 'عربي'}</button>
       <button type="button" className="ah-theme-toggle" onClick={() => setDarkMode(v => !v)} aria-label={darkMode ? tr("تفعيل الوضع النهاري") : tr("تفعيل الوضع الليلي")} aria-pressed={darkMode} title={darkMode ? tr("تفعيل الوضع النهاري") : tr("تفعيل الوضع الليلي")}>{darkMode ? <Sun size={18}/> : <Moon size={18}/>}<span>{darkMode ? tr("نهاري") : tr("ليلي")}</span></button>
       <a className="ah-button ah-login" href={platform}>{tr("دخول منصة الأكاديمية")} <ArrowUpLeft size={17}/></a>
