@@ -176,7 +176,7 @@ export default function AcademyHome() {
         
         <div className="ah-hero-shade"/>
         <div className="ah-hero-content"><p className="ah-eyebrow">{tr("شغف اليوم. أبطال الغد.")}</p><h1 id="ah-title">{tr("هنا تبدأ")}<br/>{tr("رحلتك")} <em>{tr("الكروية.")}</em></h1><p className="ah-lead">{tr("مهارة تتطور. ثقة تكبر. وفريق يجمعنا.")}<br/>{tr("في أكاديمية شوتر، نمنح شغف كرة القدم مساحة للنمو.")}</p><div className="ah-actions"><a className="ah-button" href={platform}>{tr("دخول منصة الأكاديمية")} <ArrowUpLeft size={20}/></a><a className="ah-text-link" href="#programs">{tr("اكتشف برامجنا")} <ArrowDown size={17}/></a></div>
-          {featuredPlayer && <aside className="ah-featured-honor" aria-label={tr("بطاقة تكريم لاعب الشهر")}><span>{featuredPlayer.heading}</span><strong>{featuredPlayer.name}</strong>{featuredPlayer.body && <p>{featuredPlayer.body}</p>}</aside>}
+          
         </div>
         <span className="ah-hero-caption">FOOTBALL · PASSION · DEVELOPMENT</span>
       </section>
