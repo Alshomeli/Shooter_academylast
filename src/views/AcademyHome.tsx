@@ -34,6 +34,13 @@ function SocialLinks({ links, header = false, lang = 'ar' }: { links: typeof def
 export default function AcademyHome() {
   const [content, setContent] = useState<ContentItem[]>([]);
   const [legacy, setLegacy] = useState(false);
+  const [staffSubmitted, setStaffSubmitted] = useState(() => new URLSearchParams(window.location.search).get('staff_submitted') === '1');
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('staff_submitted')) return;
+    url.searchParams.delete('staff_submitted');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  }, []);
   const [contentError, setContentError] = useState(false);
   const [lang, setLang] = useState<Lang>(() => publicLanguage(window.location.search, prefs.getLang()));
   const tr = (value: string | undefined, en?: string) => publicText(value, lang, en);
@@ -160,6 +167,10 @@ export default function AcademyHome() {
       <button className="ah-menu" onClick={() => setMenu(v => !v)} aria-expanded={menu} aria-controls="ah-navigation" aria-label={menu ? tr("إغلاق القائمة") : tr("فتح القائمة")}>{menu ? <X/> : <Menu/>}</button>
     </header>
     <main>
+      {staffSubmitted && <div role="status" className="mx-auto my-4 flex max-w-3xl items-center justify-between gap-4 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-900">
+        <p className="font-bold">{lang === 'ar' ? 'تم إرسال طلبك، بانتظار مراجعة الإدارة.' : 'Your application has been submitted and is awaiting management review.'}</p>
+        <button type="button" onClick={() => setStaffSubmitted(false)} aria-label={lang === 'ar' ? 'إغلاق التنبيه' : 'Dismiss notification'} className="rounded-lg p-2 hover:bg-emerald-100"><X size={18} aria-hidden="true" /></button>
+      </div>}
       {contentError && <p role="status" className="ah-muted">{tr("تعذّر تحميل آخر المحتوى. يرجى تحديث الصفحة.")}</p>}
       <section className={featuredPlayer ? 'ah-hero ah-hero-featured' : 'ah-hero'} aria-labelledby="ah-title">
         <img className="ah-hero-image" fetchPriority="high" src="/parent-hero.png" alt={tr("تصميم رياضي يعكس شغف كرة القدم")}/>
