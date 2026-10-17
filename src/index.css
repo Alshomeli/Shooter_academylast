@@ -50,26 +50,58 @@ html {
 }
 
 
+@page receipt-landscape {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
 @media print {
   @page { size: A4; margin: 12mm; }
+
+  body.receipt-printing {
+    background: white !important;
+  }
 
   body.receipt-printing * {
     visibility: hidden !important;
   }
 
+  body.receipt-printing .receipt-overlay,
   body.receipt-printing .receipt-print-root,
   body.receipt-printing .receipt-print-root * {
     visibility: visible !important;
   }
 
+  body.receipt-printing .receipt-overlay {
+    position: static !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
   body.receipt-printing .receipt-print-root {
+    page: receipt-landscape;
     position: absolute !important;
-    inset: 0 auto auto 0 !important;
+    top: 0 !important;
+    left: 0 !important;
     width: 100% !important;
     max-width: none !important;
     margin: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.receipt-printing .receipt-content {
+    padding: 6mm !important;
+    max-height: 185mm;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.receipt-printing .receipt-content .grid {
+    break-inside: avoid !important;
   }
 
   body.receipt-printing .receipt-no-print {
