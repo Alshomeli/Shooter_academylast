@@ -36,6 +36,8 @@ jobs:
         run: npx --yes supabase@2 start
       - name: Verify local Supabase is healthy
         run: npx --yes supabase@2 status
+      - name: Test real local Auth and private receipt Storage RLS
+        run: node scripts/test-local-supabase-auth-storage.mjs
       - name: Stop disposable local containers
         if: always()
         run: npx --yes supabase@2 stop --no-backup || true
