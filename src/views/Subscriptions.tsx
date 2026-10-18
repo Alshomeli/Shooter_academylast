@@ -162,6 +162,7 @@ export function Subscriptions({
   );
   const netProfit = totalRevenue - totalExpenses;
   const paidCount = subscriptions.filter((s) => s.status === 'paid').length;
+  const exemptCount = subscriptions.filter((s) => s.status === 'exempt').length;
   const netProfitColor: string = netProfit >= 0 ? 'emerald' : 'red';
 
   /* ---- Filtered subscriptions ---- */
@@ -706,7 +707,7 @@ export function Subscriptions({
           players={players}
           planAmounts={planAmounts}
           lang={lang}
-          onSave={(data) => {
+          onSave={(data, id) => {
             handleSaveSub(data, activateSub.id);
           }}
           onClose={() => setActivateSub(null)}
