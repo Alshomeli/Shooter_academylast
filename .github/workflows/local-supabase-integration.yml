@@ -1,0 +1,41 @@
+name: Free local Supabase integration
+on:
+  push:
+    branches:
+      - feature/family-receipt-intake-no-merge-20261018
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-supabase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      SUPABASE_ACCESS_TOKEN: ""
+      VITE_ENABLE_FAMILY_RECEIPTS: "false"
+      DO_NOT_TRACK: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify isolated PostgreSQL business logic
+        run: npm run test:isolated
+      - name: Verify no remote Supabase link
+        run: |
+          test ! -f supabase/.temp/project-ref
+          test ! -n "${SUPABASE_ACCESS_TOKEN}"
+      - name: Boot ephemeral Docker-backed Supabase and apply local migrations
+        run: npx --yes supabase@2 start
+      - name: Verify local Supabase is healthy
+        run: npx --yes supabase@2 status
+      - name: Stop disposable local containers
+        if: always()
+        run: npx --yes supabase@2 stop --no-backup || true
