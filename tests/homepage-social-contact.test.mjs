@@ -7,8 +7,8 @@ const legal = readFileSync(new URL('../src/views/LegalPage.tsx', import.meta.url
 const parent = readFileSync(new URL('../src/views/ParentPortal.tsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/academy-home.css', import.meta.url), 'utf8');
 
-test('social icons occur only in the public header and footer', () => {
-  assert.equal((home.match(/<SocialLinks links=\{links\}/g) || []).length, 2);
+test('social icons retain their original public footer position', () => {
+  assert.equal((home.match(/<SocialLinks links=\{links\}/g) || []).length, 1);
   const contact = home.split('className="ah-contact"')[1]?.split('</section>')[0] || '';
   assert.doesNotMatch(contact, /<SocialLinks/);
   assert.match(home, /className="ah-footer-social"/);
