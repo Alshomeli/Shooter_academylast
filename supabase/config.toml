@@ -1,3 +1,4 @@
+project_id = "shooter-academy-local-sandbox"
 [functions.setup-academy]
 verify_jwt = true
 
