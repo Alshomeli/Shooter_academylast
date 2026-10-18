@@ -9,6 +9,8 @@ import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerDocumen
 import { db } from '@/lib/store';
 import { prepareFamilyReceiptIntake } from '@/lib/family-receipt-intake';
 import { siblingPaymentGroups } from '@/lib/family-payment-groups';
+import { familyPaymentsEnabled } from '@/lib/family-receipt-queue';
+import { submitFamilyReceiptForReview } from '@/lib/family-receipt-upload';
 import { tr } from '@/lib/i18n';
 import { uploadPlayerFile } from '@/lib/uploads';
 import { Home, Users, Upload, Shield, Sun, Moon, Trophy } from 'lucide-react';
@@ -73,6 +75,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const [familyPeriod, setFamilyPeriod] = useState('');
   const [familyReceiptFile, setFamilyReceiptFile] = useState<File | null>(null);
   const [familyReceiptError, setFamilyReceiptError] = useState('');
+  const [familyReceiptBusy, setFamilyReceiptBusy] = useState(false);
 
   const familyGroups = siblingPaymentGroups(
     subscriptions, players.map(p => p.id),
@@ -103,6 +106,25 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
     }
     // Preview only until secure family upload/approval RPCs are deployed.
     setFamilyReceiptError(text('تم التحقق من البيانات الأولية. رفع الإيصال الموحد غير مفعّل بعد؛ استخدم الدفع الفردي حالياً.', 'Details validated. Shared receipt upload is not enabled yet; use individual payments for now.'));
+  };
+  const sendFamilyReceipt = async () => {
+    if (!familyPaymentsEnabled || familyReceiptBusy) return;
+    if (!familyReceiptFile || !user.authUserId || familyUnpaid.length < 2) {
+      setFamilyReceiptError(text('اختر إيصالاً واشتراكات أشقاء مؤهلة.','Select a receipt and eligible sibling subscriptions.'));
+      return;
+    }
+    const dues = familyUnpaid.map(sub => ({
+      subscriptionId: sub.id, playerId: sub.playerId || '', parentUserId: user.authUserId!,
+      amount: sub.amount, status: 'unpaid' as const, startDate: sub.startDate, endDate: sub.endDate,
+    }));
+    try {
+      setFamilyReceiptBusy(true);setFamilyReceiptError('');
+      await submitFamilyReceiptForReview(dues,transferDate,familyReceiptFile);
+      setFamilyReceiptOpen(false);setFamilyReceiptFile(null);
+      await onRefresh();
+    } catch (e) {
+      setFamilyReceiptError(errorMessage(e,ar));
+    } finally {setFamilyReceiptBusy(false);}
   };
   const selectedPlayer = players.find((p) => p.id === selectedPlayerId) || players[0];
   const playerSubscriptions = selectedPlayer ? subscriptions.filter((s) => s.playerId === selectedPlayer.id).sort((a,b) => b.startDate.localeCompare(a.startDate)) : [];
@@ -301,7 +323,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           <label className="block text-sm">{text('صورة الإيصال أو PDF', 'Receipt image or PDF')}<input className="mt-1 block w-full" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e => setFamilyReceiptFile(e.target.files?.[0] || null)}/></label>
           {familyReceiptError && <p role="status" className="text-xs text-amber-800 dark:text-amber-200">{familyReceiptError}</p>}
           <button type="button" onClick={previewFamilyReceipt} className="rounded-lg bg-brand-600 px-4 py-2 font-bold text-white">{text('فحص البيانات دون إرسال', 'Validate without submitting')}</button>
-          <p className="text-xs text-slate-500">{text('لن يُرفع ملف أو تُنشأ معاملة مالية من هذه المعاينة.', 'This preview neither uploads files nor creates financial transactions.')}</p>
+          {familyPaymentsEnabled ? <button type="button" disabled={familyReceiptBusy || !familyReceiptFile} onClick={()=>void sendFamilyReceipt()} className="rounded-lg bg-brand-600 px-4 py-2 text-white font-bold disabled:opacity-50">{familyReceiptBusy?text('جارٍ إرسال الطلب','Submitting request'):text('إرسال الإيصال لمراجعة المدير','Submit receipt for manager review')}</button> : <p className="text-xs text-slate-500">{text('لن يُرفع ملف أو تُنشأ معاملة مالية من هذه المعاينة.', 'This preview neither uploads files nor creates financial transactions.')}</p>}
         </div>
       </Modal>
       <Modal open={!!payingSubscription} closeDisabled={paymentBusy} onClose={() => { if(!paymentBusy){setPayingSubscription(null);setResubmittingProof(null);} }} title={text('إثبات دفع الاشتراك','Subscription payment proof')}>
