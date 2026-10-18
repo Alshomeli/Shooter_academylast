@@ -66,6 +66,59 @@ const {data:unauthorizedReceipt,error:adminReadError}=await admin
 assert.equal(adminReadError,null);
 assert.equal(unauthorizedReceipt.length,0,'Rejected API attempts must not create a payment batch');
 console.log('PASS local Supabase RPC: anonymous/parent approval denied, forged family submission denied, no receipt created');
+// Full happy path on disposable local-only data, never on production.
+const manager=await user('manager');
+const parentId='family-parent-'+token;
+const playerIds=['family-player-1-'+token,'family-player-2-'+token];
+const subIds=['family-sub-1-'+token,'family-sub-2-'+token];
+async function insert(table,records){
+ const {error}=await admin.from(table).insert(records);
+ if(error)throw new Error(table+': '+error.message);
+}
+await insert('parents',{id:parentId,name:'Local Parent',user_id:a.id,joined_date:'2026-10-01'});
+await insert('players',playerIds.map((id,i)=>({
+ id,name:'Local Child '+i,birth_date:'2015-01-01',joined_date:'2026-10-01',parent_id:parentId,status:'inactive'
+})));
+await insert('subscriptions',subIds.map((id,i)=>({
+ id,player_id:playerIds[i],start_date:'2026-10-01',end_date:'2026-10-31',status:'unpaid',amount:i===0?25:20
+})));
+await insert('staff',{id:'family-manager-'+token,name:'Local Manager',email:'family-manager-'+token+'@example.invalid',
+ role:'manager',status:'active',joined_date:'2026-01-01',user_id:manager.id});
+const submitted=await a.client.rpc('submit_family_payment_receipt',{
+ p_subscription_ids:subIds,p_proof_path:path,p_transfer_date:'2026-10-18'
+});
+assert.equal(submitted.error,null,'Parent with two own unpaid subscriptions should submit one receipt');
+assert.ok(submitted.data,'Family receipt ID required');
+const {data:pending,error:pendingError}=await admin.from('family_payment_receipts')
+ .select('status,expected_amount').eq('id',submitted.data).single();
+assert.equal(pendingError,null);
+assert.equal(pending.status,'pending','Submission must never automatically approve');
+assert.equal(Number(pending.expected_amount),45);
+const wrongAmount=await manager.client.rpc('approve_family_payment_receipt',{
+ p_receipt_id:submitted.data,p_confirmed_amount:25});
+assert.ok(wrongAmount.error,'Manager must reject a mismatched bank amount');
+const approve=await manager.client.rpc('approve_family_payment_receipt',{
+ p_receipt_id:submitted.data,p_confirmed_amount:45});
+assert.equal(approve.error,null,'Active local manager should approve exact verified amount');
+const retry=await manager.client.rpc('approve_family_payment_receipt',{
+ p_receipt_id:submitted.data,p_confirmed_amount:45});
+assert.ok(retry.error,'A receipt must not be approved twice');
+const {data:subs,error:subsError}=await admin.from('subscriptions').select('id,status')
+ .in('id',subIds);
+assert.equal(subsError,null);
+assert.equal(subs.length,2);
+assert.ok(subs.every(x=>x.status==='paid'));
+const {data:tx,error:txError}=await admin.from('transactions').select('subscription_id,amount')
+ .in('subscription_id',subIds);
+assert.equal(txError,null);
+assert.equal(tx.length,2,'One ledger entry per child, even after approval retry');
+assert.equal(tx.reduce((sum,x)=>sum+Number(x.amount),0),45);
+const {data:approved,error:approvedError}=await admin.from('family_payment_receipts')
+ .select('status').eq('id',submitted.data).single();
+assert.equal(approvedError,null);
+assert.equal(approved.status,'approved');
+console.log('PASS local family payment: parent submission, pending gate, manager amount validation, atomic approval, two ledger entries, retry denied');
 const ownDelete=await a.client.storage.from('payment-proofs').remove([path]);
-assert.equal(ownDelete.error,null,'Unsubmitted own file should be removable');
+// A referenced approved receipt must retain its audit evidence.
+assert.ok(ownDelete.error,'Approved family receipt evidence must not be deletable');
 console.log('PASS local Supabase Auth/Storage: separate parents, private bucket, upload scope, cross-parent denial and cleanup');
