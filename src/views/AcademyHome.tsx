@@ -106,7 +106,9 @@ export default function AcademyHome() {
   const sectionText = (key: string, fallback: string) => {
     const arValue = contact?.[key];
     const enValue = contact?.[`${key}_en`];
-    return arValue === undefined ? tr(fallback) : lang === 'en' && enValue ? enValue : arValue;
+    if (arValue === undefined) return tr(fallback);
+    if (lang === 'en') return enValue || tr(arValue);
+    return arValue;
   };
   const defaultPrograms = [
     { title: 'تطوير المهارات', body: 'التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.', image: programImages[0] },
