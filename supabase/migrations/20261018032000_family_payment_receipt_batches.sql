@@ -14,6 +14,9 @@ create table if not exists public.family_payment_receipts (
   reviewed_at timestamptz,
   created_at timestamptz not null default now()
 );
+-- A single uploaded proof must not be attached to multiple family receipt headers.
+create unique index if not exists family_payment_receipts_unique_proof_path
+on public.family_payment_receipts(proof_path);
 create table if not exists public.family_payment_receipt_items (
   receipt_id uuid not null references public.family_payment_receipts(id) on delete restrict,
   subscription_id text not null references public.subscriptions(id),
