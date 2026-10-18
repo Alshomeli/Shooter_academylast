@@ -60,6 +60,9 @@ begin
    where receipt_id=p_receipt_id order by subscription_id
  loop
    v_receipt_no := nextval('public.payment_receipt_seq');
+   update public.family_payment_receipt_items
+   set receipt_number=v_receipt_no
+   where receipt_id=p_receipt_id and subscription_id=v_line.subscription_id;
    update public.subscriptions
    set status='paid',payment_method='benefit_transfer',paid_at=now(),row_version=row_version+1
    where id=v_line.subscription_id and status='unpaid';
@@ -72,6 +75,13 @@ begin
  update public.family_payment_receipts
  set status='approved',reviewed_by=v_staff.id,reviewed_at=now(),review_note='Verified bank amount by manager'
  where id=p_receipt_id and status='pending';
+ insert into public.notifications(id,title,message,timestamp,type,read,recipient_user_id)
+ values('notif-family-payment-'||p_receipt_id::text,
+   'تم اعتماد الدفعة العائلية',
+   'تم اعتماد التحويل العائلي وتوزيع المبلغ على اشتراكات الأبناء.',
+   pg_catalog.to_char(now() at time zone 'Asia/Bahrain','YYYY-MM-DD HH24:MI'),
+   'success',false,v_receipt.parent_user_id)
+ on conflict(id) do nothing;
  return p_receipt_id;
 end
 $$;
