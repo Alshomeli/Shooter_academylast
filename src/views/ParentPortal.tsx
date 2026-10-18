@@ -70,6 +70,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const [paymentNote, setPaymentNote] = useState('');
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [familyReceiptOpen, setFamilyReceiptOpen] = useState(false);
+  const [familyPeriod, setFamilyPeriod] = useState('');
   const [familyReceiptFile, setFamilyReceiptFile] = useState<File | null>(null);
   const [familyReceiptError, setFamilyReceiptError] = useState('');
 
@@ -77,8 +78,9 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
     subscriptions, players.map(p => p.id),
     paymentProofs.filter(proof => ['pending','needs_info','approved'].includes(proof.status)).map(proof => proof.subscriptionId),
   );
-  const familyUnpaid = familyGroups[0]?.subscriptions || [];
-  const familyTotal = familyGroups[0]?.amount || 0;
+  const selectedFamilyGroup = familyGroups.find(group => group.period === familyPeriod) || familyGroups[0];
+  const familyUnpaid = selectedFamilyGroup?.subscriptions || [];
+  const familyTotal = selectedFamilyGroup?.amount || 0;
   const previewFamilyReceipt = () => {
     setFamilyReceiptError('');
     if (!familyReceiptFile || !user.authUserId) {
@@ -223,7 +225,15 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
             {familyUnpaid.length > 1 && (
               <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-200">
                 <p className="font-bold">{text('ملخص اشتراكات الأشقاء', 'Sibling subscriptions summary')}</p>
-                <p>{familyUnpaid.length} {text('اشتراكات غير مدفوعة', 'unpaid subscriptions')} · {familyTotal.toFixed(3)} BHD · {familyGroups[0]?.period}</p>
+                <p>{familyUnpaid.length} {text('اشتراكات غير مدفوعة', 'unpaid subscriptions')} · {familyTotal.toFixed(3)} BHD · {selectedFamilyGroup?.period}</p>
+                {familyGroups.length > 1 && (
+                  <label className="mt-2 block font-semibold">
+                    {text('فترة الاشتراك', 'Billing period')}
+                    <select value={selectedFamilyGroup?.period || ''} onChange={event => { setFamilyPeriod(event.target.value); setFamilyReceiptError(''); }} className="mt-1 w-full rounded-lg border border-amber-600 bg-white p-2 text-slate-900 dark:bg-slate-800 dark:text-white">
+                      {familyGroups.map(group => <option key={group.period} value={group.period}>{group.period} — {group.amount.toFixed(3)} BHD</option>)}
+                    </select>
+                  </label>
+                )}
                 <button type="button" onClick={() => { setFamilyReceiptFile(null); setFamilyReceiptError(''); setFamilyReceiptOpen(true); }} className="mt-2 rounded-lg border border-amber-600 px-3 py-2 font-bold">
                   {text('معاينة إيصال موحد (تجريبي)', 'Preview shared receipt (beta)')}
                 </button>
