@@ -31,3 +31,8 @@ test('rejects mixing subscription months and malformed billing ranges',()=>{
  assert.throws(()=>prepareFamilyReceiptIntake('parent-a',[a,b],'2026-11-02',file),/Mixed or invalid billing periods/);
  assert.throws(()=>prepareFamilyReceiptIntake('parent-a',[{...a,startDate:'2026-12-01'}],'2026-11-02',file),/Mixed or invalid billing periods/);
 });
+
+test('rejects impossible billing-period calendar dates',()=>{
+ const bad={...due('s1','p1',25),startDate:'2026-02-30',endDate:'2026-03-30'};
+ assert.throws(()=>prepareFamilyReceiptIntake('parent-a',[bad],'2026-11-02',file),/Mixed or invalid billing periods/);
+});
