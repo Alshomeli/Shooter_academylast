@@ -25,7 +25,7 @@ begin
     raise exception 'Invalid transfer date';
   end if;
   if p_proof_path is null or length(p_proof_path) > 1024
-    or p_proof_path !~ ('^' || v_uid::text || '/family/[0-9a-fA-F-]{36}\.(jpg|jpeg|png|webp|pdf)$')
+    or p_proof_path !~ ('^' || v_uid::text || '/family/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}\.(jpg|jpeg|png|webp|pdf)$')
   then raise exception 'Invalid private receipt path'; end if;
 
   -- Serialize submissions across different sibling sets from the same parent.
