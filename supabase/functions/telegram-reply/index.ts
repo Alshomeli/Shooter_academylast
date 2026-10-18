@@ -733,7 +733,43 @@ async function deliverPendingRegistrationNotifications() {
       });
     }
   }
-  return { delivered, staffDelivered, waitingForManagerChatRegistration: false };
+
+  const loginRows = await rpc<Array<{ outbox_id: string; audit_role?: string; audit_user_name?: string; audit_details?: string; audit_time?: string }>>(
+    "telegram_claim_login_notifications",
+    { p_limit: 10 },
+  );
+  let loginsDelivered = 0;
+  for (const row of loginRows || []) {
+    try {
+      const roleLabel = row.audit_role === "manager"
+        ? "مدير"
+        : row.audit_role === "coach"
+          ? "مدرب"
+          : row.audit_role === "accountant"
+            ? "محاسب"
+            : (row.audit_role || "موظف");
+      for (const chatId of managerChats) {
+        if (!(await isAuthorizedManagerChat(chatId))) continue;
+        await sendMessage(
+          chatId,
+          `🔑 تسجيل دخول جديد
+الاسم: ${row.audit_user_name || "غير محدد"}
+الصفة: ${roleLabel}
+الوقت: ${row.audit_time || "غير محدد"}`,
+        );
+      }
+      await rpc<void>("telegram_finish_login_notification", {
+        p_id: row.outbox_id, p_success: true, p_error: null,
+      });
+      loginsDelivered += 1;
+    } catch (error) {
+      await rpc<void>("telegram_finish_login_notification", {
+        p_id: row.outbox_id, p_success: false,
+        p_error: error instanceof Error ? error.message : "delivery_failed",
+      });
+    }
+  }
+  return { delivered, staffDelivered, loginsDelivered, waitingForManagerChatRegistration: false };
 }
 
 function formatMoney(value: number): string {
