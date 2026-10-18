@@ -2,7 +2,7 @@ name: Quality Gate
 
 on:
   push:
-    branches: [main, Staging-shooter]
+    branches: [main, Staging-shooter, feature/family-receipt-intake-no-merge-20261018]
   pull_request:
     branches: [main, Staging-shooter]
 
