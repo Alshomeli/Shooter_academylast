@@ -226,7 +226,8 @@ export const parentToRow = (p: Parent): ParentRow => ({
 export const subscriptionToRow = (s: Subscription): SubscriptionRow => ({
   id: s.id, player_id: s.playerId, plan_type: s.planType, amount: s.amount,
   start_date: s.startDate, end_date: s.endDate, status: s.status,
-  payment_method: s.status === 'paid' ? s.paymentMethod ?? null : null, paid_at: s.status === 'paid' ? s.paidAt ?? null : null,
+  payment_method: s.status === 'paid' ? s.paymentMethod ?? null : null,
+  paid_at: s.status === 'paid' ? s.paidAt ?? null : null,
 });
 
 export const attendanceToRow = (a: Attendance): AttendanceRow => ({

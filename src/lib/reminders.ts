@@ -33,6 +33,7 @@ export function getSubscriptionReminders(
   const today = academyToday(now);
   return subscriptions
     .filter((s) => {
+      if (s.status === 'exempt') return false;
       if (s.status === 'unpaid') return true;
       if (daysBetween(today, s.endDate) > 7) return false;
       const next = new Date(s.endDate + 'T00:00:00Z');

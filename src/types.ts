@@ -85,7 +85,7 @@ export interface Subscription {
   amount: number;
   startDate: string;
   endDate: string;
-  status: 'paid' | 'unpaid';
+  status: 'paid' | 'unpaid' | 'exempt';
   paymentMethod?: string;
   paidAt?: string;
 }
