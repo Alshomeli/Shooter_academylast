@@ -1,5 +1,12 @@
 import { createFamilyAllocation, type FamilySubscriptionDue } from './family-payment-allocation';
 
+/** Validate a YYYY-MM-DD calendar day without Date.parse normalization. */
+export function isValidBillingDay(day: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  const parsed = new Date(day + 'T00:00:00Z');
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === day;
+}
+
 export interface FamilyReceiptIntake {
   parentUserId: string;
   transferDate: string;
@@ -25,24 +32,12 @@ export function prepareFamilyReceiptIntake(
   // A shared receipt covers one billing cycle. Never combine future renewals
   // with a current month, even if the same family owns every subscription.
   const period = dues[0]?.startDate + '/' + dues[0]?.endDate;
-  const validDay = (day: string): boolean => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
-    const parsed = new Date(day + 'T00:00:00Z');
-    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === day;
-  };
-  if (dues.some(d => !validDay(d.startDate) || !validDay(d.endDate) ||
+  if (dues.some(d => !isValidBillingDay(d.startDate) || !isValidBillingDay(d.endDate) ||
       d.startDate > d.endDate || d.startDate + '/' + d.endDate !== period)) {
     throw new Error('Mixed or invalid billing periods');
   }
 
-  // Date.parse normalizes impossible calendar days on some runtimes.
-  const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(transferDate)
-    ? new Date(transferDate + 'T00:00:00Z')
-    : null;
-  if (!parsedDate || !Number.isFinite(parsedDate.getTime()) ||
-      parsedDate.toISOString().slice(0, 10) !== transferDate) {
-    throw new Error('Invalid transfer date');
-  }
+  if (!isValidBillingDay(transferDate)) throw new Error('Invalid transfer date');
   if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(file.type)) {
     throw new Error('Unsupported receipt format');
   }
