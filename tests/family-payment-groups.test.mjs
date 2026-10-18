@@ -21,3 +21,10 @@ test('ignores amounts with excess precision and non-finite values',()=>{
  assert.deepEqual(groups[0].subscriptions.map(x=>x.id),['a','b']);
  assert.equal(groups[0].amount,50);
 });
+
+test('excludes malformed and reversed billing periods from payment preview',()=>{
+ const invalid=[{...s('bad','p2'),startDate:'2026-02-30'},
+                {...s('backwards','p3'),startDate:'2026-12-01',endDate:'2026-11-30'}];
+ const groups=siblingPaymentGroups([s('a','p1'),s('b','p4'),...invalid],['p1','p2','p3','p4'],[]);
+ assert.deepEqual(groups[0].subscriptions.map(x=>x.id),['a','b']);
+});
