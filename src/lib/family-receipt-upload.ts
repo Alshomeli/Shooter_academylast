@@ -1,3 +1,4 @@
+import { familyPaymentsEnabled } from './family-receipt-queue';
 import { supabase } from './supabase';
 import { familyReceiptStoragePath, prepareFamilyReceiptIntake } from './family-receipt-intake';
 import type { FamilySubscriptionDue } from './family-payment-allocation';
@@ -12,6 +13,7 @@ export async function submitFamilyReceiptForReview(
   transferDate: string,
   file: File,
 ): Promise<string> {
+  if (!familyPaymentsEnabled) throw new Error('Family receipt submissions are disabled');
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw authError || new Error('Authentication required');
 
