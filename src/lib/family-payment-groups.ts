@@ -13,7 +13,9 @@ export function siblingPaymentGroups(
   const groups = new Map<string, UnpaidFamilySubscription[]>();
   for (const sub of subscriptions) {
     if (sub.status !== 'unpaid' || !sub.playerId || !players.has(sub.playerId) || blocked.has(sub.id)) continue;
-    if (!Number.isFinite(sub.amount) || sub.amount <= 0) continue;
+    if (!Number.isFinite(sub.amount) || sub.amount <= 0 ||
+        !Number.isSafeInteger(Math.round(sub.amount * 1000)) ||
+        Math.abs(sub.amount * 1000 - Math.round(sub.amount * 1000)) > 0.000001) continue;
     const period = sub.startDate + ' / ' + sub.endDate;
     const group = groups.get(period) || [];
     if (group.some(existing => existing.playerId === sub.playerId)) continue;
