@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/family-receipt-intake-no-merge-20261018
+      - fix/family-payment-production-trigger-compat-20261018
   workflow_dispatch:
 
 permissions:
