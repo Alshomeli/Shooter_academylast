@@ -19,9 +19,13 @@ test('approve family receipts locks all subscriptions and atomically posts uniqu
  assert.match(sql,/insert into public.transactions/);
  assert.match(sql,/update public.family_payment_receipts/);
 });
-test('approval RPC cannot be called by anon, has no player activation update',()=>{
+test('approval RPC cannot be called by anon and activates only eligible new players',()=>{
  assert.match(sql,/revoke all on function public.approve_family_payment_receipt\(uuid,numeric\) from public,anon/);
- assert.doesNotMatch(sql,/update public.players/i);
+ assert.match(sql,/update public.players pl/);
+ assert.match(sql,/rc.approved_player_id=pl.id/);
+ assert.match(sql,/pl.status='inactive'/);
+ assert.match(sql,/prior.status='paid'/);
+ assert.match(sql,/prior_tx.type='revenue'/);
 });
 
 test('approval persists each official receipt number and sends one parent notification',async()=>{
