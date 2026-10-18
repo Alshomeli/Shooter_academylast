@@ -1,7 +1,5 @@
 alter table public.ai_action_requests
-  drop constraint if exists ai_action_requests_operation_check
-
-
+  drop constraint if exists ai_action_requests_operation_check;
 
 alter table public.ai_action_requests
   add constraint ai_action_requests_operation_check
@@ -12,9 +10,7 @@ alter table public.ai_action_requests
     'record_attendance'::text,
     'publish_player_evaluation'::text,
     'create_subscription'::text
-  ]))
-
-
+  ]));
 
 create or replace function internal.create_subscription_entry_impl(
   p_player_id text,
@@ -124,9 +120,7 @@ begin
 
   return v_sub;
 end;
-$$
-
-
+$$;
 
 create or replace function public.create_subscription_entry(
   p_player_id text,
@@ -138,11 +132,8 @@ language sql
 set search_path = ''
 as $$
   select internal.create_subscription_entry_impl($1,$2,$3);
-$$
+$$;
 
+revoke all on function public.create_subscription_entry(text,text,date) from public, anon;
 
-
-revoke all on function public.create_subscription_entry(text,text,date) from public, anon
-
-
-grant execute on function public.create_subscription_entry(text,text,date) to authenticated
+grant execute on function public.create_subscription_entry(text,text,date) to authenticated;
