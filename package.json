@@ -13,7 +13,8 @@
     "test:isolated": "node --import tsx --test tests/*isolated-db.test.mjs tests/family-payments-release-readiness.test.mjs",
     "supabase:local:start": "node scripts/supabase-local.mjs start",
     "supabase:local:status": "node scripts/supabase-local.mjs status",
-    "supabase:local:stop": "node scripts/supabase-local.mjs stop"
+    "supabase:local:stop": "node scripts/supabase-local.mjs stop",
+    "supabase:local:check": "node scripts/supabase-local.mjs check"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
