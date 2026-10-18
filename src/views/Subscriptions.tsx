@@ -9,7 +9,7 @@ import {
 import type { Subscription, Player, Parent, Transaction, Staff, Settings, Lang, Role, PaymentProof } from '@/types';
 import { db } from '@/lib/store';
 import { familyPaymentsEnabled, getFamilyReceiptReviewQueue, type FamilyReceiptQueueItem } from '@/lib/family-receipt-queue';
-import { approveFamilyReceiptAfterBankVerification } from '@/lib/family-receipt-manager';
+import { approveFamilyReceiptAfterBankVerification, reviewFamilyReceipt } from '@/lib/family-receipt-manager';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard, FormField, FormError, SaveButton, inputCls } from '@/components/ui';
 import { RemindersPanel } from '@/components/RemindersPanel';
 import { PaymentReceipt } from '@/components/PaymentReceipt';
@@ -112,6 +112,7 @@ export function Subscriptions({
   const [paymentProofs, setPaymentProofs] = useState<PaymentProof[]>([]);
   const [familyQueue, setFamilyQueue] = useState<FamilyReceiptQueueItem[]>([]);
   const [familyVerifyAmounts, setFamilyVerifyAmounts] = useState<Record<string,string>>({});
+  const [familyReviewNotes,setFamilyReviewNotes] = useState<Record<string,string>>({});
   const [proofBusy, setProofBusy] = useState<string | null>(null);
   const [proofError, setProofError] = useState('');
   const [proofReview, setProofReview] = useState<PaymentProof | null>(null);
@@ -144,6 +145,14 @@ export function Subscriptions({
     try {
       setProofBusy(receipt.id);setProofError('');
       await approveFamilyReceiptAfterBankVerification(receipt.id,verified);
+      await Promise.all([getFamilyReceiptReviewQueue().then(setFamilyQueue),onRefresh()]);
+    } catch(e) {setProofError(errorMessage(e,isAr));}
+    finally {setProofBusy(null);}
+  };
+  const reviewFamily = async (receipt: FamilyReceiptQueueItem, decision: 'rejected'|'needs_info') => {
+    try {
+      setProofBusy(receipt.id);setProofError('');
+      await reviewFamilyReceipt(receipt.id,decision,familyReviewNotes[receipt.id]||'');
       await Promise.all([getFamilyReceiptReviewQueue().then(setFamilyQueue),onRefresh()]);
     } catch(e) {setProofError(errorMessage(e,isAr));}
     finally {setProofBusy(null);}
@@ -580,6 +589,22 @@ export function Subscriptions({
           <p className="text-xs text-slate-500">{receipt.transfer_date} · {receipt.status}</p>
           <button type="button" onClick={()=>void db.getPaymentProofUrl(receipt.proof_path).then(url=>window.open(url,'_blank','noopener,noreferrer')).catch(e=>setProofError(errorMessage(e,isAr)))}
             className="rounded-lg border p-2 text-sm">{isAr?'عرض الإيصال':'View receipt'}</button>
+          {receipt.review_note && <p className="text-sm text-amber-700 dark:text-amber-300">{receipt.review_note}</p>}
+          {receipt.status==='pending' && <div className="flex flex-wrap gap-2">
+            <input aria-label={isAr?'سبب مراجعة الإيصال':'Family receipt review reason'}
+              value={familyReviewNotes[receipt.id]||''}
+              onChange={e=>setFamilyReviewNotes(prev=>({...prev,[receipt.id]:e.target.value}))}
+              placeholder={isAr?'سبب الرفض أو طلب التصحيح (5 أحرف على الأقل)':'Reason for rejection or correction (min 5 characters)'}
+              className="rounded-lg border bg-transparent p-2 flex-1 min-w-44" maxLength={1000}/>
+            <button type="button" disabled={!!proofBusy || (familyReviewNotes[receipt.id]||'').trim().length<5}
+              onClick={()=>void reviewFamily(receipt,'needs_info')} className="rounded-lg border p-2 disabled:opacity-50">
+              {isAr?'طلب تصحيح':'Request correction'}
+            </button>
+            <button type="button" disabled={!!proofBusy || (familyReviewNotes[receipt.id]||'').trim().length<5}
+              onClick={()=>void reviewFamily(receipt,'rejected')} className="rounded-lg border border-red-500 text-red-600 p-2 disabled:opacity-50">
+              {isAr?'رفض الإيصال':'Reject receipt'}
+            </button>
+          </div>}
           {receipt.status==='pending'&&<div className="flex flex-wrap gap-2 items-center">
             <input aria-label={isAr?'المبلغ المؤكد من البنك':'Bank-verified amount'} type="number" step="0.001" min="0.001" placeholder={isAr?'المبلغ المؤكد من البنك':'Verified bank amount'}
               value={familyVerifyAmounts[receipt.id]||''} onChange={e=>setFamilyVerifyAmounts(prev=>({...prev,[receipt.id]:e.target.value}))}
