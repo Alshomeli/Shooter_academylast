@@ -39,6 +39,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Isolated family payment PostgreSQL checks
+        run: npm run test:isolated
+
       - name: Typecheck
         run: npm run typecheck
 
