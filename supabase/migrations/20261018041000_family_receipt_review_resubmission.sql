@@ -49,7 +49,7 @@ begin
  if v_receipt.status not in ('needs_info','rejected') then raise exception 'Receipt not eligible for correction';end if;
  if p_transfer_date is null or p_transfer_date>current_date then raise exception 'Invalid transfer date';end if;
  if p_proof_path is null or length(p_proof_path)>1024 or
- p_proof_path !~ ('^'||v_uid::text||'/family/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}\.(jpg|jpeg|png|webp|pdf)$')
+ p_proof_path !~ ('^'||v_uid::text||'/family/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}\.(jpg|jpeg|png|webp|pdf)$')
  then raise exception 'Invalid private receipt path';end if;
  if not exists(select 1 from storage.objects o where o.bucket_id='payment-proofs'
  and o.name=p_proof_path and o.owner_id=v_uid::text
