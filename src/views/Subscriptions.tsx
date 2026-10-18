@@ -195,7 +195,7 @@ export function Subscriptions({
 
   const handleSaveSub = async (data: Omit<Subscription, 'id'>, id?: string) => {
     if (renewSub && hasOverlappingSubscriptionPeriod(subscriptions, data)) {
-      throw new Error(isAr ? 'توجد فترة اشتراك مسجلة لهذا اللاعب تتداخل مع فترة التجديد.' : 'An overlapping subscription period already exists for this player.');
+      throw new Error(isAr ? 'توجد فترة اشتراك مسجلة لهذا اللاعب تتداخل مع فترة التجديد.' : 'An overlapping subscription period already exists for the selected player.');
     }
     if (id) {
       await onSubscriptionsChange(subscriptions.map((s) => (s.id === id ? { ...data, id } : s)));
@@ -319,8 +319,8 @@ export function Subscriptions({
             {transactions.length}
           </span>
         </button>}
-        {canSeeFinance && <button onClick={() => setActiveTab('proofs')} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${activeTab === 'proofs' ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
-          <Receipt className="h-4 w-4" />{isAr ? 'إثباتات الدفع' : 'Payment proofs'}<span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700">{paymentProofs.filter(p=>p.status==='pending').length}</span>
+        {canSeeFinance && <button onClick={() => setActiveTab('proofs')} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${activeTab === 'proofs' ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+          <Receipt className="h-4 w-4" />{isAr ? 'إثباتات الدفع' : 'Payment proofs'}<span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700">{paymentProofs.length}</span>
         </button>}
         <button
           onClick={() => setActiveTab('reminders')}
@@ -347,7 +347,7 @@ export function Subscriptions({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t.searchPlayer}
-                className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
+                className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-50"
               />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -388,7 +388,7 @@ export function Subscriptions({
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
                       {/* Player */}
                       <div className="flex items-center gap-2.5 flex-1 min-w-40">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-100 to-brand-50 dark:from-brand-900/30 dark:to-brand-900/10 flex items-center justify-center text-sm font-black text-brand-600 dark:text-brand-400 shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-100 to-brand-50 dark:from-brand-900/30 dark:to-brand-900/10 flex items-center justify-center text-sm font-bold">
                           {(player?.name || '?').charAt(0)}
                         </div>
                         <div className="min-w-0">
@@ -471,13 +471,13 @@ export function Subscriptions({
                         {isExempt && isManager && (
                           <button
                             onClick={() => setActivateSub(sub)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/30 transition cursor-pointer"
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100"
                           >
                             <CheckCircle className="h-3.5 w-3.5" /> {t.activateSubscription}
                           </button>
                         )}
                         {isPaid && (
-                          <button onClick={() => setReceiptSub(sub)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 transition cursor-pointer">
+                          <button onClick={() => setReceiptSub(sub)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50">
                             <Receipt className="h-3.5 w-3.5" /> {isAr ? 'إيصال' : 'Receipt'}
                           </button>
                         )}
@@ -485,7 +485,7 @@ export function Subscriptions({
                           <button
                             onClick={() => { setPaymentTarget(sub); setPaymentError(''); setPaymentMethod('cash'); }}
                             disabled={markingPaidId === sub.id}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/30 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100"
                           >
                             {markingPaidId === sub.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -554,14 +554,14 @@ export function Subscriptions({
 
       {activeTab === 'proofs' && canSeeFinance && <div className="space-y-3">
         {proofError && <p role="alert" className="rounded-xl bg-red-50 text-red-700 p-3 text-sm">{proofError}</p>}
-        {paymentProofs.length===0 ? <EmptyState icon={<Receipt className="h-8 w-8"/>} title={isAr?'لا توجد إثباتات دفع':'No payment proofs'} subtitle={isAr?'ستظهر طلبات أولياء الأمور هنا بعد رفع إيصال التحويل.':'Parent transfer proofs will appear here after upload.'}/> :
-        paymentProofs.map((proof)=>{
+        {paymentProofs.length===0 ? <EmptyState icon={<Receipt className="h-8 w-8"/>} title={isAr?'لا توجد إثباتات دفع':'No payment proofs'} subtitle={isAr?'ستظهر طلبات المراجعة هنا':'Payment proof requests appear here'} /> : null}
+        {paymentProofs.map((proof)=>{
           const player=playerOf(proof.playerId);
           return <div key={proof.id} className="bg-white dark:bg-slate-900 rounded-2xl border dark:border-slate-800 p-4 flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-48"><p className="font-black">{player?.name || t.unknownPlayer}</p><p className="text-xs text-slate-500">{proof.amount} {t.currency} · {proof.transferDate}</p>{proof.receiptNumber&&<p className="text-xs font-black text-brand-600 mt-1">{isAr?'رقم الإيصال':'Receipt'}: SA-{String(proof.receiptNumber).padStart(6,'0')}</p>}{proof.parentNote&&<p className="text-xs mt-1">{proof.parentNote}</p>}{proof.reviewedAt&&<p className="text-[10px] text-slate-400 mt-1">{isAr?'تمت المراجعة':'Reviewed'}: {new Date(proof.reviewedAt).toLocaleString(isAr?'ar-BH':'en-BH')}</p>}</div>
-            <Badge color={proof.status==='approved'?'emerald':proof.status==='rejected'?'red':'amber'}>{proof.status==='pending'?(isAr?'بانتظار المراجعة':'Pending review'):proof.status==='approved'?(isAr?'معتمد':'Approved'):proof.status==='needs_info'?(isAr?'يحتاج استكمال':'Needs info'):(isAr?'مرفوض':'Rejected')}</Badge>
+            <div className="flex-1 min-w-48"><p className="font-black">{player?.name || t.unknownPlayer}</p><p className="text-xs text-slate-500">{proof.amount} {t.currency} · {proof.transferDate}</p>
+            <Badge color={proof.status==='approved'?'emerald':proof.status==='rejected'?'red':'amber'}>{proof.status==='pending'?(isAr?'بانتظار المرا��عة':'Pending review'):proof.status}</Badge>
             <button onClick={()=>void openProof(proof)} className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold">{isAr?'عرض الإثبات':'View proof'}</button>
-            {proof.status==='pending'&&<><button disabled={proofBusy===proof.id} onClick={()=>void approveProof(proof)} className="px-3 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold disabled:opacity-50">{isAr?'اعتماد':'Approve'}</button><button onClick={()=>{setProofReview(proof);setProofReviewStatus('needs_info');setProofReviewNote('')}} className="px-3 py-2 rounded-lg bg-amber-100 text-amber-800 text-xs font-bold">{isAr?'مراجعة':'Review'}</button></>}
+            {proof.status==='pending'&&<><button disabled={proofBusy===proof.id} onClick={()=>void approveProof(proof)} className="px-3 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold">{isAr?'اعتمد':'Approve'}</button></>}
             {proof.reviewNote&&<p className="w-full text-xs text-slate-500">{proof.reviewNote}</p>}
           </div>;
         })}
@@ -629,7 +629,7 @@ export function Subscriptions({
                       {isManager && !tx.subscriptionId && (
                         <button
                           onClick={() => setDeleteTransId(tx.id)}
-                          className="flex items-center justify-center p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer shrink-0"
+                          className="flex items-center justify-center p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer"
                           title={t.delete}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -651,9 +651,9 @@ export function Subscriptions({
 
       <Modal open={!!proofReview} onClose={()=>setProofReview(null)} title={isAr?'مراجعة إثبات الدفع':'Review payment proof'}>
         <div className="space-y-4">
-          <select value={proofReviewStatus} onChange={e=>setProofReviewStatus(e.target.value as 'rejected'|'needs_info')} className={inputCls}><option value="needs_info">{isAr?'يحتاج استكمال':'Needs more information'}</option><option value="rejected">{isAr?'رفض':'Reject'}</option></select>
-          <textarea value={proofReviewNote} onChange={e=>setProofReviewNote(e.target.value)} className={inputCls} rows={4} placeholder={isAr?'سبب المراجعة مطلوب':'Review reason is required'}/>
-          <button disabled={!proofReviewNote.trim() || !!proofBusy} onClick={()=>void submitProofReview()} className="w-full rounded-xl bg-amber-600 text-white py-2.5 font-bold disabled:opacity-50">{isAr?'حفظ القرار':'Save decision'}</button>
+          <select value={proofReviewStatus} onChange={e=>setProofReviewStatus(e.target.value as 'rejected'|'needs_info')} className={inputCls}><option value="needs_info">{isAr?'يحتاج استكمال':'Needs info'}</option><option value="rejected">{isAr?'مرفوض':'Reject'}</option></select>
+          <textarea value={proofReviewNote} onChange={e=>setProofReviewNote(e.target.value)} className={inputCls} rows={4} placeholder={isAr?'سبب المراجعة مطلوب':'Review reason is required'} />
+          <button disabled={!proofReviewNote.trim() || !!proofBusy} onClick={()=>void submitProofReview()} className="w-full rounded-xl bg-amber-600 text-white py-2.5 font-bold disabled:opacity-50">{isAr?'إرسال':'Submit'}</button>
         </div>
       </Modal>
       <Modal open={!!paymentTarget} onClose={() => { if (!markingPaidId) setPaymentTarget(null); }} title={t.confirmPayment}>
@@ -663,10 +663,10 @@ export function Subscriptions({
           <FormField label={t.paymentMethod}><select className={inputCls} value={paymentMethod} disabled={!!markingPaidId} onChange={e => setPaymentMethod(e.target.value)}>
             {['cash', 'bank_transfer', 'benefit', 'card'].map(method => <option key={method} value={method}>{paymentMethodLabel(method, lang)}</option>)}
           </select></FormField>
-          <button className="bg-brand-600 text-white rounded-lg py-2 px-4 disabled:opacity-50" disabled={!!markingPaidId} onClick={() => void handleMarkPaid()}>{markingPaidId ? t.processing : t.confirmPayment}</button>
+          <button className="bg-brand-600 text-white rounded-lg py-2 px-4 disabled:opacity-50" disabled={!!markingPaidId} onClick={() => void handleMarkPaid()}>{markingPaidId ? t.processing : t.confirm}</button>
         </div>
       </Modal>
-      {receiptSub && <PaymentReceipt subscription={receiptSub} transactions={transactions} players={players} parents={parents} settings={settings} lang={lang} officialReceiptNumber={paymentProofs.find((proof) => proof.subscriptionId === receiptSub.id && proof.status === 'approved')?.receiptNumber} onClose={() => setReceiptSub(null)} />}
+      {receiptSub && <PaymentReceipt subscription={receiptSub} transactions={transactions} players={players} parents={parents} settings={settings} lang={lang} officialReceiptNumber={paymentProofs.find(p=>p.status==='approved')?.id} />}
 
       {/* ---------------- Modals ---------------- */}
       {(showAddSub || editSub || renewSub) && (
@@ -858,7 +858,7 @@ function SubscriptionForm({
         )}
 
         {exemptMode && (
-          <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-400 font-semibold">
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-400 font-medium">
             <DollarSign className="h-4 w-4 shrink-0" />
             {t.exemptHint}
           </div>
@@ -944,7 +944,7 @@ function SubscriptionForm({
         </div>
 
         {!exemptMode && (
-          <div className="flex items-center gap-2 p-3 rounded-xl bg-brand-50/60 dark:bg-brand-900/10 border border-brand-100 dark:border-brand-900/20 text-[11px] text-brand-700 dark:text-brand-400 font-semibold">
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-brand-50/60 dark:bg-brand-900/10 border border-brand-100 dark:border-brand-900/20 text-[11px] text-brand-700 dark:text-brand-400">
             <DollarSign className="h-4 w-4 shrink-0" />
             {t.autoFillHint}
           </div>
