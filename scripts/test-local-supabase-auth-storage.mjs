@@ -94,6 +94,30 @@ const {data:pending,error:pendingError}=await admin.from('family_payment_receipt
 assert.equal(pendingError,null);
 assert.equal(pending.status,'pending','Submission must never automatically approve');
 assert.equal(Number(pending.expected_amount),45);
+const review=await manager.client.rpc('review_family_payment_receipt',{
+ p_receipt_id:submitted.data,p_decision:'needs_info',p_note:'Please upload a readable receipt'
+});
+assert.equal(review.error,null,'Manager should request a correction');
+const blocked=await manager.client.rpc('approve_family_payment_receipt',{
+ p_receipt_id:submitted.data,p_confirmed_amount:45});
+assert.ok(blocked.error,'Needs-info receipt cannot be approved');
+const replacementPath=`${a.id}/family/${crypto.randomUUID()}.pdf`;
+const replacement=await a.client.storage.from('payment-proofs').upload(replacementPath,payload,{
+ contentType:'application/pdf',upsert:false});
+assert.equal(replacement.error,null);
+const foreignResubmit=await b.client.rpc('resubmit_family_payment_receipt',{
+ p_receipt_id:submitted.data,p_proof_path:replacementPath,p_transfer_date:'2026-10-18'});
+assert.ok(foreignResubmit.error,'Other parent must not correct this family receipt');
+const resubmit=await a.client.rpc('resubmit_family_payment_receipt',{
+ p_receipt_id:submitted.data,p_proof_path:replacementPath,p_transfer_date:'2026-10-18'});
+assert.equal(resubmit.error,null,'Original parent should resubmit a corrected proof');
+const {data:history,error:historyError}=await admin.from('family_receipt_review_events')
+ .select('action,prior_proof_path,new_proof_path').eq('receipt_id',submitted.data);
+assert.equal(historyError,null);
+assert.deepEqual(new Set(history.map(e=>e.action)),new Set(['needs_info','resubmitted']));
+const oldEvidence=await a.client.storage.from('payment-proofs').remove([path]);
+const oldCheck=await admin.storage.from('payment-proofs').download(path);
+assert.equal(oldCheck.error,null,'Original proof must be retained in audit history');
 const wrongAmount=await manager.client.rpc('approve_family_payment_receipt',{
  p_receipt_id:submitted.data,p_confirmed_amount:25});
 assert.ok(wrongAmount.error,'Manager must reject a mismatched bank amount');
@@ -118,10 +142,10 @@ const {data:approved,error:approvedError}=await admin.from('family_payment_recei
 assert.equal(approvedError,null);
 assert.equal(approved.status,'approved');
 console.log('PASS local family payment: parent submission, pending gate, manager amount validation, atomic approval, two ledger entries, retry denied');
-const ownDelete=await a.client.storage.from('payment-proofs').remove([path]);
+const ownDelete=await a.client.storage.from('payment-proofs').remove([replacementPath]);
 // A referenced approved receipt must retain its audit evidence.
 // Supabase Storage may return HTTP success with an empty delete result under RLS.
-const protectedObject=await admin.storage.from('payment-proofs').download(path);
+const protectedObject=await admin.storage.from('payment-proofs').download(replacementPath);
 assert.equal(protectedObject.error,null,'Approved evidence must still exist after parent deletion attempt');
 console.log('PASS approved receipt proof retained despite parent delete request');
 console.log('PASS local Supabase Auth/Storage: separate parents, private bucket, upload scope, cross-parent denial and cleanup');
