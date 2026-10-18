@@ -77,7 +77,7 @@ async function insert(table,records){
 }
 await insert('parents',{id:parentId,name:'Local Parent',user_id:a.id,joined_date:'2026-10-01'});
 await insert('players',playerIds.map((id,i)=>({
- id,name:'Local Child '+i,birth_date:'2015-01-01',joined_date:'2026-10-01',parent_id:parentId,status:'inactive',jersey_number:21+i
+ id,name:'Local Child '+i,birth_date:'2015-01-01',joined_date:'2026-10-01',parent_id:parentId,team_id:null,status:'inactive',jersey_number:21+i
 })));
 await insert('subscriptions',subIds.map((id,i)=>({
  id,player_id:playerIds[i],start_date:'2026-10-01',end_date:'2026-10-31',status:'unpaid',amount:i===0?25:20
