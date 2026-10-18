@@ -120,5 +120,8 @@ assert.equal(approved.status,'approved');
 console.log('PASS local family payment: parent submission, pending gate, manager amount validation, atomic approval, two ledger entries, retry denied');
 const ownDelete=await a.client.storage.from('payment-proofs').remove([path]);
 // A referenced approved receipt must retain its audit evidence.
-assert.ok(ownDelete.error,'Approved family receipt evidence must not be deletable');
+// Supabase Storage may return HTTP success with an empty delete result under RLS.
+const protectedObject=await admin.storage.from('payment-proofs').download(path);
+assert.equal(protectedObject.error,null,'Approved evidence must still exist after parent deletion attempt');
+console.log('PASS approved receipt proof retained despite parent delete request');
 console.log('PASS local Supabase Auth/Storage: separate parents, private bucket, upload scope, cross-parent denial and cleanup');
