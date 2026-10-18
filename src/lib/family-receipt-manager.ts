@@ -17,3 +17,14 @@ export async function approveFamilyReceiptAfterBankVerification(
   });
   if (error) throw error;
 }
+
+export async function reviewFamilyReceipt(receiptId: string, decision: 'needs_info'|'rejected', note: string): Promise<void> {
+  if (!familyPaymentsEnabled) throw new Error('Family receipt reviews are disabled');
+  if (!/^[0-9a-f-]{36}$/i.test(receiptId) || note.trim().length < 5 || note.length > 1000) {
+    throw new Error('A review reason of 5 to 1000 characters is required');
+  }
+  const {error}=await supabase.rpc('review_family_payment_receipt',{
+    p_receipt_id:receiptId,p_decision:decision,p_note:note.trim()
+  });
+  if(error) throw error;
+}
