@@ -7,6 +7,10 @@ import type { RegistrationApplication } from '@/types';
 import { planLabel } from '@/lib/i18n';
 import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerDocument, PlayerEvaluation, Settings, Subscription, Team, Training } from '@/types';
 import { db } from '@/lib/store';
+import { prepareFamilyReceiptIntake } from '@/lib/family-receipt-intake';
+import { siblingPaymentGroups } from '@/lib/family-payment-groups';
+import { familyPaymentsEnabled, getClaimedFamilySubscriptionIds } from '@/lib/family-receipt-queue';
+import { submitFamilyReceiptForReview, resubmitFamilyReceiptForReview } from '@/lib/family-receipt-upload';
 import { tr } from '@/lib/i18n';
 import { uploadPlayerFile } from '@/lib/uploads';
 import { Home, Users, Upload, Shield, Sun, Moon, Trophy } from 'lucide-react';
@@ -67,6 +71,84 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const [transferDate, setTransferDate] = useState(bahrainToday());
   const [paymentNote, setPaymentNote] = useState('');
   const [paymentBusy, setPaymentBusy] = useState(false);
+  const [familyReceiptOpen, setFamilyReceiptOpen] = useState(false);
+  const [familyPeriod, setFamilyPeriod] = useState('');
+  const [familyReceiptFile, setFamilyReceiptFile] = useState<File | null>(null);
+  const [familyReceiptError, setFamilyReceiptError] = useState('');
+  const [familyReceiptBusy, setFamilyReceiptBusy] = useState(false);
+  const [familyClaimedIds, setFamilyClaimedIds] = useState<string[]>([]);
+  const [familyCorrections,setFamilyCorrections] = useState<Array<{id:string;status:string;review_note:string|null}>>([]);
+  const [correctionReceiptId,setCorrectionReceiptId] = useState('');
+
+  const familyGroups = siblingPaymentGroups(
+    subscriptions, players.map(p => p.id),
+    [...paymentProofs.filter(proof => ['pending','needs_info','approved'].includes(proof.status)).map(proof => proof.subscriptionId), ...familyClaimedIds],
+  );
+  const selectedFamilyGroup = familyGroups.find(group => group.period === familyPeriod) || familyGroups[0];
+  const familyUnpaid = selectedFamilyGroup?.subscriptions || [];
+  const familyTotal = selectedFamilyGroup?.amount || 0;
+  const previewFamilyReceipt = () => {
+    setFamilyReceiptError('');
+    if (familyUnpaid.length < 2) {
+      setFamilyReceiptError(text('لا توجد اشتراكات أشقاء مؤهلة لنفس الفترة.', 'No eligible sibling subscriptions for the same period.'));
+      return;
+    }
+    if (!familyReceiptFile || !user.authUserId) {
+      setFamilyReceiptError(text('يجب تسجيل الدخول واختيار الإيصال.', 'Sign in and select a receipt.'));
+      return;
+    }
+    try {
+      prepareFamilyReceiptIntake(user.authUserId, familyUnpaid.map(sub => ({
+        subscriptionId: sub.id, playerId: sub.playerId || '', parentUserId: user.authUserId!,
+        amount: sub.amount, status: 'unpaid' as const,
+        startDate: sub.startDate, endDate: sub.endDate,
+      })), transferDate, familyReceiptFile);
+    } catch (error) {
+      setFamilyReceiptError(errorMessage(error, ar));
+      return;
+    }
+    setFamilyReceiptError(familyPaymentsEnabled
+      ? text('تم التحقق من بيانات الإيصال. يمكنك إرساله لمراجعة المدير، ولن تُعتمد الدفعة تلقائياً.', 'Receipt details validated. You can submit for manager review; payment is never approved automatically.')
+      : text('تم التحقق من البيانات الأولية. رفع الإيصال الموحد غير مفعّل بعد؛ استخدم الدفع الفردي حالياً.', 'Details validated. Shared receipt upload is not enabled yet; use individual payments for now.'));
+  };
+  const correctFamilyReceipt = async () => {
+    if (!familyPaymentsEnabled || !familyReceiptFile || !correctionReceiptId || familyReceiptBusy) return;
+    try {
+      setFamilyReceiptBusy(true);setFamilyReceiptError('');
+      await resubmitFamilyReceiptForReview(correctionReceiptId,transferDate,familyReceiptFile);
+      const {data,error}=await dbGetFamilyCorrections();
+      if(error) throw error;
+      setFamilyCorrections(data||[]);
+      setFamilyReceiptOpen(false);setFamilyReceiptFile(null);setCorrectionReceiptId('');
+      await onRefresh();
+    } catch(e){setFamilyReceiptError(errorMessage(e,ar));}
+    finally{setFamilyReceiptBusy(false);}
+  };
+  const dbGetFamilyCorrections = async () => {
+    const {supabase}=await import('@/lib/supabase');
+    return supabase.from('family_payment_receipts').select('id,status,review_note')
+      .in('status',['needs_info','rejected']).order('created_at',{ascending:false});
+  };
+  const sendFamilyReceipt = async () => {
+    if (!familyPaymentsEnabled || familyReceiptBusy) return;
+    if (!familyReceiptFile || !user.authUserId || familyUnpaid.length < 2) {
+      setFamilyReceiptError(text('اختر إيصالاً واشتراكات أشقاء مؤهلة.','Select a receipt and eligible sibling subscriptions.'));
+      return;
+    }
+    const dues = familyUnpaid.map(sub => ({
+      subscriptionId: sub.id, playerId: sub.playerId || '', parentUserId: user.authUserId!,
+      amount: sub.amount, status: 'unpaid' as const, startDate: sub.startDate, endDate: sub.endDate,
+    }));
+    try {
+      setFamilyReceiptBusy(true);setFamilyReceiptError('');
+      await submitFamilyReceiptForReview(dues,transferDate,familyReceiptFile);
+      setFamilyReceiptOpen(false);setFamilyReceiptFile(null);
+      setFamilyClaimedIds(await getClaimedFamilySubscriptionIds());
+      await onRefresh();
+    } catch (e) {
+      setFamilyReceiptError(errorMessage(e,ar));
+    } finally {setFamilyReceiptBusy(false);}
+  };
   const selectedPlayer = players.find((p) => p.id === selectedPlayerId) || players[0];
   const playerSubscriptions = selectedPlayer ? subscriptions.filter((s) => s.playerId === selectedPlayer.id).sort((a,b) => b.startDate.localeCompare(a.startDate)) : [];
   const playerAttendance = selectedPlayer ? attendance.filter((a) => a.playerId === selectedPlayer.id) : [];
@@ -80,7 +162,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const approvedPayments = playerSubscriptions.filter(s=>s.status==='paid');
   const selectedDocuments = selectedPlayer ? playerDocuments.filter(d=>d.playerId===selectedPlayer.id&&d.fileCategory!=='photo') : [];
   const load = useCallback(async () => {
-    try { const [myApps, proofs, docs] = await Promise.all([fetchMyApplications(), db.getPaymentProofs(), db.getPlayerDocuments()]); setApps(myApps); setPaymentProofs(proofs); setPlayerDocuments(docs); const photos=docs.filter(d=>d.playerId&&d.fileCategory==='photo'); const newest=photos.filter((d,i)=>photos.findIndex(p=>p.playerId===d.playerId)===i); const pairs=await Promise.all(newest.map(async d=>[d.playerId!,await db.getPlayerDocumentUrl(d.filePath)] as const)); setPhotoUrls(Object.fromEntries(pairs)); setError(''); setReady(true); }
+    try { const [myApps, proofs, docs, claims] = await Promise.all([fetchMyApplications(), db.getPaymentProofs(), db.getPlayerDocuments(), getClaimedFamilySubscriptionIds()]); setFamilyClaimedIds(claims); if(familyPaymentsEnabled){const {data}=await dbGetFamilyCorrections();setFamilyCorrections(data||[]);} setApps(myApps); setPaymentProofs(proofs); setPlayerDocuments(docs); const photos=docs.filter(d=>d.playerId&&d.fileCategory==='photo'); const newest=photos.filter((d,i)=>photos.findIndex(p=>p.playerId===d.playerId)===i); const pairs=await Promise.all(newest.map(async d=>[d.playerId!,await db.getPlayerDocumentUrl(d.filePath)] as const)); setPhotoUrls(Object.fromEntries(pairs)); setError(''); setReady(true); }
     catch (e) { setError(errorMessage(e, lang === 'ar')); }
   }, [lang]);
   useEffect(() => {
@@ -189,6 +271,32 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           <div className="arena-card rounded-2xl border p-5 space-y-3"><h3 className="font-black">{text('التدريب القادم','Next training')}</h3>{nextTraining ? <><p className="text-lg font-bold">{nextTraining.title}</p><p className="text-sm text-slate-300" dir="ltr">{nextTraining.sessionDate} {selectedTeam?.trainingTime || ''}</p><p className="text-sm text-slate-400">{text('الملعب: ','Pitch: ')}{selectedTeam?.pitchNumber || '—'}</p><p className="text-sm text-slate-400">{nextTraining.objectives}</p></> : <p className="text-sm text-slate-400">{text('لم يُحدد تدريب قادم بعد.','No upcoming training scheduled.')}</p>}</div>
           <div id="parent-subscriptions" className="arena-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
             <div className="flex items-center gap-2"><CreditCard className="h-5 w-5 text-brand-600"/><h3 className="font-black">{text('الاشتراكات والمدفوعات','Subscriptions & payments')}</h3></div>
+            {familyUnpaid.length > 1 && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-200">
+                <p className="font-bold">{text('ملخص اشتراكات الأشقاء', 'Sibling subscriptions summary')}</p>
+                <p>{familyUnpaid.length} {text('اشتراكات غير مدفوعة', 'unpaid subscriptions')} · {familyTotal.toFixed(3)} BHD · {selectedFamilyGroup?.period}</p>
+                {familyGroups.length > 1 && (
+                  <label className="mt-2 block font-semibold">
+                    {text('فترة الاشتراك', 'Billing period')}
+                    <select value={selectedFamilyGroup?.period || ''} onChange={event => { setFamilyPeriod(event.target.value); setFamilyReceiptError(''); }} className="mt-1 w-full rounded-lg border border-amber-600 bg-white p-2 text-slate-900 dark:bg-slate-800 dark:text-white">
+                      {familyGroups.map(group => <option key={group.period} value={group.period}>{group.period} — {group.amount.toFixed(3)} BHD</option>)}
+                    </select>
+                  </label>
+                )}
+                <button type="button" onClick={() => { setFamilyReceiptFile(null); setFamilyReceiptError(''); setFamilyReceiptOpen(true); }} className="mt-2 rounded-lg border border-amber-600 px-3 py-2 font-bold">
+                  {text('معاينة إيصال موحد (تجريبي)', 'Preview shared receipt (beta)')}
+                </button>
+                <p className="mt-1 text-xs">{familyPaymentsEnabled ? text('الإيصال يخضع لمراجعة المدير قبل اعتماد الدفع.', 'The receipt requires manager review before payment approval.') : text('الميزة قيد التطوير ولا ترسل دفعات حالياً.', 'This feature is in development and does not submit payments.')}</p>
+              </div>
+            )}
+            {familyPaymentsEnabled && familyCorrections.length>0 && <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 dark:bg-amber-950/20 space-y-2">
+              <p className="text-sm font-bold">{text('إيصال عائلي يحتاج تصحيحاً','Family receipt requires correction')}</p>
+              {familyCorrections.map(r=><p key={r.id} className="text-xs">{r.review_note||r.status}</p>)}
+              <button type="button" className="rounded-lg bg-brand-600 text-white px-3 py-2 text-sm font-bold"
+                onClick={()=>{setFamilyReceiptFile(null);setCorrectionReceiptId(familyCorrections[0].id);setFamilyReceiptError('');setFamilyReceiptOpen(true);}}>
+                {text('إعادة رفع الإيصال العائلي','Upload corrected family receipt')}
+              </button>
+            </div>}
             {playerSubscriptions.length === 0 && <p className="text-sm text-slate-400">{text('لا توجد اشتراكات بعد.', 'No subscriptions yet.')}</p>}
             {playerSubscriptions.map((sub) => {
               const relatedProofs = paymentProofs.filter((p) => p.subscriptionId === sub.id).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
@@ -198,7 +306,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
                 <div><p className="font-bold text-sm">{planLabel(sub.planType,lang)} · {sub.amount} {text('د.ب','BHD')}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p>{proof?.status==='needs_info'&&proof.reviewNote&&<p className="mt-1 text-xs font-bold text-amber-700">{text('ملاحظة الإدارة: ','Academy note: ')}{proof.reviewNote}</p>}{latestRejected?.reviewNote&&<p className="mt-1 text-xs font-bold text-red-700">{text('سبب عدم الاعتماد: ','Rejection reason: ')}{latestRejected.reviewNote}</p>}</div>
                 <div className="flex items-center gap-2"><Badge color={sub.status==='paid'?'green':'amber'}>{sub.status==='paid'?text('مدفوع','Paid'):text('غير مدفوع','Unpaid')}</Badge>
                 {proof && <Badge color={proof.status==='approved'?'green':'amber'}>{proofStatus(proof.status)}</Badge>}{proof?.status==='needs_info'&&<button onClick={()=>{setResubmittingProof(proof);setPayingSubscription(sub);setPaymentNote('')}} className="px-3 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold">{text('استكمال الإثبات','Resubmit proof')}</button>}
-                {sub.status==='unpaid' && !proof && <button onClick={()=>{setResubmittingProof(null);setPayingSubscription(sub)}} className="px-3 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold">{text('دفع الاشتراك','Pay subscription')}</button>}</div>
+                {sub.status==='unpaid' && !proof && !familyClaimedIds.includes(sub.id) && <button onClick={()=>{setResubmittingProof(null);setPayingSubscription(sub)}} className="px-3 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold">{text('دفع الاشتراك','Pay subscription')}</button>}</div>
               </div>;
             })}
           </div>
@@ -236,6 +344,28 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           {attachmentError&&<p role="alert" className="text-sm text-red-400">{attachmentError}</p>}
           <button disabled={!attachment||attachmentBusy} onClick={()=>void uploadAttachment()} className="w-full rounded-xl bg-brand-600 px-4 py-3 font-bold text-white disabled:opacity-50">{attachmentBusy?text('جارٍ الرفع…','Uploading…'):text('رفع وحفظ','Upload & save')}</button>
           <p className="flex items-center gap-2 text-xs text-slate-400"><Shield className="h-4 w-4"/>{text('مرفق خاص مرتبط بهذا اللاعب فقط.','Private attachment linked to this player.')}</p>
+        </div>
+      </Modal>
+      <Modal open={familyReceiptOpen} onClose={() => setFamilyReceiptOpen(false)} title={text('معاينة إيصال الأشقاء', 'Sibling receipt preview')}>
+        <div className="space-y-3">
+          <p className="text-sm font-bold">{familyUnpaid.length} {text('اشتراكات', 'subscriptions')} — {familyTotal.toFixed(3)} BHD</p>
+          {familyUnpaid.map(sub => <p key={sub.id} className="text-xs border-b py-1">{players.find(p => p.id === sub.playerId)?.name} — {sub.amount.toFixed(3)} BHD</p>)}
+          <label className="block text-sm">{text('تاريخ التحويل', 'Transfer date')}<input className="mt-1 block w-full rounded border p-2" type="date" value={transferDate} onChange={e => setTransferDate(e.target.value)}/></label>
+          <label className="block text-sm">{text('صورة الإيصال أو PDF', 'Receipt image or PDF')}<input className="mt-1 block w-full" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e => setFamilyReceiptFile(e.target.files?.[0] || null)}/></label>
+          {familyReceiptError && <p role="status" className="text-xs text-amber-800 dark:text-amber-200">{familyReceiptError}</p>}
+          <button type="button" onClick={previewFamilyReceipt} className="rounded-lg bg-brand-600 px-4 py-2 font-bold text-white">{text('فحص البيانات دون إرسال', 'Validate without submitting')}</button>
+          {familyPaymentsEnabled && familyCorrections.length>0 && <div className="space-y-2">
+            <label className="block text-sm font-bold">{text('إعادة إرسال إيصال يحتاج مراجعة','Resubmit a reviewed receipt')}</label>
+            <select className="w-full rounded-lg border p-2 bg-transparent" value={correctionReceiptId} onChange={e=>setCorrectionReceiptId(e.target.value)}>
+              <option value="">{text('اختر الإيصال السابق','Select existing receipt')}</option>
+              {familyCorrections.map(r=><option key={r.id} value={r.id}>{r.status} — {r.review_note||r.id}</option>)}
+            </select>
+            <button type="button" disabled={familyReceiptBusy||!familyReceiptFile||!correctionReceiptId}
+              onClick={()=>void correctFamilyReceipt()} className="rounded-lg bg-brand-600 px-4 py-2 text-white font-bold disabled:opacity-50">
+              {text('إعادة إرسال الإيصال للتصحيح','Resubmit receipt correction')}
+            </button>
+          </div>}
+          {familyPaymentsEnabled ? <button type="button" disabled={familyReceiptBusy || !familyReceiptFile} onClick={()=>void sendFamilyReceipt()} className="rounded-lg bg-brand-600 px-4 py-2 text-white font-bold disabled:opacity-50">{familyReceiptBusy?text('جارٍ إرسال الطلب','Submitting request'):text('إرسال الإيصال لمراجعة المدير','Submit receipt for manager review')}</button> : <p className="text-xs text-slate-500">{text('لن يُرفع ملف أو تُنشأ معاملة مالية من هذه المعاينة.', 'This preview neither uploads files nor creates financial transactions.')}</p>}
         </div>
       </Modal>
       <Modal open={!!payingSubscription} closeDisabled={paymentBusy} onClose={() => { if(!paymentBusy){setPayingSubscription(null);setResubmittingProof(null);} }} title={text('إثبات دفع الاشتراك','Subscription payment proof')}>

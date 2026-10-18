@@ -73,9 +73,7 @@ begin
   where id = p_evaluation_id;
   return p_evaluation_id;
 end;
-$$
-
-
+$$;
 
 create or replace function internal.publish_player_evaluation_impl(p_evaluation_id uuid)
 returns public.player_evaluations
@@ -107,9 +105,7 @@ begin
   where id=p_evaluation_id returning * into v_eval;
   return v_eval;
 end;
-$$
-
-
+$$;
 
 create or replace function public.save_player_evaluation(
   p_evaluation_id uuid,
@@ -131,9 +127,7 @@ security invoker
 set search_path = ''
 as $$
   select internal.save_player_evaluation_impl($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);
-$$
-
-
+$$;
 
 create or replace function public.publish_player_evaluation(p_evaluation_id uuid)
 returns public.player_evaluations
@@ -142,17 +136,12 @@ security invoker
 set search_path = ''
 as $$
   select internal.publish_player_evaluation_impl($1);
-$$
+$$;
 
+grant execute on function internal.save_player_evaluation_impl(uuid,text,date,text,smallint,smallint,smallint,smallint,smallint,text,text,text,text) to authenticated;
 
+grant execute on function internal.publish_player_evaluation_impl(uuid) to authenticated;
 
-grant execute on function internal.save_player_evaluation_impl(uuid,text,date,text,smallint,smallint,smallint,smallint,smallint,text,text,text,text) to authenticated
+grant execute on function public.save_player_evaluation(uuid,text,date,text,smallint,smallint,smallint,smallint,smallint,text,text,text,text) to authenticated;
 
-
-grant execute on function internal.publish_player_evaluation_impl(uuid) to authenticated
-
-
-grant execute on function public.save_player_evaluation(uuid,text,date,text,smallint,smallint,smallint,smallint,smallint,text,text,text,text) to authenticated
-
-
-grant execute on function public.publish_player_evaluation(uuid) to authenticated
+grant execute on function public.publish_player_evaluation(uuid) to authenticated;
