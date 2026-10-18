@@ -26,11 +26,9 @@ export async function submitFamilyReceiptForReview(
     p_proof_path: path,
     p_transfer_date: draft.transferDate,
   });
-  if (error || typeof data !== 'string') {
-    // Only clean up the newly uploaded, unreferenced file. In production the
-    // server-side reference check must also protect concurrent deletion.
-    await supabase.storage.from('payment-proofs').remove([path]).catch(() => undefined);
-    throw error || new Error('Unable to submit family receipt');
-  }
+  // An RPC can commit even if the network response is lost. Never delete the
+  // uploaded evidence on an ambiguous failure: it may now be referenced.
+  if (error) throw error;
+  if (typeof data !== 'string') throw new Error('Receipt submission could not be confirmed');
   return data;
 }
