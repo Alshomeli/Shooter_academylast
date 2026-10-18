@@ -16,6 +16,13 @@ export function siblingPaymentGroups(
     if (!Number.isFinite(sub.amount) || sub.amount <= 0 ||
         !Number.isSafeInteger(Math.round(sub.amount * 1000)) ||
         Math.abs(sub.amount * 1000 - Math.round(sub.amount * 1000)) > 0.000001) continue;
+    // Exclude malformed or reversed billing periods before showing a payment total.
+    const validDate = (value: string) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+      const date = new Date(value + 'T00:00:00Z');
+      return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+    };
+    if (!validDate(sub.startDate) || !validDate(sub.endDate) || sub.startDate > sub.endDate) continue;
     const period = sub.startDate + ' / ' + sub.endDate;
     const group = groups.get(period) || [];
     if (group.some(existing => existing.playerId === sub.playerId)) continue;
