@@ -53,3 +53,8 @@ test('family intake migration has one complete function and intact metadata boun
   assert.match(sql, /\(o\.metadata->>'size'\)::bigint between 1 and 5242880/);
   assert.equal(sql.trim().split('grant execute on function public.submit_family_payment_receipt').length, 2);
 });
+
+test('intake path requires canonical UUID format rather than any 36-character string', () => {
+  assert.match(sql, /\[0-9a-fA-F\]\{8\}-\[0-9a-fA-F\]\{4\}/);
+  assert.doesNotMatch(sql, /\[0-9a-fA-F-\]\{36\}/);
+});
