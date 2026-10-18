@@ -83,6 +83,10 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const familyTotal = selectedFamilyGroup?.amount || 0;
   const previewFamilyReceipt = () => {
     setFamilyReceiptError('');
+    if (familyUnpaid.length < 2) {
+      setFamilyReceiptError(text('لا توجد اشتراكات أشقاء مؤهلة لنفس الفترة.', 'No eligible sibling subscriptions for the same period.'));
+      return;
+    }
     if (!familyReceiptFile || !user.authUserId) {
       setFamilyReceiptError(text('يجب تسجيل الدخول واختيار الإيصال.', 'Sign in and select a receipt.'));
       return;
