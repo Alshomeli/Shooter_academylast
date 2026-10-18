@@ -14,7 +14,6 @@ declare
   v_periods integer;
   v_total numeric(12,3);
   v_id uuid;
-  v_path_owner text;
 begin
   if v_uid is null then raise exception 'Authentication required'; end if;
   if p_subscription_ids is null or array_length(p_subscription_ids, 1) is null
@@ -57,6 +56,29 @@ begin
     where o.bucket_id = 'payment-proofs'
       and o.name = p_proof_path
       and o.owner_id = v_uid::text
+      and o.metadata->>'mimetype' in ('image/jpeg','image/png','image/webp','application/pdf')
+      and (o.metadata->>'size') ~ '^[0-9]{1,8} then raise exception 'Receipt upload not found or not owned by parent'; end if;
+
+  -- Existing individual proofs cannot be silently replaced.
+  if exists (select 1 from public.payment_proofs pr
+             where pr.subscription_id = any(p_subscription_ids)
+               and pr.status in ('pending','needs_info','approved'))
+     or exists (select 1 from public.family_payment_receipt_items fi
+                where fi.subscription_id = any(p_subscription_ids))
+  then raise exception 'Payment proof already exists for selected subscription'; end if;
+
+  insert into public.family_payment_receipts(parent_user_id,proof_path,transfer_date,expected_amount,status)
+  values(v_uid,p_proof_path,p_transfer_date,v_total,'pending') returning id into v_id;
+  insert into public.family_payment_receipt_items(receipt_id,subscription_id,player_id,amount)
+  select v_id,s.id,s.player_id,s.amount from public.subscriptions s
+  where s.id = any(p_subscription_ids);
+  return v_id;
+end
+$$;
+revoke all on function public.submit_family_payment_receipt(text[],text,date) from public, anon;
+grant execute on function public.submit_family_payment_receipt(text[],text,date) to authenticated;
+
+      and (o.metadata->>'size')::bigint between 1 and 5242880
   ) then raise exception 'Receipt upload not found or not owned by parent'; end if;
 
   -- Existing individual proofs cannot be silently replaced.
