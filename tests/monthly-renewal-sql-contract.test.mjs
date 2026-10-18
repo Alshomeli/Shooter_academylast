@@ -16,3 +16,12 @@ test('renewal serialization is idempotent, never posts revenue and blocks overla
  assert.doesNotMatch(sql,/insert into public.transactions/i);
  assert.doesNotMatch(sql,/update public.subscriptions/i);
 });
+
+test('new unpaid renewal notifies linked parent once and cannot mark payment complete',()=>{
+ assert.match(sql,/join public.parents pa on pa.id=pl.parent_id/);
+ assert.match(sql,/insert into public.notifications/);
+ assert.match(sql,/notif-renewal-/);
+ assert.match(sql,/on conflict\(id\) do nothing/);
+ assert.match(sql,/'unpaid'/);
+ assert.doesNotMatch(sql,/set status='paid'/);
+});
