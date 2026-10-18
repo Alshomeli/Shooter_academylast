@@ -105,8 +105,9 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
       setFamilyReceiptError(errorMessage(error, ar));
       return;
     }
-    // Preview only until secure family upload/approval RPCs are deployed.
-    setFamilyReceiptError(text('تم التحقق من البيانات الأولية. رفع الإيصال الموحد غير مفعّل بعد؛ استخدم الدفع الفردي حالياً.', 'Details validated. Shared receipt upload is not enabled yet; use individual payments for now.'));
+    setFamilyReceiptError(familyPaymentsEnabled
+      ? text('تم التحقق من بيانات الإيصال. يمكنك إرساله لمراجعة المدير، ولن تُعتمد الدفعة تلقائياً.', 'Receipt details validated. You can submit for manager review; payment is never approved automatically.')
+      : text('تم التحقق من البيانات الأولية. رفع الإيصال الموحد غير مفعّل بعد؛ استخدم الدفع الفردي حالياً.', 'Details validated. Shared receipt upload is not enabled yet; use individual payments for now.'));
   };
   const sendFamilyReceipt = async () => {
     if (!familyPaymentsEnabled || familyReceiptBusy) return;
