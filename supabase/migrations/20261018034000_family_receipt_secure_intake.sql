@@ -29,6 +29,10 @@ begin
     or p_proof_path !~ ('^' || v_uid::text || '/family/[0-9a-fA-F-]{36}\.(jpg|jpeg|png|webp|pdf)$')
   then raise exception 'Invalid private receipt path'; end if;
 
+  -- Serialize submissions across different sibling sets from the same parent.
+  -- This prevents concurrent requests from both seeing an empty receipt list.
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_uid::text, 0));
+
   -- Lock existing subscriptions deterministically before verifying ownership and totals.
   perform 1 from public.subscriptions s where s.id = any(p_subscription_ids)
     order by s.id for update;
@@ -54,10 +58,6 @@ begin
       and o.name = p_proof_path
       and o.owner_id = v_uid::text
   ) then raise exception 'Receipt upload not found or not owned by parent'; end if;
-
-  -- Serialize submissions across different sibling sets from the same parent.
-  -- This prevents concurrent requests from both seeing an empty receipt list.
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_uid::text, 0));
 
   -- Existing individual proofs cannot be silently replaced.
   if exists (select 1 from public.payment_proofs pr
