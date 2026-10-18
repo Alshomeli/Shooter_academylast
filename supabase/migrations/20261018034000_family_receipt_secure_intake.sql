@@ -26,7 +26,7 @@ begin
     raise exception 'Invalid transfer date';
   end if;
   if p_proof_path is null or length(p_proof_path) > 1024
-    or p_proof_path !~ ('^' || v_uid::text || '/family/[0-9a-fA-F-]{36}\\.(jpg|jpeg|png|webp|pdf)$')
+    or p_proof_path !~ ('^' || v_uid::text || '/family/[0-9a-fA-F-]{36}\.(jpg|jpeg|png|webp|pdf)$')
   then raise exception 'Invalid private receipt path'; end if;
 
   -- Lock existing subscriptions deterministically before verifying ownership and totals.
