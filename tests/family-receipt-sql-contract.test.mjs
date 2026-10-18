@@ -45,3 +45,11 @@ test('server requires evidence file extension and content type to agree', () => 
   }
   assert.match(sql, /p_proof_path ~\*/);
 });
+
+test('family intake migration has one complete function and intact metadata bounds', () => {
+  assert.equal(sql.match(/create or replace function public\.submit_family_payment_receipt/g)?.length, 1);
+  assert.equal(sql.match(/end\s*\$\$;/g)?.length, 1);
+  assert.match(sql, /\(o\.metadata->>'size'\) ~ '\^\[0-9\]\{1,8\}\$'/);
+  assert.match(sql, /\(o\.metadata->>'size'\)::bigint between 1 and 5242880/);
+  assert.equal(sql.trim().split('grant execute on function public.submit_family_payment_receipt').length, 2);
+});
