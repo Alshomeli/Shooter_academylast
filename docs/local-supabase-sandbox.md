@@ -1,12 +1,13 @@
 # Shooter Academy — Local Supabase sandbox (free)
 
-**Local only.** These commands do not create a cloud project, deploy, or use the production Supabase project. Docker Desktop/Engine must already be installed and running.
+**Local only.** These commands do not create a cloud project, deploy, or use the production Supabase project. Docker Desktop/Engine must already be installed and running. The `supabase:local:check` command verifies that Docker is available and refuses startup if this checkout contains a Supabase remote-project link.
 
 ## Quick start
 
 ```bash
 npm ci
 npm run test:isolated
+npm run supabase:local:check
 npm run supabase:local:start
 npm run supabase:local:status
 ```
@@ -17,7 +18,7 @@ The first test runs the full isolated PGlite payment regression suite. The local
 
 ### Local frontend
 
-Run `npm run supabase:local:status` to see the local API URL and anon/publishable key. Create an **untracked** `.env.local` with the local URL and key matching the variable names used in `src/lib/supabase.ts`, then run `npm run dev`. Never paste a production service-role key into a Vite environment variable. The local frontend is for developer verification only, not production activation.
+Run `npm run supabase:local:status` to see the local API URL and anon/publishable key. Create an **untracked** `.env.local` with the local URL and key matching the variables `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` used in `src/lib/supabase.ts`, then run `npm run dev`. Never paste a production service-role key into a Vite environment variable. The local frontend is for developer verification only, not production activation.
 
 ### Readiness
 
