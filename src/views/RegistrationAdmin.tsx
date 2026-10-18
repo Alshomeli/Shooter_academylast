@@ -7,6 +7,7 @@ import {
 import type { Lang, Role, Team, Player, RegistrationApplication, RegistrationStatus } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard } from '@/components/ui';
 import { tr } from '@/lib/i18n';
+import { BASE_MONTHLY_FEE_BHD, readChildFeeOverrides, saveManagerChildFee } from '@/lib/family-payment';
 import {
   fetchAllApplications, reviewApplication, approveApplication,
   finalizePlayer, getSignedUrl, errorMessage, deleteRegistrationApplication,
@@ -372,6 +373,27 @@ function AppDetail({
 
   const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
+  const [monthlyFees, setMonthlyFees] = useState<Record<string, number>>({});
+  const [feeError, setFeeError] = useState('');
+  const [savingFee, setSavingFee] = useState<string | null>(null);
+  const [feeNotice, setFeeNotice] = useState('');
+  useEffect(() => {
+    let alive = true;
+    setFeeError(''); setFeeNotice('');
+    readChildFeeOverrides(app.children.map(child => child.id))
+      .then(fees => { if (alive) setMonthlyFees(fees); })
+      .catch(error => { if (alive) setFeeError(error instanceof Error ? error.message : String(error)); });
+    return () => { alive = false; };
+  }, [app.id]);
+  const saveFee = async (childId: string) => {
+    setFeeError(''); setFeeNotice(''); setSavingFee(childId);
+    try {
+      await saveManagerChildFee(childId, monthlyFees[childId] ?? BASE_MONTHLY_FEE_BHD);
+      setFeeNotice(isAr ? 'تم حفظ الرسوم لهذا اللاعب.' : 'Player monthly fee saved.');
+    } catch (error) { setFeeError(error instanceof Error ? error.message : String(error)); }
+    finally { setSavingFee(null); }
+  };
+
   const regTypeLabel = app.registrationType === 'initial_onboarding' ? t.regTypeOnboardingShort : t.regTypeNewShort;
   const cfg = STATUS_CONFIGS[app.status];
 
@@ -418,6 +440,7 @@ function AppDetail({
         </dl>
       </Section>
 
+      {(feeError || feeNotice) && <p role="status" className="text-sm text-amber-700">{feeError || feeNotice}</p>}
       {/* Children */}
       <Section title={t.regChildrenInfo} icon={<Users className="h-4 w-4" />}>
         {app.children.map((child) => {
@@ -450,6 +473,16 @@ function AppDetail({
                 </div>
               </div>
 
+              <div className="flex flex-wrap items-end gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-slate-900">
+                <label className="text-xs font-bold">
+                  {isAr ? 'الرسوم الشهرية المعتمدة (د.ب)' : 'Approved monthly fee (BHD)'}
+                  <input type="number" min="0" max="25" step="0.001" className="mt-1 block w-28 rounded border bg-white p-2 text-sm" value={monthlyFees[child.id] ?? BASE_MONTHLY_FEE_BHD} onChange={e => setMonthlyFees(previous => ({ ...previous, [child.id]: Number(e.target.value) }))} />
+                </label>
+                <button type="button" disabled={savingFee !== null} onClick={() => void saveFee(child.id)} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+                  {savingFee === child.id ? (isAr ? 'جارٍ الحفظ…' : 'Saving…') : (isAr ? 'حفظ رسوم اللاعب' : 'Save player fee')}
+                </button>
+                <p className="text-xs text-amber-900">{isAr ? 'الرسوم الأصلية 25 د.ب، والخصم يحدده المدير. ربط التجديدات بالفوترة قيد التطوير.' : 'Base fee BHD 25. Manager sets any discount. Renewal billing integration pending.'}</p>
+              </div>
               {/* Child documents */}
               {childDocs.length > 0 && (
                 <div className="flex flex-wrap gap-2">
