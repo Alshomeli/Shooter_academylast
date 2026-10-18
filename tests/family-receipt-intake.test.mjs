@@ -14,3 +14,10 @@ test('rejects duplicate subscription, invalid file and different parent',()=>{
  assert.throws(()=>prepareFamilyReceiptIntake('parent-a',[due('s1','p1',25)],'2026-11-02',{...file,type:'text/html'}),/Unsupported/);
  assert.throws(()=>prepareFamilyReceiptIntake('parent-a',[due('s1','p1',25)],'2026-11-02',{...file,size:6000000}),/5 MB/);
 });
+
+test('rejects impossible calendar dates instead of normalizing them',()=>{
+  for(const date of ['2026-02-30','2026-13-01','2026-11-31','not-a-date']){
+    assert.throws(()=>prepareFamilyReceiptIntake('parent-a',[due('s1','p1',25)],date,file),/Invalid transfer date/);
+  }
+  assert.equal(prepareFamilyReceiptIntake('parent-a',[due('s1','p1',25)],'2028-02-29',file).transferDate,'2028-02-29');
+});
