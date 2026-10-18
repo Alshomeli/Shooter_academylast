@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import type { Subscription, Player, Parent, Transaction, Staff, Settings, Lang, Role, PaymentProof } from '@/types';
 import { db } from '@/lib/store';
+import { familyPaymentsEnabled, getFamilyReceiptReviewQueue, type FamilyReceiptQueueItem } from '@/lib/family-receipt-queue';
+import { approveFamilyReceiptAfterBankVerification } from '@/lib/family-receipt-manager';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard, FormField, FormError, SaveButton, inputCls } from '@/components/ui';
 import { RemindersPanel } from '@/components/RemindersPanel';
 import { PaymentReceipt } from '@/components/PaymentReceipt';
@@ -108,6 +110,8 @@ export function Subscriptions({
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
   const [receiptSub, setReceiptSub] = useState<Subscription | null>(null);
   const [paymentProofs, setPaymentProofs] = useState<PaymentProof[]>([]);
+  const [familyQueue, setFamilyQueue] = useState<FamilyReceiptQueueItem[]>([]);
+  const [familyVerifyAmounts, setFamilyVerifyAmounts] = useState<Record<string,string>>({});
   const [proofBusy, setProofBusy] = useState<string | null>(null);
   const [proofError, setProofError] = useState('');
   const [proofReview, setProofReview] = useState<PaymentProof | null>(null);
@@ -127,6 +131,23 @@ export function Subscriptions({
   }, [canSeeFinance, isAr, subscriptions.length]);
 
   const refreshProofs = async () => setPaymentProofs(await db.getPaymentProofs());
+  useEffect(() => {
+    if (!familyPaymentsEnabled || !isManager) return;
+    getFamilyReceiptReviewQueue().then(setFamilyQueue).catch(e => setProofError(errorMessage(e,isAr)));
+  }, [isManager,isAr]);
+  const approveFamily = async (receipt: FamilyReceiptQueueItem) => {
+    const verified = Number(familyVerifyAmounts[receipt.id]);
+    if (!familyVerifyAmounts[receipt.id]?.trim() || !Number.isFinite(verified) || verified<=0) {
+      setProofError(isAr?'أدخل مبلغ التحويل الذي تحققت منه في البنك.':'Enter the bank-verified transfer amount.');
+      return;
+    }
+    try {
+      setProofBusy(receipt.id);setProofError('');
+      await approveFamilyReceiptAfterBankVerification(receipt.id,verified);
+      await Promise.all([getFamilyReceiptReviewQueue().then(setFamilyQueue),onRefresh()]);
+    } catch(e) {setProofError(errorMessage(e,isAr));}
+    finally {setProofBusy(null);}
+  };
   const approveProof = async (proof: PaymentProof) => {
     try { setProofBusy(proof.id); setProofError(''); await db.approvePaymentProof(proof.id); await Promise.all([refreshProofs(), onRefresh()]); }
     catch (e) { setProofError(errorMessage(e, isAr)); }
@@ -554,6 +575,20 @@ export function Subscriptions({
 
       {activeTab === 'proofs' && canSeeFinance && <div className="space-y-3">
         {proofError && <p role="alert" className="rounded-xl bg-red-50 text-red-700 p-3 text-sm">{proofError}</p>}
+        {familyPaymentsEnabled && isManager && familyQueue.map(receipt => <div key={receipt.id} className="rounded-xl border dark:border-slate-700 p-4 space-y-2">
+          <p className="font-bold">{isAr?'إيصال عائلي':'Family receipt'} — {Number(receipt.expected_amount).toFixed(3)} BHD</p>
+          <p className="text-xs text-slate-500">{receipt.transfer_date} · {receipt.status}</p>
+          <button type="button" onClick={()=>void db.getPaymentProofUrl(receipt.proof_path).then(url=>window.open(url,'_blank','noopener,noreferrer')).catch(e=>setProofError(errorMessage(e,isAr)))}
+            className="rounded-lg border p-2 text-sm">{isAr?'عرض الإيصال':'View receipt'}</button>
+          {receipt.status==='pending'&&<div className="flex flex-wrap gap-2 items-center">
+            <input aria-label={isAr?'المبلغ المؤكد من البنك':'Bank-verified amount'} type="number" step="0.001" min="0.001" placeholder={isAr?'المبلغ المؤكد من البنك':'Verified bank amount'}
+              value={familyVerifyAmounts[receipt.id]||''} onChange={e=>setFamilyVerifyAmounts(prev=>({...prev,[receipt.id]:e.target.value}))}
+              className="rounded-lg border bg-transparent p-2" />
+            <button disabled={!!proofBusy} type="button" onClick={()=>void approveFamily(receipt)} className="rounded-lg bg-brand-600 text-white px-4 py-2 font-bold disabled:opacity-50">
+              {proofBusy===receipt.id?(isAr?'جارٍ الاعتماد':'Approving'):(isAr?'اعتماد بعد التحقق البنكي':'Approve verified transfer')}
+            </button>
+          </div>}
+        </div>)}
         {paymentProofs.length===0 ? <EmptyState icon={<Receipt className="h-8 w-8"/>} title={isAr?'لا توجد إثباتات دفع':'No payment proofs'} subtitle={isAr?'ستظهر طلبات المراجعة هنا':'Payment proof requests appear here'} /> : null}
         {paymentProofs.map((proof)=>{
           const player=playerOf(proof.playerId);
