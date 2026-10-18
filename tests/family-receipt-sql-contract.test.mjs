@@ -25,3 +25,9 @@ test('family receipt intake serializes concurrent requests before row locks', ()
   assert.ok(subscriptionLock > parentLock);
   assert.ok(receiptCheck > subscriptionLock);
 });
+
+test('family receipt schema forbids attaching the same proof file to multiple batches', async () => {
+  const schema = await readFile(new URL('../supabase/migrations/20261018032000_family_payment_receipt_batches.sql', import.meta.url), 'utf8');
+  assert.match(schema, /unique index if not exists family_payment_receipts_unique_proof_path/);
+  assert.match(schema, /on public\.family_payment_receipts\(proof_path\)/);
+});
