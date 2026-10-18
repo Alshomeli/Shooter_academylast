@@ -8,6 +8,8 @@ test('monthly renewal SQL runs on isolated PostgreSQL, with manager guard, price
  try{
  await db.exec(`
  create schema auth;
+ create role anon;
+ create role authenticated;
  create function auth.uid() returns uuid language sql stable
  as $$ select current_setting('test.user_id',true)::uuid $$;
  `);
