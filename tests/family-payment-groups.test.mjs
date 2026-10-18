@@ -14,3 +14,10 @@ test('excludes previously submitted, foreign, paid and duplicate player subscrip
  assert.deepEqual(groups[0].subscriptions.map(x=>x.id),['a','b']);
  assert.deepEqual(siblingPaymentGroups(rows,['p1','p2'],['b']),[]);
 });
+
+test('ignores amounts with excess precision and non-finite values',()=>{
+ const rows=[s('a','p1'),{...s('bad','p2'),amount:25.0001},{...s('inf','p3'),amount:Infinity},s('b','p4')];
+ const groups=siblingPaymentGroups(rows,['p1','p2','p3','p4'],[]);
+ assert.deepEqual(groups[0].subscriptions.map(x=>x.id),['a','b']);
+ assert.equal(groups[0].amount,50);
+});
