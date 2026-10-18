@@ -27,9 +27,12 @@ begin
  v_end := (p_start_date + interval '1 month')::date;
  -- Avoid existing date overlap, including a paid historical period.
  select id into v_existing from public.subscriptions
- where player_id=p_player_id and start_date<=v_end and end_date>=p_start_date
- limit 1;
+ where player_id=p_player_id and start_date=p_start_date and end_date=v_end
+   and plan_type='monthly' limit 1;
  if v_existing is not null then return v_existing; end if;
+ if exists(select 1 from public.subscriptions where player_id=p_player_id
+   and start_date<=v_end and end_date>=p_start_date)
+ then raise exception 'Renewal overlaps another subscription period'; end if;
  v_id:='sub-renew-'||pg_catalog.gen_random_uuid()::text;
  insert into public.subscriptions(id,player_id,plan_type,amount,start_date,end_date,status)
  values(v_id,p_player_id,'monthly',v_fee,p_start_date,v_end,'unpaid');
