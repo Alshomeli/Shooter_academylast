@@ -1,8 +1,6 @@
 -- Add attendance as a confirmed AI-assisted administrative action.
 alter table public.ai_action_requests
-  drop constraint if exists ai_action_requests_operation_check
-
-
+  drop constraint if exists ai_action_requests_operation_check;
 
 alter table public.ai_action_requests
   add constraint ai_action_requests_operation_check
@@ -11,14 +9,10 @@ alter table public.ai_action_requests
     'review_registration'::text,
     'record_subscription_payment'::text,
     'record_attendance'::text
-  ]))
-
-
+  ]));
 
 create unique index if not exists attendance_unique_player_session
-  on public.attendance (player_id, session_date, session_type, coalesce(training_id, ''))
-
-
+  on public.attendance (player_id, session_date, session_type, coalesce(training_id, ''));
 
 create or replace function internal.record_attendance_entry_impl(
   p_player_id text,
@@ -93,9 +87,7 @@ begin
 
   return v_attendance;
 end;
-$$
-
-
+$$;
 
 create or replace function public.record_attendance_entry(
   p_player_id text,
@@ -110,11 +102,8 @@ language sql
 set search_path = ''
 as $$
   select internal.record_attendance_entry_impl($1,$2,$3,$4,$5,$6);
-$$
+$$;
 
+revoke all on function public.record_attendance_entry(text,date,text,text,text,text) from public, anon;
 
-
-revoke all on function public.record_attendance_entry(text,date,text,text,text,text) from public, anon
-
-
-grant execute on function public.record_attendance_entry(text,date,text,text,text,text) to authenticated
+grant execute on function public.record_attendance_entry(text,date,text,text,text,text) to authenticated;
