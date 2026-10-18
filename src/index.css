@@ -314,3 +314,26 @@ html:not(.dark) :is(.players-view,.player-detail) :is(.text-slate-400,.text-slat
 .shooter-sidebar .sidebar-footer{padding-bottom:max(12px,env(safe-area-inset-bottom));background:#10161e;position:relative;z-index:1}
 .shooter-sidebar .sidebar-nav{scrollbar-gutter:stable;touch-action:pan-y}
 .shooter-sidebar .sidebar-brand>button{flex-shrink:0}
+
+/* Parent portal: visible crest on hero and six evenly spaced social links. */
+.parent-arena .arena-hero { position: relative; overflow: hidden; isolation: isolate; }
+.parent-arena .arena-hero-crest {
+  position: absolute;
+  z-index: 1;
+  inset-inline-start: 4%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: clamp(66px, 12vw, 135px);
+  max-height: 76%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.65));
+}
+.parent-arena .arena-hero > div { position: relative; z-index: 2; }
+.parent-arena .arena-social-bar { grid-template-columns: repeat(6,minmax(0,1fr)); }
+.parent-arena .arena-social-snapchat { background: #fffc00; color: #000; border: 1px solid #e8d700; }
+.parent-arena .arena-social-snapchat svg { width: 27px; height: 27px; }
+@media (max-width: 640px) {
+  .parent-arena .arena-hero-crest { inset-inline-start: 3%; width: 62px; max-height: 57%; }
+  .parent-arena .arena-hero > div { width: 76%; }
+  .parent-arena .arena-social-bar { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
