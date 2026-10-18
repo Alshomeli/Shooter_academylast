@@ -66,6 +66,25 @@ begin
    update public.subscriptions
    set status='paid',payment_method='benefit_transfer',paid_at=now(),row_version=row_version+1
    where id=v_line.subscription_id and status='unpaid';
+   -- Activate a newly registered player on their first verified payment only.
+   -- Existing players and manually disabled players with earlier paid history
+   -- are excluded. A manager may later deactivate the player explicitly.
+   update public.players pl
+   set status='active',row_version=row_version+1
+   where pl.id=v_line.player_id
+     and pl.status='inactive'
+     and exists (select 1 from public.registration_children rc
+                 where rc.approved_player_id=pl.id)
+     and not exists (
+       select 1 from public.subscriptions prior
+       where prior.player_id=pl.id and prior.id<>v_line.subscription_id
+         and prior.status='paid'
+     )
+     and not exists (
+       select 1 from public.transactions prior_tx
+       where prior_tx.player_id=pl.id and prior_tx.subscription_id<>v_line.subscription_id
+         and prior_tx.type='revenue' and prior_tx.category='subscription'
+     );
    insert into public.transactions(id,type,category,amount,transaction_date,description,recorded_by,subscription_id,player_id)
    values('txn-family-'||p_receipt_id::text||'-'||v_line.subscription_id,
      'revenue','subscription',v_line.amount,(now() at time zone 'Asia/Bahrain')::date,
