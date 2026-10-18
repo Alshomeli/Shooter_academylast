@@ -35,3 +35,23 @@ export function planFamilyReceiptApproval(receipt: FamilyReceiptReview): FamilyP
     transactionId: `txn-family-${receipt.id}-${a.subscriptionId}`,
   }));
 }
+
+/**
+ * Manager review helper; verifiedTransferredAmount must come from independently
+ * checked bank records, NOT from OCR or the screenshot supplied by a parent.
+ * This produces instructions only and never marks subscriptions paid.
+ */
+export function reconcileFamilyBankTransfer(
+  receipt: FamilyReceiptReview,
+  verifiedTransferredAmount: number,
+  confirmedByManager: boolean,
+): FamilyPosting[] {
+  if (!confirmedByManager) throw new Error('Manual bank verification required');
+  if (!Number.isFinite(verifiedTransferredAmount) ||
+      !Number.isSafeInteger(Math.round(verifiedTransferredAmount * 1000)) ||
+      Math.abs(verifiedTransferredAmount * 1000 - Math.round(verifiedTransferredAmount * 1000)) > 0.000001 ||
+      Math.round(verifiedTransferredAmount * 1000) !== Math.round(receipt.expectedAmount * 1000)) {
+    throw new Error('Verified bank transfer amount mismatch');
+  }
+  return planFamilyReceiptApproval(receipt);
+}
