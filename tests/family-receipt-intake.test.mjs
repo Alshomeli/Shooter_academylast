@@ -21,3 +21,13 @@ test('rejects impossible calendar dates instead of normalizing them',()=>{
   }
   assert.equal(prepareFamilyReceiptIntake('parent-a',[due('s1','p1',25)],'2028-02-29',file).transferDate,'2028-02-29');
 });
+
+test('rejects duplicate player within one receipt even with different subscriptions',()=>{
+ const a=due('s1','p1',25), b=due('s2','p1',25);
+ assert.throws(()=>prepareFamilyReceiptIntake('parent-a',[a,b],'2026-11-02',file),/Duplicate player/);
+});
+test('rejects mixing subscription months and malformed billing ranges',()=>{
+ const a=due('s1','p1',25), b={...due('s2','p2',19),startDate:'2026-12-01',endDate:'2026-12-31'};
+ assert.throws(()=>prepareFamilyReceiptIntake('parent-a',[a,b],'2026-11-02',file),/Mixed or invalid billing periods/);
+ assert.throws(()=>prepareFamilyReceiptIntake('parent-a',[{...a,startDate:'2026-12-01'}],'2026-11-02',file),/Mixed or invalid billing periods/);
+});
