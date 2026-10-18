@@ -105,10 +105,17 @@ export default function AcademyHome() {
   const contact = content.find(i => i.kind === 'contact')?.payload;
   const sectionText = (key: string, fallback: string) => {
     const arValue = contact?.[key];
-    const enValue = contact?.[`${key}_en`];
-    if (arValue === undefined) return tr(fallback);
-    if (lang === 'en') return enValue || tr(arValue);
-    return arValue;
+    const enValue = contact?.[`${key}_en`]?.trim();
+    if (lang === 'ar') return arValue ?? fallback;
+    if (enValue) return enValue;
+    // Legacy CMS entries may omit English fields. Use the approved translation
+    // for unchanged default headings, without changing the stored Arabic text.
+    const defaults: Record<string, string> = {
+      about_title: 'Football is more than just a game.',
+      programs_title: 'One Step Closer to Progress.',
+    };
+    if (defaults[key] && (!arValue || arValue === fallback)) return defaults[key];
+    return tr(arValue ?? fallback);
   };
   const defaultPrograms = [
     { title: 'تطوير المهارات', body: 'التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.', image: programImages[0] },
