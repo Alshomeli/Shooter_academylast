@@ -54,3 +54,22 @@ export function prepareFamilyReceiptIntake(
     fileMimeType: file.type,
   };
 }
+
+/**
+ * Prepare the private storage key for a future authenticated upload.
+ * This does not upload or submit a receipt. Server still verifies object ownership.
+ */
+export function familyReceiptStoragePath(parentUserId: string, receiptId: string, mimeType: string): string {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(parentUserId) ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(receiptId)) {
+    throw new Error('Invalid private receipt identifier');
+  }
+  const ext: Record<string,string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'application/pdf': 'pdf',
+  };
+  if (!ext[mimeType]) throw new Error('Unsupported receipt format');
+  return `${parentUserId}/family/${receiptId}.${ext[mimeType]}`;
+}
