@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { prepareFamilyReceiptIntake } from '../src/lib/family-receipt-intake.ts';
+import { prepareFamilyReceiptIntake, familyReceiptStoragePath } from '../src/lib/family-receipt-intake.ts';
 const due=(id,playerId,amount)=>({subscriptionId:id,playerId,parentUserId:'parent-a',amount,status:'unpaid',startDate:'2026-11-01',endDate:'2026-11-30'});
 const file={name:'benefit-receipt.jpg',type:'image/jpeg',size:250000};
 test('one receipt for siblings totals charges and preserves separate subscriptions',()=>{
@@ -35,4 +35,13 @@ test('rejects mixing subscription months and malformed billing ranges',()=>{
 test('rejects impossible billing-period calendar dates',()=>{
  const bad={...due('s1','p1',25),startDate:'2026-02-30',endDate:'2026-03-30'};
  assert.throws(()=>prepareFamilyReceiptIntake('parent-a',[bad],'2026-11-02',file),/Mixed or invalid billing periods/);
+});
+
+test('shared receipt upload path is parent-owned and MIME determined',()=>{
+ const parent='11111111-1111-4111-8111-111111111111';
+ const receipt='22222222-2222-4222-8222-222222222222';
+ assert.equal(familyReceiptStoragePath(parent,receipt,'image/jpeg'), parent+'/family/'+receipt+'.jpg');
+ assert.equal(familyReceiptStoragePath(parent,receipt,'application/pdf'), parent+'/family/'+receipt+'.pdf');
+ assert.throws(()=>familyReceiptStoragePath('../x',receipt,'image/png'),/Invalid private/);
+ assert.throws(()=>familyReceiptStoragePath(parent,receipt,'text/html'),/Unsupported/);
 });
