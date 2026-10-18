@@ -47,6 +47,25 @@ assert.ok(cross.error,'Unrelated authenticated user must not download another pa
 const forged=await b.client.storage.from('payment-proofs').upload(
  `${a.id}/family/${crypto.randomUUID()}.pdf`,payload,{contentType:'application/pdf'});
 assert.ok(forged.error,'Unrelated user must not upload into another parent folder');
+// Exercise actual PostgREST RPC authorization using fake local identities.
+const fakeReceiptId=crypto.randomUUID();
+const unauthenticated=createClient(url,anon,{auth:{persistSession:false,autoRefreshToken:false}});
+const anonApproval=await unauthenticated.rpc('approve_family_payment_receipt',{
+ p_receipt_id:fakeReceiptId,p_confirmed_amount:25});
+assert.ok(anonApproval.error,'Anonymous users must never be able to approve family payments');
+const parentApproval=await a.client.rpc('approve_family_payment_receipt',{
+ p_receipt_id:fakeReceiptId,p_confirmed_amount:25});
+assert.ok(parentApproval.error,'A parent without manager role must not approve payments');
+assert.match(parentApproval.error.message,/Manager authorization required|permission denied|not authorized/i);
+const nonOwnerSubmission=await b.client.rpc('submit_family_payment_receipt',{
+ p_subscription_ids:['not-a-subscription','not-another-subscription'],
+ p_proof_path:path,p_transfer_date:'2026-10-18'});
+assert.ok(nonOwnerSubmission.error,'Parent cannot attach another parent\'s receipt or invalid subscriptions');
+const {data:unauthorizedReceipt,error:adminReadError}=await admin
+ .from('family_payment_receipts').select('id').eq('proof_path',path);
+assert.equal(adminReadError,null);
+assert.equal(unauthorizedReceipt.length,0,'Rejected API attempts must not create a payment batch');
+console.log('PASS local Supabase RPC: anonymous/parent approval denied, forged family submission denied, no receipt created');
 const ownDelete=await a.client.storage.from('payment-proofs').remove([path]);
 assert.equal(ownDelete.error,null,'Unsubmitted own file should be removable');
 console.log('PASS local Supabase Auth/Storage: separate parents, private bucket, upload scope, cross-parent denial and cleanup');
