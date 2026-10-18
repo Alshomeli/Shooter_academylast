@@ -13,3 +13,12 @@ export async function getFamilyReceiptReviewQueue(): Promise<FamilyReceiptQueueI
  if(error) throw error;
  return (data || []) as FamilyReceiptQueueItem[];
 }
+
+export async function getClaimedFamilySubscriptionIds(): Promise<string[]> {
+ if (!familyPaymentsEnabled) return [];
+ // RLS on header limits parents to their own batches. The item policy
+ // inherits that visibility, so one parent's claims never reveal another's.
+ const {data,error} = await supabase.from('family_payment_receipt_items').select('subscription_id');
+ if(error) throw error;
+ return [...new Set((data||[]).map(row=>row.subscription_id as string))];
+}
