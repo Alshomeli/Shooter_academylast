@@ -55,6 +55,10 @@ begin
       and o.owner_id = v_uid::text
   ) then raise exception 'Receipt upload not found or not owned by parent'; end if;
 
+  -- Serialize submissions across different sibling sets from the same parent.
+  -- This prevents concurrent requests from both seeing an empty receipt list.
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_uid::text, 0));
+
   -- Existing individual proofs cannot be silently replaced.
   if exists (select 1 from public.payment_proofs pr
              where pr.subscription_id = any(p_subscription_ids)
