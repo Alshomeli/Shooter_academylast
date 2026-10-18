@@ -8,8 +8,9 @@ test('monthly renewal SQL runs on isolated PostgreSQL, with manager guard, price
  try{
  await db.exec(`
  create schema auth;
- create function auth.uid() returns uuid language sql stable as 'select current_setting(''test.user_id'',true)::uuid';
- `.replace("as 'select current_setting(''test.user_id'',true)::uuid'","as $$select current_setting('test.user_id',true)::uuid$$"));
+ create function auth.uid() returns uuid language sql stable
+ as $$ select current_setting('test.user_id',true)::uuid $$;
+ `);
  await db.exec(`
  create table public.staff(id text primary key,user_id uuid,status text,role text);
  create table public.players(id text primary key,status text,parent_id text);
