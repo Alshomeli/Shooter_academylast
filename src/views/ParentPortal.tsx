@@ -8,6 +8,7 @@ import { planLabel } from '@/lib/i18n';
 import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerDocument, PlayerEvaluation, Settings, Subscription, Team, Training } from '@/types';
 import { db } from '@/lib/store';
 import { prepareFamilyReceiptIntake } from '@/lib/family-receipt-intake';
+import { siblingPaymentGroups } from '@/lib/family-payment-groups';
 import { tr } from '@/lib/i18n';
 import { uploadPlayerFile } from '@/lib/uploads';
 import { Home, Users, Upload, Shield, Sun, Moon, Trophy } from 'lucide-react';
@@ -72,12 +73,12 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const [familyReceiptFile, setFamilyReceiptFile] = useState<File | null>(null);
   const [familyReceiptError, setFamilyReceiptError] = useState('');
 
-  const familyUnpaid = subscriptions.filter(sub =>
-    sub.status === 'unpaid' &&
-    players.some(p => p.id === sub.playerId) &&
-    !paymentProofs.some(proof => proof.subscriptionId === sub.id && ['pending','needs_info','approved'].includes(proof.status))
+  const familyGroups = siblingPaymentGroups(
+    subscriptions, players.map(p => p.id),
+    paymentProofs.filter(proof => ['pending','needs_info','approved'].includes(proof.status)).map(proof => proof.subscriptionId),
   );
-  const familyTotal = familyUnpaid.reduce((sum, sub) => sum + Math.round(sub.amount * 1000), 0) / 1000;
+  const familyUnpaid = familyGroups[0]?.subscriptions || [];
+  const familyTotal = familyGroups[0]?.amount || 0;
   const previewFamilyReceipt = () => {
     setFamilyReceiptError('');
     if (!familyReceiptFile || !user.authUserId) {
@@ -222,7 +223,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
             {familyUnpaid.length > 1 && (
               <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-200">
                 <p className="font-bold">{text('ملخص اشتراكات الأشقاء', 'Sibling subscriptions summary')}</p>
-                <p>{familyUnpaid.length} {text('اشتراكات غير مدفوعة', 'unpaid subscriptions')} · {familyTotal.toFixed(3)} BHD</p>
+                <p>{familyUnpaid.length} {text('اشتراكات غير مدفوعة', 'unpaid subscriptions')} · {familyTotal.toFixed(3)} BHD · {familyGroups[0]?.period}</p>
                 <button type="button" onClick={() => { setFamilyReceiptFile(null); setFamilyReceiptError(''); setFamilyReceiptOpen(true); }} className="mt-2 rounded-lg border border-amber-600 px-3 py-2 font-bold">
                   {text('معاينة إيصال موحد (تجريبي)', 'Preview shared receipt (beta)')}
                 </button>
