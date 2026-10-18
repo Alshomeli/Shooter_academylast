@@ -286,9 +286,17 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
                 <button type="button" onClick={() => { setFamilyReceiptFile(null); setFamilyReceiptError(''); setFamilyReceiptOpen(true); }} className="mt-2 rounded-lg border border-amber-600 px-3 py-2 font-bold">
                   {text('معاينة إيصال موحد (تجريبي)', 'Preview shared receipt (beta)')}
                 </button>
-                <p className="mt-1 text-xs">{text('الميزة قيد التطوير ولا ترسل دفعات حالياً.', 'This feature is in development and does not submit payments.')}</p>
+                <p className="mt-1 text-xs">{familyPaymentsEnabled ? text('الإيصال يخضع لمراجعة المدير قبل اعتماد الدفع.', 'The receipt requires manager review before payment approval.') : text('الميزة قيد التطوير ولا ترسل دفعات حالياً.', 'This feature is in development and does not submit payments.')}</p>
               </div>
             )}
+            {familyPaymentsEnabled && familyCorrections.length>0 && <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 dark:bg-amber-950/20 space-y-2">
+              <p className="text-sm font-bold">{text('إيصال عائلي يحتاج تصحيحاً','Family receipt requires correction')}</p>
+              {familyCorrections.map(r=><p key={r.id} className="text-xs">{r.review_note||r.status}</p>)}
+              <button type="button" className="rounded-lg bg-brand-600 text-white px-3 py-2 text-sm font-bold"
+                onClick={()=>{setFamilyReceiptFile(null);setCorrectionReceiptId(familyCorrections[0].id);setFamilyReceiptError('');setFamilyReceiptOpen(true);}}>
+                {text('إعادة رفع الإيصال العائلي','Upload corrected family receipt')}
+              </button>
+            </div>}
             {playerSubscriptions.length === 0 && <p className="text-sm text-slate-400">{text('لا توجد اشتراكات بعد.', 'No subscriptions yet.')}</p>}
             {playerSubscriptions.map((sub) => {
               const relatedProofs = paymentProofs.filter((p) => p.subscriptionId === sub.id).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
@@ -298,7 +306,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
                 <div><p className="font-bold text-sm">{planLabel(sub.planType,lang)} · {sub.amount} {text('د.ب','BHD')}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p>{proof?.status==='needs_info'&&proof.reviewNote&&<p className="mt-1 text-xs font-bold text-amber-700">{text('ملاحظة الإدارة: ','Academy note: ')}{proof.reviewNote}</p>}{latestRejected?.reviewNote&&<p className="mt-1 text-xs font-bold text-red-700">{text('سبب عدم الاعتماد: ','Rejection reason: ')}{latestRejected.reviewNote}</p>}</div>
                 <div className="flex items-center gap-2"><Badge color={sub.status==='paid'?'green':'amber'}>{sub.status==='paid'?text('مدفوع','Paid'):text('غير مدفوع','Unpaid')}</Badge>
                 {proof && <Badge color={proof.status==='approved'?'green':'amber'}>{proofStatus(proof.status)}</Badge>}{proof?.status==='needs_info'&&<button onClick={()=>{setResubmittingProof(proof);setPayingSubscription(sub);setPaymentNote('')}} className="px-3 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold">{text('استكمال الإثبات','Resubmit proof')}</button>}
-                {sub.status==='unpaid' && !proof && <button onClick={()=>{setResubmittingProof(null);setPayingSubscription(sub)}} className="px-3 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold">{text('دفع الاشتراك','Pay subscription')}</button>}</div>
+                {sub.status==='unpaid' && !proof && !familyClaimedIds.includes(sub.id) && <button onClick={()=>{setResubmittingProof(null);setPayingSubscription(sub)}} className="px-3 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold">{text('دفع الاشتراك','Pay subscription')}</button>}</div>
               </div>;
             })}
           </div>
