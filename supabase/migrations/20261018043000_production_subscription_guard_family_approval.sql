@@ -142,3 +142,47 @@ end
 $approve$;
 revoke all on function public.approve_family_payment_receipt(uuid,numeric) from public,anon;
 grant execute on function public.approve_family_payment_receipt(uuid,numeric) to authenticated;
+
+-- Reproduce production's AFTER subscription guard in disposable integration DB,
+-- without replacing an existing production function or trigger.
+do $guard_install$
+begin
+ if to_regprocedure('internal.require_payment_transaction()') is null then
+   execute $sql$
+     create function internal.require_payment_transaction() returns trigger
+     language plpgsql security definer set search_path='' as $body$
+     declare s public.subscriptions%rowtype;
+     begin
+       if tg_op='UPDATE' and (new.status,new.amount,new.player_id,new.payment_method,new.paid_at)
+          is not distinct from (old.status,old.amount,old.player_id,old.payment_method,old.paid_at) then
+         return null;
+       end if;
+       select * into s from public.subscriptions where id=new.id;
+       if found and s.status='paid' and not exists (
+         select 1 from public.transactions t where t.subscription_id=s.id
+           and t.player_id=s.player_id and t.amount=s.amount
+           and t.type='revenue' and t.category='subscription'
+       ) then raise exception 'A paid subscription requires its linked payment transaction'; end if;
+       return null;
+     end;
+     $body$;
+   $sql$;
+ end if;
+ if not exists (
+   select 1 from pg_trigger t join pg_class c on c.oid=t.tgrelid
+   join pg_namespace n on n.oid=c.relnamespace
+   where t.tgname='trg_guard_paid_subscription' and c.relname='subscriptions' and n.nspname='public'
+ ) then
+   create trigger trg_guard_paid_subscription before update or delete on public.subscriptions
+   for each row execute function internal.guard_paid_subscription();
+ end if;
+ if not exists (
+   select 1 from pg_trigger t join pg_class c on c.oid=t.tgrelid
+   join pg_namespace n on n.oid=c.relnamespace
+   where t.tgname='trg_require_payment_transaction' and c.relname='subscriptions' and n.nspname='public'
+ ) then
+   create trigger trg_require_payment_transaction after insert or update on public.subscriptions
+   for each row execute function internal.require_payment_transaction();
+ end if;
+end
+$guard_install$;
