@@ -27,6 +27,7 @@ export const publicEnglish: Record<string, string> = {
   "نركز على المهارات الفنية واللياقة البدنية وإنهاء الهجمات، ونؤمن بأن الاحترام والعمل الجماعي أساس تطور كل لاعب داخل الملعب وخارجه.": "We focus on technical ability, fitness, and finishing. We believe respect and teamwork help every player develop both on and off the pitch.",
   "تعرّف علينا أكثر": "Learn More About Us",
   "02 / برامجنا التدريبية": "02 / Training Programs",
+  "خطوة أقرب للتطور.": "One Step Closer to Progress.",
   "خطوة أقرب": "One Step Closer to",
   "للتطور.": "Progress.",
   "تدريب متكامل، من الأساسيات إلى المنافسة.": "Complete training, from fundamentals to competition.",
