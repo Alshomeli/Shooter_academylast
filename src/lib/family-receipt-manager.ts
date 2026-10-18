@@ -1,9 +1,11 @@
+import { familyPaymentsEnabled } from './family-receipt-queue';
 import {supabase} from './supabase';
 
 /** Staging-only manager review adapter. Not wired into live pages. */
 export async function approveFamilyReceiptAfterBankVerification(
   receiptId: string, confirmedBankAmountBhd: number,
 ): Promise<void> {
+  if (!familyPaymentsEnabled) throw new Error('Family receipt approvals are disabled');
   if (!/^[0-9a-f-]{36}$/i.test(receiptId) ||
       !Number.isFinite(confirmedBankAmountBhd) ||
       confirmedBankAmountBhd <= 0 ||
