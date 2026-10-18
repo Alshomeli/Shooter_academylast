@@ -9,7 +9,7 @@ test('due renewal batch is manager-only and never creates a scheduler',()=>{
  assert.match(sql,/limit 500/);
 });
 test('batch cannot backdate arbitrary invoices or change paid subscriptions',()=>{
- assert.match(sql,/p_as_of<>current_date/);
+ assert.match(sql,/p_as_of<>\(now\(\) at time zone 'Asia\/Bahrain'\)::date/);
  assert.match(sql,/s.end_date >= p_as_of - 31/);
  assert.match(sql,/s.status='paid'/);
  assert.match(sql,/pl.status='active'/);
