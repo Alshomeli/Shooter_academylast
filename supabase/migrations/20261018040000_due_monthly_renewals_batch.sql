@@ -23,6 +23,7 @@ begin
     and s.status='paid'
     and pl.status='active'
     and s.end_date < p_as_of
+    and s.end_date >= p_as_of - 31
     and not exists (
       select 1 from public.subscriptions future
       where future.player_id=s.player_id and future.end_date>s.end_date
@@ -33,8 +34,8 @@ begin
   begin
     v_id:=public.issue_player_monthly_renewal(v_row.player_id,p_as_of);
     v_issued:=v_issued+1;
-  exception when others then
-    -- Skip conflicting players without aborting unrelated renewals.
+  exception when check_violation or unique_violation then
+    -- Only expected constraint conflicts are skipped. Unexpected failures abort.
     v_skipped:=v_skipped+1;
   end;
  end loop;
