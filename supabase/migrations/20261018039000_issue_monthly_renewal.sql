@@ -16,7 +16,7 @@ begin
  select * into v_staff from public.staff where user_id=auth.uid()
   and status='active' and role='manager' limit 1;
  if v_staff.id is null then raise exception 'Manager authorization required'; end if;
- if p_player_id is null or p_start_date is null or p_start_date < current_date - 31 or p_start_date > current_date + 31 then raise exception 'Invalid renewal date'; end if;
+ if p_player_id is null or p_start_date is null or p_start_date < (now() at time zone 'Asia/Bahrain')::date - 31 or p_start_date > (now() at time zone 'Asia/Bahrain')::date + 31 then raise exception 'Invalid renewal date'; end if;
  -- One player per transaction, serializes simultaneous duplicate requests.
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('renewal:'||p_player_id,0));
  if not exists(select 1 from public.players where id=p_player_id)
