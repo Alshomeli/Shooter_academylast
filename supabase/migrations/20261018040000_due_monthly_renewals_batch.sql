@@ -1,7 +1,7 @@
 -- STAGING ONLY. No scheduler is enabled by this migration.
 -- A scheduled service may invoke this routine daily after isolated DB validation.
 -- Each player creates at most one renewal, and existing billing is preserved.
-create or replace function public.issue_due_monthly_renewals(p_as_of date default current_date)
+create or replace function public.issue_due_monthly_renewals(p_as_of date default (now() at time zone 'Asia/Bahrain')::date)
 returns jsonb language plpgsql security definer set search_path=''
 as $$
 declare
@@ -14,7 +14,7 @@ begin
  select * into v_staff from public.staff where user_id=auth.uid()
  and status='active' and role='manager' limit 1;
  if v_staff.id is null then raise exception 'Active manager required'; end if;
- if p_as_of is null or p_as_of<>current_date then raise exception 'Only current date supported'; end if;
+ if p_as_of is null or p_as_of<>(now() at time zone 'Asia/Bahrain')::date then raise exception 'Only current date supported'; end if;
  for v_row in
   select distinct on (s.player_id) s.player_id,s.end_date
   from public.subscriptions s
