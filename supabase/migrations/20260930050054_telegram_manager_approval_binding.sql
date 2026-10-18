@@ -19,8 +19,12 @@ create table if not exists internal.telegram_admin_actions (
 revoke all on internal.telegram_manager_bindings from public, anon, authenticated;
 revoke all on internal.telegram_admin_actions from public, anon, authenticated;
 
+-- A new local database has no staff. Preserve an existing verified manager
+-- binding only when that manager is genuinely present; do not seed fake staff.
 insert into internal.telegram_manager_bindings(chat_id_hash, staff_id, active)
-values ('77aa335710747063044d0b8d13ab0c4576ea69f2e9fd5beb71167d9bdfda2a11','staff-1',true)
+select '77aa335710747063044d0b8d13ab0c4576ea69f2e9fd5beb71167d9bdfda2a11', s.id, true
+from public.staff s
+where s.id='staff-1' and s.role='manager' and s.status='active' and s.user_id is not null
 on conflict (chat_id_hash) do update set staff_id=excluded.staff_id, active=true;
 
 create or replace function internal.telegram_approve_registration_application(
