@@ -22,6 +22,7 @@ create table if not exists public.family_payment_receipt_items (
   subscription_id text not null references public.subscriptions(id),
   player_id text not null references public.players(id),
   amount numeric(12,3) not null check (amount > 0),
+  receipt_number bigint unique,
   primary key (receipt_id,subscription_id)
 );
 -- Prevent two receipts from claiming one subscription simultaneously (including
