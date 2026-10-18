@@ -5,4 +5,10 @@
 -- API clients. The function itself only enables RLS on new public-schema tables
 -- (defensive, not destructive), but exposing any SECURITY DEFINER function
 -- to anon is an unnecessary privilege-escalation surface.
-REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM anon, authenticated, PUBLIC;
+DO $rls_guard$
+BEGIN
+  IF to_regprocedure('public.rls_auto_enable()') IS NOT NULL THEN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM anon, authenticated, PUBLIC';
+  END IF;
+END;
+$rls_guard$;
