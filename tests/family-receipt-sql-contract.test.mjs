@@ -38,3 +38,10 @@ test('server validates uploaded evidence MIME and 5 MB size independent of clien
   assert.match(sql, /application\/pdf/);
   assert.match(sql, /\(o\.metadata->>'size'\)::bigint between 1 and 5242880/);
 });
+
+test('server requires evidence file extension and content type to agree', () => {
+  for (const type of ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']) {
+    assert.ok(sql.includes("o.metadata->>'mimetype' = '"+type+"'"));
+  }
+  assert.match(sql, /p_proof_path ~\*/);
+});
