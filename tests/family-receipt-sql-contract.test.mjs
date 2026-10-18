@@ -31,3 +31,10 @@ test('family receipt schema forbids attaching the same proof file to multiple ba
   assert.match(schema, /unique index if not exists family_payment_receipts_unique_proof_path/);
   assert.match(schema, /on public\.family_payment_receipts\(proof_path\)/);
 });
+
+test('server validates uploaded evidence MIME and 5 MB size independent of client', () => {
+  assert.match(sql, /o\.metadata->>'mimetype' in/);
+  assert.match(sql, /image\/jpeg/);
+  assert.match(sql, /application\/pdf/);
+  assert.match(sql, /\(o\.metadata->>'size'\)::bigint between 1 and 5242880/);
+});
