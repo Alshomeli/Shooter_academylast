@@ -7,6 +7,7 @@ import type { RegistrationApplication } from '@/types';
 import { planLabel } from '@/lib/i18n';
 import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerDocument, PlayerEvaluation, Settings, Subscription, Team, Training } from '@/types';
 import { db } from '@/lib/store';
+import { prepareFamilyReceiptIntake } from '@/lib/family-receipt-intake';
 import { tr } from '@/lib/i18n';
 import { uploadPlayerFile } from '@/lib/uploads';
 import { Home, Users, Upload, Shield, Sun, Moon, Trophy } from 'lucide-react';
@@ -67,6 +68,35 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const [transferDate, setTransferDate] = useState(bahrainToday());
   const [paymentNote, setPaymentNote] = useState('');
   const [paymentBusy, setPaymentBusy] = useState(false);
+  const [familyReceiptOpen, setFamilyReceiptOpen] = useState(false);
+  const [familyReceiptFile, setFamilyReceiptFile] = useState<File | null>(null);
+  const [familyReceiptError, setFamilyReceiptError] = useState('');
+
+  const familyUnpaid = subscriptions.filter(sub =>
+    sub.status === 'unpaid' &&
+    players.some(p => p.id === sub.playerId) &&
+    !paymentProofs.some(proof => proof.subscriptionId === sub.id && ['pending','needs_info','approved'].includes(proof.status))
+  );
+  const familyTotal = familyUnpaid.reduce((sum, sub) => sum + Math.round(sub.amount * 1000), 0) / 1000;
+  const previewFamilyReceipt = () => {
+    setFamilyReceiptError('');
+    if (!familyReceiptFile || !user.authUserId) {
+      setFamilyReceiptError(text('يجب تسجيل الدخول واختيار الإيصال.', 'Sign in and select a receipt.'));
+      return;
+    }
+    try {
+      prepareFamilyReceiptIntake(user.authUserId, familyUnpaid.map(sub => ({
+        subscriptionId: sub.id, playerId: sub.playerId || '', parentUserId: user.authUserId!,
+        amount: sub.amount, status: 'unpaid' as const,
+        startDate: sub.startDate, endDate: sub.endDate,
+      })), transferDate, familyReceiptFile);
+    } catch (error) {
+      setFamilyReceiptError(errorMessage(error, ar));
+      return;
+    }
+    // Preview only until secure family upload/approval RPCs are deployed.
+    setFamilyReceiptError(text('تم التحقق من البيانات الأولية. رفع الإيصال الموحد غير مفعّل بعد؛ استخدم الدفع الفردي حالياً.', 'Details validated. Shared receipt upload is not enabled yet; use individual payments for now.'));
+  };
   const selectedPlayer = players.find((p) => p.id === selectedPlayerId) || players[0];
   const playerSubscriptions = selectedPlayer ? subscriptions.filter((s) => s.playerId === selectedPlayer.id).sort((a,b) => b.startDate.localeCompare(a.startDate)) : [];
   const playerAttendance = selectedPlayer ? attendance.filter((a) => a.playerId === selectedPlayer.id) : [];
@@ -189,6 +219,16 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           <div className="arena-card rounded-2xl border p-5 space-y-3"><h3 className="font-black">{text('التدريب القادم','Next training')}</h3>{nextTraining ? <><p className="text-lg font-bold">{nextTraining.title}</p><p className="text-sm text-slate-300" dir="ltr">{nextTraining.sessionDate} {selectedTeam?.trainingTime || ''}</p><p className="text-sm text-slate-400">{text('الملعب: ','Pitch: ')}{selectedTeam?.pitchNumber || '—'}</p><p className="text-sm text-slate-400">{nextTraining.objectives}</p></> : <p className="text-sm text-slate-400">{text('لم يُحدد تدريب قادم بعد.','No upcoming training scheduled.')}</p>}</div>
           <div id="parent-subscriptions" className="arena-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
             <div className="flex items-center gap-2"><CreditCard className="h-5 w-5 text-brand-600"/><h3 className="font-black">{text('الاشتراكات والمدفوعات','Subscriptions & payments')}</h3></div>
+            {familyUnpaid.length > 1 && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-200">
+                <p className="font-bold">{text('ملخص اشتراكات الأشقاء', 'Sibling subscriptions summary')}</p>
+                <p>{familyUnpaid.length} {text('اشتراكات غير مدفوعة', 'unpaid subscriptions')} · {familyTotal.toFixed(3)} BHD</p>
+                <button type="button" onClick={() => { setFamilyReceiptFile(null); setFamilyReceiptError(''); setFamilyReceiptOpen(true); }} className="mt-2 rounded-lg border border-amber-600 px-3 py-2 font-bold">
+                  {text('معاينة إيصال موحد (تجريبي)', 'Preview shared receipt (beta)')}
+                </button>
+                <p className="mt-1 text-xs">{text('الميزة قيد التطوير ولا ترسل دفعات حالياً.', 'This feature is in development and does not submit payments.')}</p>
+              </div>
+            )}
             {playerSubscriptions.length === 0 && <p className="text-sm text-slate-400">{text('لا توجد اشتراكات بعد.', 'No subscriptions yet.')}</p>}
             {playerSubscriptions.map((sub) => {
               const relatedProofs = paymentProofs.filter((p) => p.subscriptionId === sub.id).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
@@ -236,6 +276,17 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           {attachmentError&&<p role="alert" className="text-sm text-red-400">{attachmentError}</p>}
           <button disabled={!attachment||attachmentBusy} onClick={()=>void uploadAttachment()} className="w-full rounded-xl bg-brand-600 px-4 py-3 font-bold text-white disabled:opacity-50">{attachmentBusy?text('جارٍ الرفع…','Uploading…'):text('رفع وحفظ','Upload & save')}</button>
           <p className="flex items-center gap-2 text-xs text-slate-400"><Shield className="h-4 w-4"/>{text('مرفق خاص مرتبط بهذا اللاعب فقط.','Private attachment linked to this player.')}</p>
+        </div>
+      </Modal>
+      <Modal open={familyReceiptOpen} onClose={() => setFamilyReceiptOpen(false)} title={text('معاينة إيصال الأشقاء', 'Sibling receipt preview')}>
+        <div className="space-y-3">
+          <p className="text-sm font-bold">{familyUnpaid.length} {text('اشتراكات', 'subscriptions')} — {familyTotal.toFixed(3)} BHD</p>
+          {familyUnpaid.map(sub => <p key={sub.id} className="text-xs border-b py-1">{players.find(p => p.id === sub.playerId)?.name} — {sub.amount.toFixed(3)} BHD</p>)}
+          <label className="block text-sm">{text('تاريخ التحويل', 'Transfer date')}<input className="mt-1 block w-full rounded border p-2" type="date" value={transferDate} onChange={e => setTransferDate(e.target.value)}/></label>
+          <label className="block text-sm">{text('صورة الإيصال أو PDF', 'Receipt image or PDF')}<input className="mt-1 block w-full" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e => setFamilyReceiptFile(e.target.files?.[0] || null)}/></label>
+          {familyReceiptError && <p role="status" className="text-xs text-amber-800 dark:text-amber-200">{familyReceiptError}</p>}
+          <button type="button" onClick={previewFamilyReceipt} className="rounded-lg bg-brand-600 px-4 py-2 font-bold text-white">{text('فحص البيانات دون إرسال', 'Validate without submitting')}</button>
+          <p className="text-xs text-slate-500">{text('لن يُرفع ملف أو تُنشأ معاملة مالية من هذه المعاينة.', 'This preview neither uploads files nor creates financial transactions.')}</p>
         </div>
       </Modal>
       <Modal open={!!payingSubscription} closeDisabled={paymentBusy} onClose={() => { if(!paymentBusy){setPayingSubscription(null);setResubmittingProof(null);} }} title={text('إثبات دفع الاشتراك','Subscription payment proof')}>
