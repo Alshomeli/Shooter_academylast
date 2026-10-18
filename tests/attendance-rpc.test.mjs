@@ -51,8 +51,10 @@ before(async () => {
   // Exercise the actual old RPC body. The historical export lacks terminators
   // between top-level statements, so extract only this complete function here.
   const original = await read('supabase/migrations/20260926095644_ai_attendance_operation.sql');
-  const body = original.match(/create or replace function internal\.record_attendance_entry_impl[\s\S]*?\$\$\s*\n\s*create or replace function public/)[0];
-  await db.exec(body.slice(0, body.lastIndexOf('create or replace function public')).trim() + ';');
+  const match = original.match(/create or replace function internal\.record_attendance_entry_impl[\s\S]*?\$\$;?\s*\n\s*create or replace function public/);
+  assert.ok(match, 'Historical attendance RPC definition must be present');
+  const body = match[0].slice(0, match[0].lastIndexOf('create or replace function public')).trim();
+  await db.exec(body.replace(/;+$/, '') + ';');
 });
 after(() => db.close());
 
