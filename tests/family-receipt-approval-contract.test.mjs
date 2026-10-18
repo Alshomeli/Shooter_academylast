@@ -23,3 +23,11 @@ test('approval RPC cannot be called by anon, has no player activation update',()
  assert.match(sql,/revoke all on function public.approve_family_payment_receipt\(uuid,numeric\) from public,anon/);
  assert.doesNotMatch(sql,/update public.players/i);
 });
+
+test('approval persists each official receipt number and sends one parent notification',async()=>{
+ const schema=await readFile(new URL('../supabase/migrations/20261018032000_family_payment_receipt_batches.sql',import.meta.url),'utf8');
+ assert.match(schema,/receipt_number bigint unique/);
+ assert.match(sql,/set receipt_number=v_receipt_no/);
+ assert.match(sql,/insert into public.notifications/);
+ assert.match(sql,/on conflict\(id\) do nothing/);
+});
