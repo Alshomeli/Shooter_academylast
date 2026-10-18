@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/family-receipt-intake-no-merge-20261018
+      - fix/family-payment-production-trigger-compat-20261018
   workflow_dispatch:
 
 permissions:
@@ -36,6 +37,9 @@ jobs:
         run: npx --yes supabase@2 start
       - name: Verify local Supabase is healthy
         run: npx --yes supabase@2 status
+      - name: Install production accounting trigger parity in disposable DB only
+        run: |
+          PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/fixtures/production-payment-integrity-guards.sql
       - name: Test real local Auth and private receipt Storage RLS
         run: node scripts/test-local-supabase-auth-storage.mjs
       - name: Stop disposable local containers
