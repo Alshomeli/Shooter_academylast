@@ -18,6 +18,18 @@ export function prepareFamilyReceiptIntake(
   file: Pick<File, 'name' | 'type' | 'size'>,
 ): FamilyReceiptIntake {
   const { allocations, totalAmount } = createFamilyAllocation(parentUserId, dues);
+  // An individual player must not be billed twice in one transfer.
+  if (new Set(dues.map(d => d.playerId)).size !== dues.length) {
+    throw new Error('Duplicate player in shared receipt');
+  }
+  // A shared receipt covers one billing cycle. Never combine future renewals
+  // with a current month, even if the same family owns every subscription.
+  const period = dues[0]?.startDate + '/' + dues[0]?.endDate;
+  if (dues.some(d => !d.startDate || !d.endDate ||
+      d.startDate > d.endDate || d.startDate + '/' + d.endDate !== period)) {
+    throw new Error('Mixed or invalid billing periods');
+  }
+
   // Date.parse normalizes impossible calendar days on some runtimes.
   const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(transferDate)
     ? new Date(transferDate + 'T00:00:00Z')
