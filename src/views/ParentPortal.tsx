@@ -10,7 +10,7 @@ import { db } from '@/lib/store';
 import { prepareFamilyReceiptIntake } from '@/lib/family-receipt-intake';
 import { siblingPaymentGroups } from '@/lib/family-payment-groups';
 import { familyPaymentsEnabled, getClaimedFamilySubscriptionIds } from '@/lib/family-receipt-queue';
-import { submitFamilyReceiptForReview } from '@/lib/family-receipt-upload';
+import { submitFamilyReceiptForReview, resubmitFamilyReceiptForReview } from '@/lib/family-receipt-upload';
 import { tr } from '@/lib/i18n';
 import { uploadPlayerFile } from '@/lib/uploads';
 import { Home, Users, Upload, Shield, Sun, Moon, Trophy } from 'lucide-react';
@@ -77,6 +77,8 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const [familyReceiptError, setFamilyReceiptError] = useState('');
   const [familyReceiptBusy, setFamilyReceiptBusy] = useState(false);
   const [familyClaimedIds, setFamilyClaimedIds] = useState<string[]>([]);
+  const [familyCorrections,setFamilyCorrections] = useState<Array<{id:string;status:string;review_note:string|null}>>([]);
+  const [correctionReceiptId,setCorrectionReceiptId] = useState('');
 
   const familyGroups = siblingPaymentGroups(
     subscriptions, players.map(p => p.id),
@@ -108,6 +110,24 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
     setFamilyReceiptError(familyPaymentsEnabled
       ? text('تم التحقق من بيانات الإيصال. يمكنك إرساله لمراجعة المدير، ولن تُعتمد الدفعة تلقائياً.', 'Receipt details validated. You can submit for manager review; payment is never approved automatically.')
       : text('تم التحقق من البيانات الأولية. رفع الإيصال الموحد غير مفعّل بعد؛ استخدم الدفع الفردي حالياً.', 'Details validated. Shared receipt upload is not enabled yet; use individual payments for now.'));
+  };
+  const correctFamilyReceipt = async () => {
+    if (!familyPaymentsEnabled || !familyReceiptFile || !correctionReceiptId || familyReceiptBusy) return;
+    try {
+      setFamilyReceiptBusy(true);setFamilyReceiptError('');
+      await resubmitFamilyReceiptForReview(correctionReceiptId,transferDate,familyReceiptFile);
+      const {data,error}=await dbGetFamilyCorrections();
+      if(error) throw error;
+      setFamilyCorrections(data||[]);
+      setFamilyReceiptOpen(false);setFamilyReceiptFile(null);setCorrectionReceiptId('');
+      await onRefresh();
+    } catch(e){setFamilyReceiptError(errorMessage(e,ar));}
+    finally{setFamilyReceiptBusy(false);}
+  };
+  const dbGetFamilyCorrections = async () => {
+    const {supabase}=await import('@/lib/supabase');
+    return supabase.from('family_payment_receipts').select('id,status,review_note')
+      .in('status',['needs_info','rejected']).order('created_at',{ascending:false});
   };
   const sendFamilyReceipt = async () => {
     if (!familyPaymentsEnabled || familyReceiptBusy) return;
@@ -142,7 +162,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const approvedPayments = playerSubscriptions.filter(s=>s.status==='paid');
   const selectedDocuments = selectedPlayer ? playerDocuments.filter(d=>d.playerId===selectedPlayer.id&&d.fileCategory!=='photo') : [];
   const load = useCallback(async () => {
-    try { const [myApps, proofs, docs, claims] = await Promise.all([fetchMyApplications(), db.getPaymentProofs(), db.getPlayerDocuments(), getClaimedFamilySubscriptionIds()]); setFamilyClaimedIds(claims); setApps(myApps); setPaymentProofs(proofs); setPlayerDocuments(docs); const photos=docs.filter(d=>d.playerId&&d.fileCategory==='photo'); const newest=photos.filter((d,i)=>photos.findIndex(p=>p.playerId===d.playerId)===i); const pairs=await Promise.all(newest.map(async d=>[d.playerId!,await db.getPlayerDocumentUrl(d.filePath)] as const)); setPhotoUrls(Object.fromEntries(pairs)); setError(''); setReady(true); }
+    try { const [myApps, proofs, docs, claims] = await Promise.all([fetchMyApplications(), db.getPaymentProofs(), db.getPlayerDocuments(), getClaimedFamilySubscriptionIds()]); setFamilyClaimedIds(claims); if(familyPaymentsEnabled){const {data}=await dbGetFamilyCorrections();setFamilyCorrections(data||[]);} setApps(myApps); setPaymentProofs(proofs); setPlayerDocuments(docs); const photos=docs.filter(d=>d.playerId&&d.fileCategory==='photo'); const newest=photos.filter((d,i)=>photos.findIndex(p=>p.playerId===d.playerId)===i); const pairs=await Promise.all(newest.map(async d=>[d.playerId!,await db.getPlayerDocumentUrl(d.filePath)] as const)); setPhotoUrls(Object.fromEntries(pairs)); setError(''); setReady(true); }
     catch (e) { setError(errorMessage(e, lang === 'ar')); }
   }, [lang]);
   useEffect(() => {
@@ -326,6 +346,17 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           <label className="block text-sm">{text('صورة الإيصال أو PDF', 'Receipt image or PDF')}<input className="mt-1 block w-full" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e => setFamilyReceiptFile(e.target.files?.[0] || null)}/></label>
           {familyReceiptError && <p role="status" className="text-xs text-amber-800 dark:text-amber-200">{familyReceiptError}</p>}
           <button type="button" onClick={previewFamilyReceipt} className="rounded-lg bg-brand-600 px-4 py-2 font-bold text-white">{text('فحص البيانات دون إرسال', 'Validate without submitting')}</button>
+          {familyPaymentsEnabled && familyCorrections.length>0 && <div className="space-y-2">
+            <label className="block text-sm font-bold">{text('إعادة إرسال إيصال يحتاج مراجعة','Resubmit a reviewed receipt')}</label>
+            <select className="w-full rounded-lg border p-2 bg-transparent" value={correctionReceiptId} onChange={e=>setCorrectionReceiptId(e.target.value)}>
+              <option value="">{text('اختر الإيصال السابق','Select existing receipt')}</option>
+              {familyCorrections.map(r=><option key={r.id} value={r.id}>{r.status} — {r.review_note||r.id}</option>)}
+            </select>
+            <button type="button" disabled={familyReceiptBusy||!familyReceiptFile||!correctionReceiptId}
+              onClick={()=>void correctFamilyReceipt()} className="rounded-lg bg-brand-600 px-4 py-2 text-white font-bold disabled:opacity-50">
+              {text('إعادة إرسال الإيصال للتصحيح','Resubmit receipt correction')}
+            </button>
+          </div>}
           {familyPaymentsEnabled ? <button type="button" disabled={familyReceiptBusy || !familyReceiptFile} onClick={()=>void sendFamilyReceipt()} className="rounded-lg bg-brand-600 px-4 py-2 text-white font-bold disabled:opacity-50">{familyReceiptBusy?text('جارٍ إرسال الطلب','Submitting request'):text('إرسال الإيصال لمراجعة المدير','Submit receipt for manager review')}</button> : <p className="text-xs text-slate-500">{text('لن يُرفع ملف أو تُنشأ معاملة مالية من هذه المعاينة.', 'This preview neither uploads files nor creates financial transactions.')}</p>}
         </div>
       </Modal>
