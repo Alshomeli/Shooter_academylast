@@ -2,7 +2,7 @@
 
 ## Decision: LOCAL TESTS PASSED; PRODUCTION ACTIVATION BLOCKED
 
-Branch: `feature/family-receipt-intake-no-merge-20261018`. Last verified code SHA: `c2c0323b895545400e53bf596fc90e38684cd6c3`.
+Branch: `feature/family-receipt-intake-no-merge-20261018`. Last verified code SHA: `e45cfdf8b0f7feea71c7ec03393ab4bee2c888ec`.
 Both GitHub workflows, **PR validation** and **Quality Gate**, concluded **success** at that SHA.
 
 ### Verified in isolated PostgreSQL (PGlite) and static contract checks
@@ -11,6 +11,7 @@ Both GitHub workflows, **PR validation** and **Quality Gate**, concluded **succe
 - Recurring per-player fee copied from approved registration; renewal creation uses fee, cannot duplicate; parent notification.
 - Private storage deletion policy compiles and contains protections for individual and family proof references.
 - Frontend lint/typecheck/build and relevant test suite pass.
+- Direct mutation adapters reject family receipt upload and manager approval whenever the release feature flag is disabled (verified by regression tests).
 
 ### Unverified / hard blockers before production release
 1. Full nine-migration sequence executed on a **disposable, real Supabase** environment with authentic auth, RLS, and Storage semantics.
@@ -23,6 +24,9 @@ Both GitHub workflows, **PR validation** and **Quality Gate**, concluded **succe
 - No deployment, merging to main, PR to main, or writes to production or restore project.
 - No paid Supabase project created. Local PGlite tests are free.
 - This report does NOT certify real Supabase RLS/Storage behavior: local mocks cannot emulate all platform details.
+
+### Final local test result (updated)
+Both GitHub workflows passed at commit `e45cfdf8b0f7feea71c7ec03393ab4bee2c888ec`. Local verification is complete; no additional local reruns are necessary unless code changes. **Release remains blocked** pending real Supabase and browser integration verification. No production changes were performed.
 
 ### Next decision
 Do not release this feature until the five blockers above are addressed. Existing live payment workflows remain unchanged.
