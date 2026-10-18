@@ -25,7 +25,12 @@ export function prepareFamilyReceiptIntake(
   // A shared receipt covers one billing cycle. Never combine future renewals
   // with a current month, even if the same family owns every subscription.
   const period = dues[0]?.startDate + '/' + dues[0]?.endDate;
-  if (dues.some(d => !d.startDate || !d.endDate ||
+  const validDay = (day: string): boolean => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+    const parsed = new Date(day + 'T00:00:00Z');
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === day;
+  };
+  if (dues.some(d => !validDay(d.startDate) || !validDay(d.endDate) ||
       d.startDate > d.endDate || d.startDate + '/' + d.endDate !== period)) {
     throw new Error('Mixed or invalid billing periods');
   }
