@@ -16,3 +16,12 @@ test('intake writes only a pending receipt and allocation rows, never payment po
   assert.doesNotMatch(sql, /insert\s+into\s+public\.transactions/i);
   assert.match(sql, /grant execute on function public\.submit_family_payment_receipt.*to authenticated/);
 });
+
+test('family receipt intake serializes concurrent requests before row locks', () => {
+  const parentLock = sql.indexOf('pg_advisory_xact_lock');
+  const subscriptionLock = sql.indexOf('for update;');
+  const receiptCheck = sql.indexOf('Payment proof already exists');
+  assert.ok(parentLock > 0);
+  assert.ok(subscriptionLock > parentLock);
+  assert.ok(receiptCheck > subscriptionLock);
+});
