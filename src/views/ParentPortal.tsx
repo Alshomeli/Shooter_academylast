@@ -145,7 +145,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           {sections.map(item=><button key={item.id} aria-current={activeSection===item.id?'page':undefined} onClick={()=>navigate(item.id)} className={activeSection===item.id?'active':''}><item.icon className="h-4 w-4"/>{ar?item.ar:item.en}</button>)}
         </nav>
       </header>
-      <div className="arena-hero"><img className="arena-hero-crest" src="/shooter-logo-transparent.png" alt={text("شعار أكاديمية شوتر", "Shooter Academy crest")} /><div><p>{text('شغف اليوم. أبطال الغد.', "Today's passion. Tomorrow's champions.")}</p><h1>{text('كل خطوة تُقرّبه من حلمه', 'Every step brings them closer')}</h1><span>{text('تدريب · شغف · تطوير مهارات · مستقبل أفضل', 'Training · Passion · Skills · A brighter future')}</span></div></div>
+      <div className="arena-hero"><img className="arena-hero-image" src={ar ? '/images/Screenshot_٢٠٢٦١٠١٨_٠٤٠٣٠٢_Chrome.jpg' : '/images/Screenshot_٢٠٢٦١٠١٨_٠٤٠٢٤٣_Chrome.jpg'} alt={text('شغف اليوم. أبطال الغد. هنا تبدأ رحلتك الكروية.', "Today's passion. Tomorrow's champions. Your football journey starts here.")} /></div>
       <nav aria-label={text('التواصل مع الأكاديمية وموقعها', 'Academy social links and location')} className="arena-social-bar">
         <a href="https://www.instagram.com/shooter.academy.bh/" target="_blank" rel="noopener noreferrer" className="arena-social-link" aria-label={text('إنستغرام الأكاديمية', 'Academy Instagram')}>
           <span className="arena-social-icon arena-social-instagram"><Instagram aria-hidden="true" /></span><span>{text('إنستغرام', 'Instagram')}</span>
