@@ -11,11 +11,12 @@ declare
  v_end date;
  v_existing text;
  v_id text;
+ v_parent_user_id uuid;
 begin
  select * into v_staff from public.staff where user_id=auth.uid()
   and status='active' and role='manager' limit 1;
  if v_staff.id is null then raise exception 'Manager authorization required'; end if;
- if p_player_id is null or p_start_date is null then raise exception 'Missing renewal details'; end if;
+ if p_player_id is null or p_start_date is null or p_start_date < current_date - 31 or p_start_date > current_date + 31 then raise exception 'Invalid renewal date'; end if;
  -- One player per transaction, serializes simultaneous duplicate requests.
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('renewal:'||p_player_id,0));
  if not exists(select 1 from public.players where id=p_player_id)
@@ -36,6 +37,16 @@ begin
  v_id:='sub-renew-'||pg_catalog.gen_random_uuid()::text;
  insert into public.subscriptions(id,player_id,plan_type,amount,start_date,end_date,status)
  values(v_id,p_player_id,'monthly',v_fee,p_start_date,v_end,'unpaid');
+ select pa.user_id into v_parent_user_id from public.players pl
+ join public.parents pa on pa.id=pl.parent_id where pl.id=p_player_id;
+ if v_parent_user_id is not null then
+   insert into public.notifications(id,title,message,timestamp,type,read,recipient_user_id)
+   values('notif-renewal-'||v_id,'تجديد اشتراك مطلوب',
+     'يرجى رفع إثبات تحويل تجديد الاشتراك بالمبلغ '||v_fee::text||' د.ب.',
+     pg_catalog.to_char(now() at time zone 'Asia/Bahrain','YYYY-MM-DD HH24:MI'),
+     'subscription',false,v_parent_user_id)
+   on conflict(id) do nothing;
+ end if;
  return v_id;
 end
 $$;
