@@ -7,7 +7,8 @@ import {
 import type { Lang, Role, Team, Player, RegistrationApplication, RegistrationStatus } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard } from '@/components/ui';
 import { tr } from '@/lib/i18n';
-import { BASE_MONTHLY_FEE_BHD, readChildFeeOverrides, saveManagerChildFee } from '@/lib/family-payment';
+import { BASE_MONTHLY_FEE_BHD } from '@/lib/family-payment';
+import { readChildFeeOverrides, saveManagerChildFee } from '@/lib/family-payment-db';
 import {
   fetchAllApplications, reviewApplication, approveApplication,
   finalizePlayer, getSignedUrl, errorMessage, deleteRegistrationApplication,
