@@ -332,6 +332,11 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
         </p>
       </div>
 
+      <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100" role="note">
+        <strong className="block text-base">{isAr ? 'رسوم الاشتراك الشهري: 25 د.ب لكل لاعب' : 'Monthly subscription: BHD 25 per player'}</strong>
+        <p className="mt-1">{isAr ? 'تظهر الرسوم قبل إرسال الطلب. يراجع المدير التسجيل ويحدد أي خصم، ثم يصلك المبلغ النهائي قبل الدفع. لا تدفع قبل استلام الموافقة.' : 'The manager reviews your application and may approve a discount. You will receive the final amount before payment. Do not pay until approval.'}</p>
+        {children.length > 0 && <p className="mt-2 font-bold">{isAr ? 'الإجمالي المبدئي' : 'Estimated total'}: {(children.length * 25).toFixed(3)} BHD ({children.length} {isAr ? 'لاعب' : 'players'})</p>}
+      </div>
       {resumeApp?.reviewNotes && <p className="p-3 rounded-lg bg-amber-50 text-amber-800">{resumeApp.reviewNotes}</p>}
       {draftError && <p role="alert" className="p-3 text-sm text-red-600">{draftError}</p>}
       {/* Stepper */}
