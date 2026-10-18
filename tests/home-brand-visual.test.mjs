@@ -25,6 +25,6 @@ test('coaching principle cards have visible large descriptions and both color mo
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
 });
 
-test('social links retain their existing public footer position', () => {
-  assert.equal((home.match(/<SocialLinks links=\{links\}/g) || []).length, 1);
+test('social links remain only at the top and bottom of the public website', () => {
+  assert.equal((home.match(/<SocialLinks links=\{links\}/g) || []).length, 2);
 });
