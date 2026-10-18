@@ -19,6 +19,7 @@ export const publicEnglish: Record<string, string> = {
   "روح الفريق": "Team Spirit",
   "شغف المنافسة": "Passion for Competition",
   "01 / عن الأكاديمية": "01 / About the Academy",
+  "كرة القدم أكثر من مجرد لعبة.": "Football is more than just a game.",
   "كرة القدم أكثر": "Football is more",
   "من مجرد": "than just a",
   "لعبة.": "game.",
