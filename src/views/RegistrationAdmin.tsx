@@ -384,7 +384,7 @@ function AppDetail({
       .then(fees => { if (alive) setMonthlyFees(fees); })
       .catch(error => { if (alive) setFeeError(error instanceof Error ? error.message : String(error)); });
     return () => { alive = false; };
-  }, [app.id]);
+  }, [app.id, app.children]);
   const saveFee = async (childId: string) => {
     setFeeError(''); setFeeNotice(''); setSavingFee(childId);
     try {
