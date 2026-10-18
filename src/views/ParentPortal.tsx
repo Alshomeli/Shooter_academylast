@@ -9,7 +9,7 @@ import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerDocumen
 import { db } from '@/lib/store';
 import { prepareFamilyReceiptIntake } from '@/lib/family-receipt-intake';
 import { siblingPaymentGroups } from '@/lib/family-payment-groups';
-import { familyPaymentsEnabled } from '@/lib/family-receipt-queue';
+import { familyPaymentsEnabled, getClaimedFamilySubscriptionIds } from '@/lib/family-receipt-queue';
 import { submitFamilyReceiptForReview } from '@/lib/family-receipt-upload';
 import { tr } from '@/lib/i18n';
 import { uploadPlayerFile } from '@/lib/uploads';
@@ -76,10 +76,11 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const [familyReceiptFile, setFamilyReceiptFile] = useState<File | null>(null);
   const [familyReceiptError, setFamilyReceiptError] = useState('');
   const [familyReceiptBusy, setFamilyReceiptBusy] = useState(false);
+  const [familyClaimedIds, setFamilyClaimedIds] = useState<string[]>([]);
 
   const familyGroups = siblingPaymentGroups(
     subscriptions, players.map(p => p.id),
-    paymentProofs.filter(proof => ['pending','needs_info','approved'].includes(proof.status)).map(proof => proof.subscriptionId),
+    [...paymentProofs.filter(proof => ['pending','needs_info','approved'].includes(proof.status)).map(proof => proof.subscriptionId), ...familyClaimedIds],
   );
   const selectedFamilyGroup = familyGroups.find(group => group.period === familyPeriod) || familyGroups[0];
   const familyUnpaid = selectedFamilyGroup?.subscriptions || [];
@@ -121,6 +122,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
       setFamilyReceiptBusy(true);setFamilyReceiptError('');
       await submitFamilyReceiptForReview(dues,transferDate,familyReceiptFile);
       setFamilyReceiptOpen(false);setFamilyReceiptFile(null);
+      setFamilyClaimedIds(await getClaimedFamilySubscriptionIds());
       await onRefresh();
     } catch (e) {
       setFamilyReceiptError(errorMessage(e,ar));
@@ -139,7 +141,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const approvedPayments = playerSubscriptions.filter(s=>s.status==='paid');
   const selectedDocuments = selectedPlayer ? playerDocuments.filter(d=>d.playerId===selectedPlayer.id&&d.fileCategory!=='photo') : [];
   const load = useCallback(async () => {
-    try { const [myApps, proofs, docs] = await Promise.all([fetchMyApplications(), db.getPaymentProofs(), db.getPlayerDocuments()]); setApps(myApps); setPaymentProofs(proofs); setPlayerDocuments(docs); const photos=docs.filter(d=>d.playerId&&d.fileCategory==='photo'); const newest=photos.filter((d,i)=>photos.findIndex(p=>p.playerId===d.playerId)===i); const pairs=await Promise.all(newest.map(async d=>[d.playerId!,await db.getPlayerDocumentUrl(d.filePath)] as const)); setPhotoUrls(Object.fromEntries(pairs)); setError(''); setReady(true); }
+    try { const [myApps, proofs, docs, claims] = await Promise.all([fetchMyApplications(), db.getPaymentProofs(), db.getPlayerDocuments(), getClaimedFamilySubscriptionIds()]); setFamilyClaimedIds(claims); setApps(myApps); setPaymentProofs(proofs); setPlayerDocuments(docs); const photos=docs.filter(d=>d.playerId&&d.fileCategory==='photo'); const newest=photos.filter((d,i)=>photos.findIndex(p=>p.playerId===d.playerId)===i); const pairs=await Promise.all(newest.map(async d=>[d.playerId!,await db.getPlayerDocumentUrl(d.filePath)] as const)); setPhotoUrls(Object.fromEntries(pairs)); setError(''); setReady(true); }
     catch (e) { setError(errorMessage(e, lang === 'ar')); }
   }, [lang]);
   useEffect(() => {
