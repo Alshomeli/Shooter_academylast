@@ -60,6 +60,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   };
 
   const [ready, setReady] = useState(false);
+  const [entryNoticeDismissed, setEntryNoticeDismissed] = useState(false);
   const [registrationBusy, setRegistrationBusy] = useState(false);
   const [editor, setEditor] = useState<RegistrationApplication | 'new' | null>(openRegistration ? 'new' : null);
   const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || '');
@@ -161,6 +162,17 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const latestEvaluation = playerEvaluations[0];
   const currentSubscription = playerSubscriptions.find(s=>s.status==='unpaid') || playerSubscriptions[0];
   const approvedPayments = playerSubscriptions.filter(s=>s.status==='paid');
+  const entryPayment = subscriptions.find(sub =>
+    sub.status === 'unpaid' && sub.startDate <= bahrainToday()
+    && players.some(player => player.id === sub.playerId)
+    && !familyClaimedIds.includes(sub.id)
+    && !paymentProofs.some(proof => proof.subscriptionId === sub.id
+      && ['pending', 'needs_info', 'approved'].includes(proof.status)),
+  );
+  const needsRegistrationIntro = players.length === 0
+    && !apps.some(app => ['pending', 'under_review', 'needs_info', 'approved'].includes(app.status));
+  const entryNoticeOpen = ready && !error && !entryNoticeDismissed
+    && (needsRegistrationIntro || !!entryPayment);
   const selectedDocuments = selectedPlayer ? playerDocuments.filter(d=>d.playerId===selectedPlayer.id&&d.fileCategory!=='photo') : [];
   const load = useCallback(async () => {
     try { const [myApps, proofs, docs, claims] = await Promise.all([fetchMyApplications(), db.getPaymentProofs(), db.getPlayerDocuments(), getClaimedFamilySubscriptionIds()]); setFamilyClaimedIds(claims); if(familyPaymentsEnabled){const {data}=await dbGetFamilyCorrections();setFamilyCorrections(data||[]);} setApps(myApps); setPaymentProofs(proofs); setPlayerDocuments(docs); const photos=docs.filter(d=>d.playerId&&d.fileCategory==='photo'); const newest=photos.filter((d,i)=>photos.findIndex(p=>p.playerId===d.playerId)===i); const pairs=await Promise.all(newest.map(async d=>[d.playerId!,await db.getPlayerDocumentUrl(d.filePath)] as const)); setPhotoUrls(Object.fromEntries(pairs)); setError(''); setReady(true); }
@@ -392,7 +404,30 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
         <nav className="mt-3 flex flex-wrap gap-4 text-xs font-bold"><a className="text-brand-700 underline dark:text-brand-400" href="/privacy" target="_blank" rel="noopener noreferrer">{text('سياسة الخصوصية كاملة', 'Full privacy policy')}</a><a className="text-brand-700 underline dark:text-brand-400" href="/terms" target="_blank" rel="noopener noreferrer">{text('الشروط والأحكام كاملة', 'Full terms and conditions')}</a></nav>
         <p className="mt-4 text-xs text-slate-500">{text('للتواصل: shooter.academy.bh@gmail.com · +973 3228 7776', 'Contact: shooter.academy.bh@gmail.com · +973 3228 7776')}</p>
       </section>
-      <Modal open={editor !== null} closeDisabled={registrationBusy} onClose={() => { if (!registrationBusy) setEditor(null); }} title={text('تسجيل الأبناء', 'Children registration')} size="xl">
+      <Modal open={entryNoticeOpen} onClose={() => setEntryNoticeDismissed(true)} title={text('خطوتك التالية', 'Your next step')}>
+        <div className="space-y-4">
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+            <strong className="block text-base">{entryPayment
+              ? text('الاشتراك المطلوب دفعه', 'Subscription awaiting payment')
+              : text('رسوم الاشتراك الشهري: 25 د.ب لكل لاعب', 'Monthly subscription: BHD 25 per player')}</strong>
+            {entryPayment ? <>
+              <p className="mt-2 font-bold">{players.find(player => player.id === entryPayment.playerId)?.name} · {entryPayment.amount.toFixed(3)} {text('د.ب', 'BHD')}</p>
+              <p className="mt-2">{text('أرسل إثبات التحويل ليتمكن المدير من مراجعته واعتماد الدفع. رفع الإيصال وحده لا يعني اعتماد الاشتراك.', 'Submit your transfer receipt for the manager to review and approve payment. Uploading a receipt alone does not confirm the subscription.')}</p>
+            </> : <p className="mt-2">{text('يراجع المدير التسجيل ويحدد أي خصم، ثم يصلك المبلغ النهائي قبل الدفع. لا تدفع قبل استلام الموافقة.', 'The manager reviews your application and may approve a discount. You will receive the final amount before payment. Do not pay until approval.')}</p>}
+          </div>
+          <button type="button" onClick={() => {
+            setEntryNoticeDismissed(true);
+            if (entryPayment) {
+              setEditor(null);
+              setSelectedPlayerId(entryPayment.playerId);
+              setResubmittingProof(null);
+              setPayingSubscription(entryPayment);
+            } else setEditor('new');
+          }} className="w-full rounded-xl bg-brand-600 px-4 py-3 font-black text-white">{entryPayment ? text('عرض تفاصيل الدفع', 'View payment details') : text('متابعة تسجيل الأبناء', 'Continue children registration')}</button>
+          <button type="button" onClick={() => setEntryNoticeDismissed(true)} className="w-full rounded-xl border border-slate-300 px-4 py-3 font-bold dark:border-slate-600">{text('لاحقًا', 'Later')}</button>
+        </div>
+      </Modal>
+      <Modal open={editor !== null && !entryNoticeOpen} closeDisabled={registrationBusy} onClose={() => { if (!registrationBusy) setEditor(null); }} title={text('تسجيل الأبناء', 'Children registration')} size="xl">
         {registrationBusy && <p role="status" className="mb-3 text-sm text-slate-500">{text('انتظر اكتمال الحفظ أو رفع الملفات قبل إغلاق الطلب.', 'Wait for saving or uploads to finish before closing the application.')}</p>}
         {editor && <Suspense fallback={<p role="status" className="text-sm text-slate-500">{text('جارٍ تحميل نموذج التسجيل…', 'Loading registration form…')}</p>}>
           <Registration key={editor === 'new' ? 'new' : editor.id} initial={editor === 'new' ? undefined : editor} lang={lang} onSaved={refresh} onBusyChange={setRegistrationBusy} onExit={() => { if (!registrationBusy) setEditor(null); }} />
