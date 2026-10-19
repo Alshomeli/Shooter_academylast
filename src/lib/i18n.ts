@@ -1122,6 +1122,7 @@ export function planLabel(plan: string, lang: Lang): string {
 export function categoryLabel(category: string, lang: Lang): string {
   const t = tr(lang);
   const map: Record<string, string> = {
+    subscription_support: lang === 'ar' ? 'دعم مرتجع بعد الدفع' : 'Post-payment support refund',
     subscription: t.catSubscription, salary: t.catSalary,
     equipment: t.catEquipment, rent: t.catRent, other: t.catOther,
   };

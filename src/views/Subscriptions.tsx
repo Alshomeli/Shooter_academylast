@@ -1,3 +1,5 @@
+import { PreplatformCoverage } from '@/components/PreplatformCoverage';
+import { SubscriptionSupport } from '@/components/SubscriptionSupport';
 import { academyToday, getLifecycleStatus, type LifecycleStatus } from '@/lib/report-dates';
 import { calcEndDate, renewalDraft, hasOverlappingSubscriptionPeriod } from '@/lib/subscription-dates';
 import { errorMessage } from '@/lib/registration';
@@ -108,6 +110,8 @@ export function Subscriptions({
   const [deleteSubId, setDeleteSubId] = useState<string | null>(null);
   const [deleteTransId, setDeleteTransId] = useState<string | null>(null);
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
+  const [coveragePlayer, setCoveragePlayer] = useState('');
+  const [supportSub, setSupportSub] = useState<Subscription | null>(null);
   const [receiptSub, setReceiptSub] = useState<Subscription | null>(null);
   const [paymentProofs, setPaymentProofs] = useState<PaymentProof[]>([]);
   const [familyQueue, setFamilyQueue] = useState<FamilyReceiptQueueItem[]>([]);
@@ -287,6 +291,8 @@ export function Subscriptions({
         )}
       </PageHeader>
 
+      {canSeeFinance && <p className="text-sm text-slate-600 dark:text-slate-300">{isAr ? 'الدعم المرتجع بعد الدفع' : 'Post-payment support refunded'}: {transactions.filter(tx => tx.category === 'subscription_support').reduce((sum, tx) => sum + tx.amount, 0).toFixed(3)} BHD · {isAr ? 'الإعفاءات لا تُسجّل كحركات مالية' : 'Exemptions create no financial transactions'}</p>}
+      {isManager && <details className="rounded-xl border p-3 dark:border-slate-700"><summary className="cursor-pointer font-bold">{isAr ? 'اعتماد اشتراك مدفوع قبل المنصة' : 'Approve pre-platform paid subscription'}</summary><select aria-label={isAr ? 'اللاعب' : 'Player'} value={coveragePlayer} onChange={e=>setCoveragePlayer(e.target.value)} className={inputCls}><option value="">{isAr ? 'اختر اللاعب' : 'Select player'}</option>{players.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>{coveragePlayer && <PreplatformCoverage key={coveragePlayer} playerId={coveragePlayer} lang={lang} onSaved={onRefresh}/>}</details>}
       {/* ---------------- KPIs ---------------- */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {canSeeFinance && <StatCard
@@ -301,7 +307,7 @@ export function Subscriptions({
           label={t.totalExpenses}
           value={`${totalExpenses.toLocaleString()} ${t.currency}`}
           color="red"
-          sublabel={t.operatingExpenses}
+          sublabel={isAr ? 'تشمل الدعم المرتجع بعد الدفع' : 'Includes post-payment support refunds'}
         />}
         {canSeeFinance && <StatCard
           icon={<Wallet className="h-5 w-5" />}
@@ -506,12 +512,13 @@ export function Subscriptions({
                             <CheckCircle className="h-3.5 w-3.5" /> {t.activateSubscription}
                           </button>
                         )}
+                        {isPaid && isManager && <button onClick={() => setSupportSub(sub)} className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">{isAr ? 'منح دعم' : 'Grant support'}</button>}
                         {isPaid && (
                           <button onClick={() => setReceiptSub(sub)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50">
                             <Receipt className="h-3.5 w-3.5" /> {isAr ? 'إيصال' : 'Receipt'}
                           </button>
                         )}
-                        {!isPaid && !isExempt && canPay && (
+                        {!isPaid && !isExempt && canPay && sub.startDate <= academyToday() && (
                           <button
                             onClick={() => { setPaymentTarget(sub); setPaymentError(''); setPaymentMethod('cash'); }}
                             disabled={markingPaidId === sub.id}
@@ -686,7 +693,7 @@ export function Subscriptions({
                       </div>
 
                       {/* Delete */}
-                      {isManager && !tx.subscriptionId && (
+                      {isManager && !tx.subscriptionId && tx.category !== 'subscription_support' && (
                         <button
                           onClick={() => setDeleteTransId(tx.id)}
                           className="flex items-center justify-center p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer"
@@ -726,6 +733,7 @@ export function Subscriptions({
           <button className="bg-brand-600 text-white rounded-lg py-2 px-4 disabled:opacity-50" disabled={!!markingPaidId} onClick={() => void handleMarkPaid()}>{markingPaidId ? t.processing : t.confirm}</button>
         </div>
       </Modal>
+      {supportSub && <SubscriptionSupport subscription={supportSub} lang={lang} onClose={() => setSupportSub(null)} onSaved={onRefresh} />}
       {receiptSub && <PaymentReceipt subscription={receiptSub} transactions={transactions} players={players} parents={parents} settings={settings} lang={lang} officialReceiptNumber={paymentProofs.find(proof => proof.status === 'approved' && proof.subscriptionId === receiptSub.id)?.receiptNumber} onClose={() => setReceiptSub(null)} />}
 
       {/* ---------------- Modals ---------------- */}

@@ -34,7 +34,7 @@ export function getSubscriptionReminders(
   return subscriptions
     .filter((s) => {
       if (s.status === 'exempt') return false;
-      if (s.status === 'unpaid') return true;
+      if (s.status === 'unpaid') return s.startDate <= today;
       if (daysBetween(today, s.endDate) > 7) return false;
       const next = new Date(s.endDate + 'T00:00:00Z');
       next.setUTCDate(next.getUTCDate() + 1);
@@ -113,7 +113,7 @@ export function reminderStats(subscriptions: Subscription[], players: Player[], 
   const overdue = reminders.filter((r) => r.status === 'overdue').length;
   const expiring = reminders.filter((r) => r.status === 'expiring').length;
   const active = reminders.filter((r) => r.status === 'active').length;
-  const unpaid = subscriptions.filter(s => s.status === 'unpaid');
+  const unpaid = subscriptions.filter(s => s.status === 'unpaid' && s.startDate <= academyToday());
   const totalUnpaid = unpaid.length;
   const totalUnpaidAmount = unpaid.reduce((sum, s) => sum + s.amount, 0);
   return { overdue, expiring, active, totalUnpaid, totalUnpaidAmount, reminders };

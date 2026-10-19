@@ -1,3 +1,4 @@
+import { PreplatformCoverage } from '@/components/PreplatformCoverage';
 import { PublicHomeLink } from '@/components/PublicHomeLink';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, Clipboard, CreditCard, FileText, FileUp, Instagram, LogOut, Plus, Printer, RefreshCw, Star, UserRound, CalendarCheck2, WalletCards } from 'lucide-react';
@@ -81,7 +82,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const [correctionReceiptId,setCorrectionReceiptId] = useState('');
 
   const familyGroups = siblingPaymentGroups(
-    subscriptions, players.map(p => p.id),
+    subscriptions.filter(s => s.startDate <= bahrainToday()), players.map(p => p.id),
     [...paymentProofs.filter(proof => ['pending','needs_info','approved'].includes(proof.status)).map(proof => proof.subscriptionId), ...familyClaimedIds],
   );
   const selectedFamilyGroup = familyGroups.find(group => group.period === familyPeriod) || familyGroups[0];
@@ -263,7 +264,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mt-5">
               <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><div className="flex items-center gap-2 text-xs text-slate-500"><CalendarCheck2 className="h-4 w-4"/>{text('نسبة الحضور','Attendance rate')}</div><p className="font-black text-lg mt-1">{playerAttendance.length ? `${attendanceRate}%` : '—'}</p><p className="text-[10px] text-slate-400">{playerAttendance.length ? `${presentCount}/${playerAttendance.length}` : text('لا توجد بيانات بعد', 'No data yet')}</p></div>
               <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><div className="flex items-center gap-2 text-xs text-slate-500"><Star className="h-4 w-4"/>{text('آخر تقييم','Latest evaluation')}</div><p className="font-black text-lg mt-1">{latestEvaluation?.overallScore!=null?latestEvaluation.overallScore.toFixed(1)+'/5':'—'}</p><p className="text-[10px] text-slate-400">{latestEvaluation?.evaluationDate||text('لا يوجد بعد','None yet')}</p></div>
-              <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><div className="flex items-center gap-2 text-xs text-slate-500"><CreditCard className="h-4 w-4"/>{text('حالة الاشتراك','Subscription')}</div><p className="font-black text-lg mt-1">{currentSubscription?(currentSubscription.status==='paid'?text('مدفوع','Paid'):text('مطلوب الدفع','Payment due')):'—'}</p><p className="text-[10px] text-slate-400">{currentSubscription?.endDate||''}</p></div>
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><div className="flex items-center gap-2 text-xs text-slate-500"><CreditCard className="h-4 w-4"/>{text('حالة الاشتراك','Subscription')}</div><p className="font-black text-lg mt-1">{currentSubscription?(currentSubscription.status==='paid'?text('مدفوع','Paid'):currentSubscription.startDate>bahrainToday()?text('استحقاق قادم','Upcoming payment'):text('مطلوب الدفع','Payment due')):'—'}</p><p className="text-[10px] text-slate-400">{currentSubscription?.endDate||''}</p></div>
               <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><div className="flex items-center gap-2 text-xs text-slate-500"><FileText className="h-4 w-4"/>{text('الملفات','Documents')}</div><p className="font-black text-lg mt-1">{selectedDocuments.length}</p><p className="text-[10px] text-slate-400">{text('ملفات متاحة للحساب','available files')}</p></div>
             </div></div>
           </div>
@@ -271,6 +272,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           <div className="arena-card rounded-2xl border p-5 space-y-3"><h3 className="font-black">{text('التدريب القادم','Next training')}</h3>{nextTraining ? <><p className="text-lg font-bold">{nextTraining.title}</p><p className="text-sm text-slate-300" dir="ltr">{nextTraining.sessionDate} {selectedTeam?.trainingTime || ''}</p><p className="text-sm text-slate-400">{text('الملعب: ','Pitch: ')}{selectedTeam?.pitchNumber || '—'}</p><p className="text-sm text-slate-400">{nextTraining.objectives}</p></> : <p className="text-sm text-slate-400">{text('لم يُحدد تدريب قادم بعد.','No upcoming training scheduled.')}</p>}</div>
           <div id="parent-subscriptions" className="arena-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
             <div className="flex items-center gap-2"><CreditCard className="h-5 w-5 text-brand-600"/><h3 className="font-black">{text('الاشتراكات والمدفوعات','Subscriptions & payments')}</h3></div>
+            {selectedPlayerId && <PreplatformCoverage key={selectedPlayerId} playerId={selectedPlayerId} lang={lang} readOnly />}
             {familyUnpaid.length > 1 && (
               <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-200">
                 <p className="font-bold">{text('ملخص اشتراكات الأشقاء', 'Sibling subscriptions summary')}</p>
@@ -306,7 +308,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
                 <div><p className="font-bold text-sm">{planLabel(sub.planType,lang)} · {sub.amount} {text('د.ب','BHD')}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p>{proof?.status==='needs_info'&&proof.reviewNote&&<p className="mt-1 text-xs font-bold text-amber-700">{text('ملاحظة الإدارة: ','Academy note: ')}{proof.reviewNote}</p>}{latestRejected?.reviewNote&&<p className="mt-1 text-xs font-bold text-red-700">{text('سبب عدم الاعتماد: ','Rejection reason: ')}{latestRejected.reviewNote}</p>}</div>
                 <div className="flex items-center gap-2"><Badge color={sub.status==='paid'?'green':'amber'}>{sub.status==='paid'?text('مدفوع','Paid'):text('غير مدفوع','Unpaid')}</Badge>
                 {proof && <Badge color={proof.status==='approved'?'green':'amber'}>{proofStatus(proof.status)}</Badge>}{proof?.status==='needs_info'&&<button onClick={()=>{setResubmittingProof(proof);setPayingSubscription(sub);setPaymentNote('')}} className="px-3 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold">{text('استكمال الإثبات','Resubmit proof')}</button>}
-                {sub.status==='unpaid' && !proof && !familyClaimedIds.includes(sub.id) && <button onClick={()=>{setResubmittingProof(null);setPayingSubscription(sub)}} className="px-3 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold">{text('دفع الاشتراك','Pay subscription')}</button>}</div>
+                {sub.status==='unpaid' && sub.startDate<=bahrainToday() && !proof && !familyClaimedIds.includes(sub.id) && <button onClick={()=>{setResubmittingProof(null);setPayingSubscription(sub)}} className="px-3 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold">{text('دفع الاشتراك','Pay subscription')}</button>}</div>
               </div>;
             })}
           </div>

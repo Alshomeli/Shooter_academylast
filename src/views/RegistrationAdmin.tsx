@@ -1,3 +1,4 @@
+import { PreplatformCoverage } from '@/components/PreplatformCoverage';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   ClipboardList, Search, Eye, Clock, CheckCircle2, XCircle,
@@ -293,6 +294,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
         <Modal open onClose={() => { if (!actionLoading) setSelectedApp(null); }} title={t.regApplicationDetails} size="xl">
           {error && <p role="alert" className="text-sm text-red-600 mb-3">{error}</p>}
           <AppDetail
+            onRefresh={onRefresh}
             app={selectedApp}
             lang={lang}
             teams={teams}
@@ -353,8 +355,9 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
 
 function AppDetail({
   app, lang, teams, players, photoUrls, assignData, actionLoading, reviewNotes, setReviewNotes,
-  onAction, onDelete, onFinalize, onAssignChange,
+  onAction, onDelete, onFinalize, onAssignChange, onRefresh,
 }: {
+  onRefresh: () => Promise<void>;
   app: RegistrationApplication;
   lang: Lang;
   teams: Team[];
@@ -484,6 +487,7 @@ function AppDetail({
                 </button>
                 <p className="text-xs text-amber-900">{isAr ? 'الرسوم الأصلية 25 د.ب، والخصم يحدده المدير. ربط التجديدات بالفوترة قيد التطوير.' : 'Base fee BHD 25. Manager sets any discount. Renewal billing integration pending.'}</p>
               </div>
+              {app.status === 'approved' && child.playerId && <PreplatformCoverage playerId={child.playerId} lang={lang} onSaved={onRefresh} />}
               {/* Child documents */}
               {childDocs.length > 0 && (
                 <div className="flex flex-wrap gap-2">
