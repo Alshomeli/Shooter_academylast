@@ -3,7 +3,7 @@
 create or replace function public.archive_player_safely(p_player_id text)
 returns jsonb
 language plpgsql
-security invoker
+security definer
 set search_path to ''
 as $$
 begin
