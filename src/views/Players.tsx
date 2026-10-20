@@ -11,6 +11,7 @@ import { ContactLinks } from '@/components/ContactLinks';
 import { DocumentUpload } from '@/components/DocumentUpload';
 import { fetchAllPlayerFiles } from '@/lib/uploads';
 import { validateRequired, validatePhone, validateEmail, validateNumber, validateJerseyUnique, validatePlayerParentLink } from '@/lib/validation';
+import { db } from '@/lib/store';
 
 interface PlayersProps {
   players: Player[];
@@ -18,6 +19,7 @@ interface PlayersProps {
   teams: Team[];
   evaluations: PlayerEvaluation[];
   onPlayersChange: (p: Player[]) => void;
+  onRefresh: () => Promise<void>;
   activeRole: Role;
   lang: Lang;
 }
@@ -32,7 +34,7 @@ const POSITION_COLORS: Record<string, 'red' | 'blue' | 'emerald' | 'amber'> = {
   'مهاجم': 'red',
 };
 
-export function Players({ players, parents, teams, evaluations, onPlayersChange, activeRole, lang }: PlayersProps) {
+export function Players({ players, parents, teams, evaluations, onPlayersChange, onRefresh, activeRole, lang }: PlayersProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [search, setSearch] = useState('');
@@ -44,6 +46,7 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
   const [editPlayer, setEditPlayer] = useState<Player | null>(null);
   const [viewPlayer, setViewPlayer] = useState<Player | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
   const [photoMap, setPhotoMap] = useState<Record<string, string>>({});
   const [photosLoading, setPhotosLoading] = useState(true);
 
@@ -92,8 +95,15 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
   };
 
   const handleDelete = async () => {
-    if (deleteId) await onPlayersChange(players.filter((p) => p.id !== deleteId));
-    setDeleteId(null);
+    if (!deleteId) return;
+    setDeleteError('');
+    try {
+      await db.forceDeleteUser('player', deleteId);
+      await onRefresh();
+      setDeleteId(null);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (
@@ -236,6 +246,7 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
       )}
 
       {/* Delete confirmation */}
+      {deleteError && <p role="alert" className="text-sm font-bold text-red-600">{deleteError}</p>}
       <ConfirmDialog
         open={!!deleteId}
         onClose={() => setDeleteId(null)}

@@ -114,7 +114,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
     if (!deleteId) return;
     setDeleteError('');
     try {
-      await db.deleteStaff(deleteId, showReassign ? reassignCoachId : null);
+      await db.forceDeleteUser('staff', deleteId);
       await onRefresh();
       setDeleteId(null);
       setShowReassign(false);
@@ -143,15 +143,9 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
       setDeleteError(isAr ? 'لا يمكن حذف حسابك الخاص أثناء استخدامك للنظام.' : 'You cannot delete your own account while signed in.');
       return;
     }
-    const memberTeams = teams.filter((tm) => tm.coachId === id);
     setDeleteError('');
     setDeleteId(id);
-    if (member?.role === 'coach' && memberTeams.length > 0) {
-      setReassignCoachId(null);
-      setShowReassign(true);
-    } else {
-      setShowReassign(false);
-    }
+    setShowReassign(false);
   };
 
   return (
@@ -388,46 +382,15 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
 
       {deleteError && <p role="alert" className="text-sm font-bold text-red-600">{deleteError}</p>}
 
-      {/* Delete confirmation — coach reassignment or simple */}
-      {deleteId && showReassign ? (
-        <Modal open onClose={() => { setDeleteId(null); setShowReassign(false); }} title={t.reassignCoach} size="sm">
-          <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">{t.reassignCoachDesc}</p>
-            {deleteError && <p role="alert" className="text-sm text-red-600">{deleteError}</p>}
-            <select
-              value={reassignCoachId ?? ''}
-              onChange={(e) => setReassignCoachId(e.target.value || null)}
-              className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
-            >
-              <option value="">{t.noReplacement}</option>
-              {staff.filter((s) => s.role === 'coach' && s.status === 'active' && s.id !== deleteId).map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => { setDeleteId(null); setShowReassign(false); }} className="px-4 py-2 text-sm rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition cursor-pointer">
-                {t.cancel}
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={!reassignCoachId}
-                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-500 transition cursor-pointer font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t.delete}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : (
-        <ConfirmDialog
-          open={!!deleteId && !showReassign}
-          onClose={() => setDeleteId(null)}
-          onConfirm={handleDelete}
-          title={t.deleteStaff}
-          message={t.deleteStaffConfirm}
-          confirmLabel={t.delete}
-        />
-      )}
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title={t.deleteStaff}
+        message={t.deleteStaffConfirm}
+        confirmLabel={t.delete}
+      />
     </div>
   );
 }
