@@ -367,6 +367,10 @@ export const db = {
   async getPlayers(): Promise<Player[]> { return fetchPlayerRows(); },
   async savePlayer(p: Player): Promise<Player> { return upsertRow('players', playerToRow(p) as unknown as Record<string, unknown>, mapPlayer as never); },
   async deletePlayer(id: string): Promise<void> { return deleteRow('players', id); },
+  async archivePlayer(id: string): Promise<void> {
+    const { error } = await supabase.rpc('archive_player_safely', { p_player_id: id });
+    if (error) throw new Error(error.message || 'Player archive failed');
+  },
   async forceDeleteUser(targetType: 'staff' | 'player', id: string): Promise<void> {
     const { error } = await supabase.rpc('force_delete_user', { p_target_type: targetType, p_target_id: id });
     if (error) throw new Error(error.message || 'Delete failed');
