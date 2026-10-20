@@ -535,7 +535,7 @@ export default function App() {
       : actor;
     if (!supervisor || supervisor.status !== 'active' || supervisor.role !== 'coach') return [];
     if (supervisor.coachKind === 'goalkeeper') {
-      return data.teams.filter(team => team.goalkeeperCoachId === supervisor.id);
+      return data.teams;
     }
     if (supervisor.coachKind && supervisor.coachKind !== 'team') return [];
     return data.teams.filter(team => team.coachId === supervisor.id);

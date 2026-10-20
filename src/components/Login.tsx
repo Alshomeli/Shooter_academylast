@@ -21,12 +21,34 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [resendWait, setResendWait] = useState(0);
+  useEffect(() => {
+    if (!resendWait) return;
+    const timer = window.setTimeout(() => setResendWait(n => Math.max(0, n - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendWait]);
   useEffect(() => {
     if (recovery) { setScreen('reset'); setError(''); setMessage(''); setPassword(''); setConfirm(''); }
   }, [recovery]);
   const ar = lang === 'ar';
   const text = (a: string, e: string) => ar ? a : e;
   const changeScreen = (next: Screen) => { setShowPassword(false); setShowConfirm(false); setScreen(next); setError(''); setMessage(''); setPassword(''); setConfirm(''); };
+  const resendConfirmation = async () => {
+    if (busy || resendWait) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError(text('أدخل بريدك الإلكتروني الصحيح أولًا.', 'Enter your valid email first.')); return;
+    }
+    setBusy(true); setError(''); setMessage(''); setResendWait(60);
+    try {
+      const redirect = new URL(window.location.origin + window.location.pathname);
+      redirect.searchParams.set('view', screen === 'register' ? (registrationKind === 'staff' ? 'staff-registration' : 'registration') : 'login');
+      const { error } = await supabase.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: redirect.toString() } });
+      if (error) throw error;
+      setMessage(text('إذا كان الحساب ينتظر التأكيد، ستصلك رسالة. راجع البريد غير المرغوب فيه أيضًا.', 'If the account awaits confirmation, an email will arrive. Check your spam folder too.'));
+    } catch {
+      setError(text('تعذر إعادة إرسال التأكيد. انتظر دقيقة ثم حاول مجددًا.', 'Unable to resend confirmation. Wait a minute and try again.'));
+    } finally { setBusy(false); }
+  };
   const googleLogin = async () => {
     if (busy) return;
     setBusy(true); setError(''); setMessage('');
@@ -121,6 +143,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
         </fieldset>
       </form>
       {(screen === 'login' || screen === 'register') && <button type="button" disabled={busy} onClick={() => void googleLogin()} className="mt-4 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">{text('المتابعة باستخدام Google', 'Continue with Google')}</button>}
+      {(screen === 'login' || screen === 'register') && <button type="button" disabled={busy || resendWait > 0} onClick={() => void resendConfirmation()} className="mt-3 w-full text-sm font-bold text-brand-700 dark:text-brand-300 disabled:opacity-50">{resendWait > 0 ? text(`إعادة الإرسال بعد ${resendWait} ثانية`, `Resend in ${resendWait}s`) : text('إعادة إرسال تأكيد البريد', 'Resend email confirmation')}</button>}
       <div className="mt-5 flex flex-wrap gap-4 text-sm text-brand-700 font-bold">
         {screen === 'login' ? <><button disabled={busy} onClick={() => { window.location.search = '?view=registration'; }}>{text('تسجيل ولي أمر وأبنائه', 'Register parent and children')}</button><button disabled={busy} onClick={() => { window.location.search = '?view=staff-registration'; }}>{text('طلب مدير / موظف / مدرب', 'Manager / staff / coach application')}</button><button disabled={busy} onClick={() => changeScreen('forgot')}>{text('نسيت كلمة المرور؟', 'Forgot password?')}</button></> : screen !== 'reset' && <button disabled={busy} onClick={() => changeScreen('login')}>{text('العودة للدخول', 'Back to sign in')}</button>}
       </div>

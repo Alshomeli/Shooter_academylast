@@ -1,3 +1,5 @@
+import { supabase } from '@/lib/supabase';
+import { getSubscriptionReminders } from '@/lib/reminders';
 import { PreplatformCoverage } from '@/components/PreplatformCoverage';
 import { PublicHomeLink } from '@/components/PublicHomeLink';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
@@ -61,6 +63,24 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
 
   const [ready, setReady] = useState(false);
   const [entryNoticeDismissed, setEntryNoticeDismissed] = useState(false);
+  const [noticeLoaded, setNoticeLoaded] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    setNoticeLoaded(false);
+    void supabase.auth.getUser().then(({ data, error }) => {
+      if (!alive || error || data.user?.id !== user.authUserId) return;
+      setEntryNoticeDismissed(Boolean(data.user.user_metadata?.parent_intro_seen_at));
+      setNoticeLoaded(true);
+    });
+    return () => { alive = false; };
+  }, [user.authUserId]);
+  const dismissEntryNotice = () => {
+    setEntryNoticeDismissed(true);
+    // Presentation preference only; this metadata never grants access.
+    void supabase.auth.updateUser({ data: { parent_intro_seen_at: new Date().toISOString() } }).then(({ error }) => {
+      if (error) setError(text('تعذر حفظ إغلاق الرسالة. قد تظهر مرة أخرى عند الدخول.', 'Could not save dismissal. The message may appear again next time.'));
+    });
+  };
   const [registrationBusy, setRegistrationBusy] = useState(false);
   const [editor, setEditor] = useState<RegistrationApplication | 'new' | null>(openRegistration ? 'new' : null);
   const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || '');
@@ -161,6 +181,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const nextTraining = trainings.filter(t => t.teamId === selectedPlayer?.teamId && t.sessionDate.slice(0,10) >= bahrainToday()).sort((a,b) => a.sessionDate.localeCompare(b.sessionDate))[0];
   const latestEvaluation = playerEvaluations[0];
   const currentSubscription = playerSubscriptions.find(s=>s.status==='unpaid') || playerSubscriptions[0];
+  const renewalNotices = getSubscriptionReminders(subscriptions.filter(s => players.some(p => p.id === s.playerId)), players, []).filter(r => r.subscription.status === 'paid' && r.daysUntilExpiry <= 3);
   const approvedPayments = playerSubscriptions.filter(s=>s.status==='paid');
   const entryPayment = subscriptions.find(sub =>
     sub.status === 'unpaid' && sub.startDate <= bahrainToday()
@@ -171,7 +192,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   );
   const needsRegistrationIntro = players.length === 0
     && !apps.some(app => ['pending', 'under_review', 'needs_info', 'approved'].includes(app.status));
-  const entryNoticeOpen = ready && !error && !entryNoticeDismissed
+  const entryNoticeOpen = noticeLoaded && ready && !error && !entryNoticeDismissed
     && (needsRegistrationIntro || !!entryPayment);
   const selectedDocuments = selectedPlayer ? playerDocuments.filter(d=>d.playerId===selectedPlayer.id&&d.fileCategory!=='photo') : [];
   const load = useCallback(async () => {
@@ -262,6 +283,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
         </a>
       </nav>
       {error && <p role="alert" className="text-red-700 bg-red-50 p-3 rounded-lg">{error}</p>}
+      {renewalNotices.map(({ subscription, player, daysUntilExpiry }) => <div key={subscription.id} role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"><strong>{player?.name}</strong><p>{daysUntilExpiry < 0 ? text('انتهت فترة الاشتراك. يرجى مراجعة الإدارة للتجديد؛ الفترة السابقة مسددة.', 'The subscription has expired. Contact the academy to renew; the previous period is paid.') : text(`ينتهي الاشتراك خلال ${daysUntilExpiry} يوم. يرجى مراجعة الإدارة للتجديد.`, `Subscription expires in ${daysUntilExpiry} days. Contact the academy to renew.`)}</p></div>)}
       <div id="parent-children" className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">{text('المتابعة العائلية', 'Family overview')}</p><h2 className="mt-1 text-xl font-black">{text('أبنائي', 'My children')}</h2><p className="mt-1 text-sm text-slate-500">{players.length ? text('اختر لاعبًا لعرض الحضور والاشتراكات والتقييمات', 'Select a player to view attendance, subscriptions, and evaluations') : text('ستظهر بيانات الأبناء هنا بعد اعتماد الطلب وربط الحساب.', 'Your children will appear here after the academy approves the application and links your account.')}</p></div><button disabled={!ready} onClick={() => setEditor('new')} className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-500 disabled:opacity-50"><Plus className="h-4 w-4" />{text('طلب تسجيل أبناء', 'Register children')}</button></div>
       {!players.length && <p className="text-slate-500">{text('ستظهر بيانات الأبناء هنا بعد اعتماد الطلب وربط الحساب.', 'Your children will appear here after the academy approves the application and links your account.')}</p>}
       {players.length > 0 && <div className="arena-player-layout">
@@ -404,7 +426,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
         <nav className="mt-3 flex flex-wrap gap-4 text-xs font-bold"><a className="text-brand-700 underline dark:text-brand-400" href="/privacy" target="_blank" rel="noopener noreferrer">{text('سياسة الخصوصية كاملة', 'Full privacy policy')}</a><a className="text-brand-700 underline dark:text-brand-400" href="/terms" target="_blank" rel="noopener noreferrer">{text('الشروط والأحكام كاملة', 'Full terms and conditions')}</a></nav>
         <p className="mt-4 text-xs text-slate-500">{text('للتواصل: shooter.academy.bh@gmail.com · +973 3228 7776', 'Contact: shooter.academy.bh@gmail.com · +973 3228 7776')}</p>
       </section>
-      <Modal open={entryNoticeOpen} onClose={() => setEntryNoticeDismissed(true)} title={text('خطوتك التالية', 'Your next step')}>
+      <Modal open={entryNoticeOpen} onClose={dismissEntryNotice} title={text('خطوتك التالية', 'Your next step')}>
         <div className="space-y-4">
           <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
             <strong className="block text-base">{entryPayment
@@ -416,7 +438,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
             </> : <p className="mt-2">{text('يراجع المدير التسجيل ويحدد أي خصم، ثم يصلك المبلغ النهائي قبل الدفع. لا تدفع قبل استلام الموافقة.', 'The manager reviews your application and may approve a discount. You will receive the final amount before payment. Do not pay until approval.')}</p>}
           </div>
           <button type="button" onClick={() => {
-            setEntryNoticeDismissed(true);
+            dismissEntryNotice();
             if (entryPayment) {
               setEditor(null);
               setSelectedPlayerId(entryPayment.playerId);
@@ -424,7 +446,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
               setPayingSubscription(entryPayment);
             } else setEditor('new');
           }} className="w-full rounded-xl bg-brand-600 px-4 py-3 font-black text-white">{entryPayment ? text('عرض تفاصيل الدفع', 'View payment details') : text('متابعة تسجيل الأبناء', 'Continue children registration')}</button>
-          <button type="button" onClick={() => setEntryNoticeDismissed(true)} className="w-full rounded-xl border border-slate-300 px-4 py-3 font-bold dark:border-slate-600">{text('لاحقًا', 'Later')}</button>
+          <button type="button" onClick={dismissEntryNotice} className="w-full rounded-xl border border-slate-300 px-4 py-3 font-bold dark:border-slate-600">{text('لاحقًا', 'Later')}</button>
         </div>
       </Modal>
       <Modal open={editor !== null && !entryNoticeOpen} closeDisabled={registrationBusy} onClose={() => { if (!registrationBusy) setEditor(null); }} title={text('تسجيل الأبناء', 'Children registration')} size="xl">

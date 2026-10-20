@@ -91,7 +91,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
     const member = staff.find(s => s.id === coachId);
     const coach = member?.coachKind === 'assistant' ? staff.find(s => s.id === member.supervisingCoachId && s.status === 'active' && s.role === 'coach' && (s.coachKind === 'team' || s.coachKind === 'goalkeeper')) : member;
     if (!coach || member?.status !== 'active' || member.role !== 'coach') return [];
-    if (coach.coachKind === 'goalkeeper') return players.filter(p => teams.some(t => t.id === p.teamId && t.goalkeeperCoachId === coach.id) && ['حارس مرمى','حارس','goalkeeper','gk'].includes(p.position.trim().toLowerCase()));
+    if (coach.coachKind === 'goalkeeper') return players.filter(p => ['حارس مرمى','حارس','goalkeeper','gk'].includes(p.position.trim().toLowerCase()));
     const teamIds = teams.filter(t => t.coachId === coach.id).map(t => t.id);
     return players.filter(p => teamIds.includes(p.teamId));
   };
