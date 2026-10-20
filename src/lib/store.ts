@@ -1,3 +1,4 @@
+import { resolveOnboardingMode } from '@/lib/onboarding-mode';
 import { supabase } from '@/lib/supabase';
 import { collectionChanges, type Row } from '@/lib/collection-diff';
 import type {
@@ -187,7 +188,17 @@ export const db = {
       };
     }
 
-    const onboardingMode = user.user_metadata?.onboarding_mode === 'staff' ? 'staff' : 'parent';
+    const { data: parentApplication, error: applicationError } = await supabase.from('registration_applications')
+      .select('id').eq('applicant_user_id', user.id).limit(1).maybeSingle();
+    if (applicationError) throw applicationError;
+    // Onboarding intent only selects an application form, never permissions.
+    const onboardingMode = parentApplication ? 'parent' : resolveOnboardingMode(
+      user.user_metadata?.onboarding_mode, window.location.search);
+    if (!parentApplication && onboardingMode !== 'choose' && user.user_metadata?.onboarding_mode !== onboardingMode) {
+      const { error: intentError } = await supabase.auth.updateUser({ data: { onboarding_mode: onboardingMode } });
+      if (intentError) throw intentError;
+    }
+
     return {
       id: user.id,
       authUserId: user.id,

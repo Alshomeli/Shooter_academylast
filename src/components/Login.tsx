@@ -31,9 +31,12 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
     if (busy) return;
     setBusy(true); setError(''); setMessage('');
     try {
+      const redirect = new URL(window.location.origin + window.location.pathname);
+      if (screen === 'register') redirect.searchParams.set('view', registrationKind === 'staff' ? 'staff-registration' : 'registration');
+      else redirect.searchParams.set('view', 'login');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin + window.location.pathname + window.location.search },
+        options: { redirectTo: redirect.toString() },
       });
       if (error) throw error;
     } catch {

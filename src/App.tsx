@@ -1,3 +1,4 @@
+import { OnboardingChoice } from '@/components/OnboardingChoice';
 import { PublicHomeLink } from '@/components/PublicHomeLink';
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy, Component, type ReactNode } from 'react';
 import { Menu, Bell, Clock, Target, Loader2, AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
@@ -289,7 +290,7 @@ export default function App() {
       const manager = role === 'manager';
       const finance = manager || role === 'accountant';
       const parent = role === 'parent';
-      if (currentUser?.registrationOnly) { setData(EMPTY_DATA); return; }
+      if (currentUser?.registrationOnly || currentUser?.accountDisabled) { setData(EMPTY_DATA); return; }
       const [
         settings, staff, teams, players, parents, subscriptions,
         attendance, matches, trainings, transactions, tournaments, evaluations, notifications,
@@ -649,6 +650,10 @@ export default function App() {
         </div>
       </main>
     );
+  }
+
+  if (currentUser.registrationOnly && currentUser.registrationMode === 'choose') {
+    return <OnboardingChoice lang={lang} onSelected={handleLogin} onLogout={handleLogout} />;
   }
 
   if (currentUser.registrationOnly && currentUser.registrationMode === 'staff') {
