@@ -369,7 +369,7 @@ export const db = {
   async deletePlayer(id: string): Promise<void> { return deleteRow('players', id); },
   async forceDeleteUser(targetType: 'staff' | 'player', id: string): Promise<void> {
     const { error } = await supabase.rpc('force_delete_user', { p_target_type: targetType, p_target_id: id });
-    if (error) throw error;
+    if (error) throw new Error(error.message || 'Delete failed');
   },
 
   async getParents(): Promise<Parent[]> { return fetchParentRows(); },
