@@ -98,7 +98,7 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
     if (!deleteId) return;
     setDeleteError('');
     try {
-      await db.forceDeleteUser('player', deleteId);
+      await db.archivePlayer(deleteId);
       await onRefresh();
       setDeleteId(null);
     } catch (e) {
@@ -251,9 +251,9 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title={t.deletePlayer}
-        message={t.deletePlayerConfirm}
-        confirmLabel={t.delete}
+        title={isAr ? 'أرشفة اللاعب' : 'Archive player'}
+        message={isAr ? 'سيتم إخفاء اللاعب من القوائم النشطة مع الاحتفاظ بالاشتراكات والإيصالات والسجلات السابقة. هل تريد الأرشفة؟' : 'The player will be hidden from active lists while payment, receipt and history records are preserved. Archive this player?'}
+        confirmLabel={isAr ? 'أرشفة' : 'Archive'}
       />
     </div>
   );
