@@ -44,8 +44,6 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
   const [editMember, setEditMember] = useState<Staff | null>(null);
   const [viewMember, setViewMember] = useState<Staff | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [showReassign, setShowReassign] = useState(false);
-  const [reassignCoachId, setReassignCoachId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [staffDocuments, setStaffDocuments] = useState<StaffDocument[]>([]);
@@ -117,8 +115,6 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
       await db.forceDeleteUser('staff', deleteId);
       await onRefresh();
       setDeleteId(null);
-      setShowReassign(false);
-      setReassignCoachId(null);
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : String(e));
     }
@@ -145,7 +141,6 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
     }
     setDeleteError('');
     setDeleteId(id);
-    setShowReassign(false);
   };
 
   return (
