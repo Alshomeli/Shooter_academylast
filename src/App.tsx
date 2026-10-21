@@ -297,7 +297,7 @@ export default function App() {
         auditLogs, loginLogs,
       ] = await Promise.all([
         db.getSettings(),
-        parent ? [] : db.getStaff(), db.getTeams(), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
+        parent ? [] : db.getStaff(), db.getTeams(role === 'coach'), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
         role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
         db.getTrainings(), finance ? db.getTransactions() : [], parent ? [] : db.getTournaments(),
         db.getEvaluations(), db.getNotifications(),
@@ -530,15 +530,8 @@ export default function App() {
     if (currentUser?.role !== 'coach') return data.teams;
     const actor = data.staff.find(member => member.id === currentUser.id);
     if (!actor || actor.status !== 'active' || actor.role !== 'coach') return [];
-    const supervisor = actor.coachKind === 'assistant'
-      ? data.staff.find(member => member.id === actor.supervisingCoachId)
-      : actor;
-    if (!supervisor || supervisor.status !== 'active' || supervisor.role !== 'coach') return [];
-    if (supervisor.coachKind === 'goalkeeper') {
-      return data.teams;
-    }
-    if (supervisor.coachKind && supervisor.coachKind !== 'team') return [];
-    return data.teams.filter(team => team.coachId === supervisor.id);
+    // Already scoped by get_my_coach_team_ids, including assistant supervisors.
+    return data.teams;
   }, [currentUser, data.staff, data.teams]);
 
   const renderView = () => {
