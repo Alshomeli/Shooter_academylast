@@ -70,6 +70,7 @@ type TelegramUpdate = {
     data?: string;
     message?: {
       message_id?: number;
+      text?: string;
       chat?: { id?: number; type?: string };
     };
   };
@@ -955,6 +956,28 @@ Deno.serve(async (req: Request) => {
     }
     await rememberAuthorizedManagerChat(callbackChatId);
 
+    const paymentMatch = callback.data.match(/^pay:approve:([0-9a-f-]{36})$/i);
+    if (paymentMatch) {
+      try {
+        const result = await rpc<{ success: boolean; alreadyProcessed?: boolean; status?: string; receiptNumber?: number }>(
+          "telegram_approve_payment_proof", {
+            p_proof_id: paymentMatch[1],
+            p_chat_id_hash: await sha256Hex(String(callbackChatId)),
+          },
+        );
+        const label = result.success
+          ? `✅ تم اعتماد الدفعة${result.receiptNumber ? ` — إيصال SA-${String(result.receiptNumber).padStart(6, "0")}` : ""}`
+          : "ℹ️ تمت معالجة الطلب مسبقًا؛ لم تُسجّل دفعة إضافية.";
+        await answerCallbackQuery(callback.id, label);
+        if (callback.message.message_id) {
+          await editMessage(callbackChatId, callback.message.message_id, label, { inline_keyboard: [] });
+        }
+      } catch {
+        await answerCallbackQuery(callback.id, "تعذر اعتماد الإثبات. راجعه من المنصة.");
+      }
+      return Response.json({ ok: true });
+    }
+
     const approveMatch = callback.data.match(/^reg:approve:([0-9a-f-]{36})$/i);
     const reviewMatch = callback.data.match(/^reg:review:([0-9a-f-]{36})$/i);
     const staffApproveMatch = callback.data.match(/^staff:approve:([0-9a-f-]{36})$/i);
@@ -1306,8 +1329,30 @@ Deno.serve(async (req: Request) => {
         `إجمالي المبالغ المعلقة: ${formatMoney(total)} د.ب`,
         ...rows.slice(0, 20).map((row, index) => `${index + 1}) ${formatMoney(Number(row.amount || 0))} د.ب — تاريخ التحويل ${row.transfer_date || "غير محدد"}`),
         "",
-        "اعتماد أو رفض الإثبات يتم من شاشة الاشتراكات في الموقع لضمان تسجيل المراجعة والإيصال.",
+        "راجع صورة الإثبات ثم أكد الاعتماد. الرفض وطلب الاستكمال من شاشة الاشتراكات.",
       ].join("\n"));
+      for (const row of rows.slice(0, 20)) {
+        if (!row.id) continue;
+        const proofs = await restRows<{ proof_path?: string }>("payment_proofs", {
+          select: "proof_path", id: `eq.${row.id}`, status: "eq.pending", limit: "1",
+        });
+        const path = proofs[0]?.proof_path;
+        if (!path) continue;
+        const signedResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/payment-proofs/${path.split("/").map(encodeURIComponent).join("/")}`, {
+          method: "POST",
+          headers: { apikey: serverApiKey(), Authorization: `Bearer ${serverApiKey()}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ expiresIn: 600 }),
+        });
+        const signed = await signedResponse.json().catch(() => null);
+        if (!signedResponse.ok || typeof signed?.signedURL !== "string") continue;
+        const proofUrl = new URL(`${SUPABASE_URL}/storage/v1${signed.signedURL}`);
+        await sendMessage(chatId, `🧾 إثبات تحويل: ${formatMoney(Number(row.amount || 0))} د.ب\nتاريخ التحويل: ${row.transfer_date || "غير محدد"}\nافتح الإثبات وتحقق منه قبل الاعتماد. رابط العرض صالح 10 دقائق.`, {
+          inline_keyboard: [
+            [{ text: "👀 عرض الإثبات", url: proofUrl.href }],
+            [{ text: "✅ تحققت من التحويل — اعتماد", callback_data: `pay:approve:${row.id}` }],
+          ],
+        });
+      }
       return Response.json({ ok: true });
     }
 
