@@ -422,7 +422,7 @@ async function rememberAuthorizedManagerChat(chatId: number) {
   }
 }
 
-type TelegramIdentity = { user_id?: string; role?: "manager" | "coach"; staff_id?: string | null; parent_id?: string | null; display_name?: string };
+type TelegramIdentity = { user_id?: string; role?: "manager" | "coach" | "parent"; staff_id?: string | null; parent_id?: string | null; display_name?: string };
 
 async function linkedTelegramIdentity(chatId: number): Promise<TelegramIdentity | null> {
   try {
@@ -658,6 +658,24 @@ async function configuredManagerChats(): Promise<number[]> {
   return Array.from(new Set(configured));
 }
 
+async function deliverDailySubscriptionReminders() {
+  const rows = await rpc<Array<{ id: string; chat_id: number; recipient_role: string; player_name: string; amount: number; due_date: string; proof_id?: string }>>(
+    "telegram_claim_subscription_reminders", { p_limit: 50 },
+  );
+  let sent = 0;
+  for (const row of rows || []) {
+    try {
+      const text = `🔔 تذكير باستحقاق اشتراك ${row.player_name}\nالمبلغ: ${formatMoney(Number(row.amount))} د.ب\nتاريخ الاستحقاق: ${row.due_date}\n${row.recipient_role === "parent" ? "يرجى رفع إثبات التحويل من بوابة ولي الأمر. إذا رفعته، فالدفعة بانتظار مراجعة الإدارة." : row.proof_id ? "يوجد إثبات تحويل بانتظار المراجعة. أرسل «إثباتات الدفع» لعرضه واعتماده." : "لم يُعتمد دفع هذا الاستحقاق بعد. التأكيد من المنصة أو تلغرام يحدّث نفس الاشتراك."}`;
+      await sendMessage(Number(row.chat_id), text);
+      await rpc<void>("telegram_finish_subscription_reminder", { p_id: row.id, p_success: true });
+      sent++;
+    } catch {
+      await rpc<void>("telegram_finish_subscription_reminder", { p_id: row.id, p_success: false });
+    }
+  }
+  return sent;
+}
+
 async function deliverPendingRegistrationNotifications() {
   const managerChats = await configuredManagerChats();
   if (managerChats.length === 0) return { delivered: 0, waitingForManagerChatRegistration: true };
@@ -879,7 +897,9 @@ Deno.serve(async (req: Request) => {
       return new Response("Unauthorized", { status: 401 });
     }
     try {
-      return Response.json({ ok: true, ...(await deliverPendingRegistrationNotifications()) });
+      const registrationResult = await deliverPendingRegistrationNotifications();
+      const subscriptionRemindersDelivered = await deliverDailySubscriptionReminders();
+      return Response.json({ ok: true, ...registrationResult, subscriptionRemindersDelivered });
     } catch (error) {
       console.error("Telegram notification flush failed", error instanceof Error ? error.message : "unknown");
       return Response.json({ ok: false }, { status: 500 });
@@ -1102,7 +1122,7 @@ Deno.serve(async (req: Request) => {
         if (!linked?.length) {
           await sendMessage(chatId, "رمز الربط غير صحيح أو انتهت صلاحيته. أنشئ رمزًا جديدًا من حسابك في المنصة.");
         } else {
-          const roleLabel = linked[0].role === "manager" ? "مدير" : "مدرب";
+          const roleLabel = linked[0].role === "manager" ? "مدير" : linked[0].role === "parent" ? "ولي أمر" : "مدرب";
           await sendMessage(chatId, `✅ تم ربط Telegram بحسابك بنجاح. نوع الحساب: ${roleLabel}. أرسل /help لرؤية الأدوات المتاحة لك.`);
         }
       } catch {
@@ -1119,6 +1139,11 @@ Deno.serve(async (req: Request) => {
   }
   if (!telegramIdentity) {
     await sendMessage(chatId, "هذا الحساب غير مرتبط بالمنصة. من حسابك في Shooter Academy أنشئ رمز ربط Telegram ثم أرسل: /link CODE");
+    return Response.json({ ok: true });
+  }
+
+  if (telegramIdentity.role === "parent") {
+    await sendMessage(chatId, "حسابك مربوط لاستقبال تذكيرات الاشتراكات مرة واحدة يوميًا لكل استحقاق. لرفع إثبات التحويل أو متابعة الاعتماد استخدم بوابة ولي الأمر. يتوقف تذكير الاستحقاق بعد اعتماد الدفع.");
     return Response.json({ ok: true });
   }
 
