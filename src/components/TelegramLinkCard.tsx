@@ -48,7 +48,7 @@ export function TelegramLinkCard({ lang }: { lang: Lang }) {
               <div className="mt-2 flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full bg-brand-100 text-brand-800 px-2.5 py-1 font-bold">{isAr ? '● متصل' : '● Connected'}</span>
                 <code className="rounded-full bg-white dark:bg-slate-900 border px-2.5 py-1">{connection.telegram_user_code}</code>
-                <span className="text-slate-500 px-1 py-1">{isAr ? (connection.role === 'manager' ? 'مدير' : 'مدرب') : connection.role}</span>
+                <span className="text-slate-500 px-1 py-1">{isAr ? (connection.role === 'manager' ? 'مدير' : connection.role === 'parent' ? 'ولي أمر' : 'مدرب') : connection.role}</span>
               </div>
               <p className="text-xs text-slate-500 mt-2">{isAr ? 'آخر استخدام:' : 'Last used:'} {new Date(connection.last_seen_at).toLocaleString(isAr ? 'ar-BH' : 'en-BH')}</p>
               <button disabled={busy} onClick={disconnect} className="mt-3 rounded-xl border border-red-200 text-red-700 px-3 py-2 text-xs font-bold flex items-center gap-1">
@@ -57,7 +57,7 @@ export function TelegramLinkCard({ lang }: { lang: Lang }) {
             </>
           ) : (
             <>
-              <p className="text-xs text-slate-500 mt-1">{isAr ? 'اربط حساب المدير أو المدرب بالبوت. الرمز صالح 10 دقائق ولمرة واحدة.' : 'Connect a manager or coach account to the bot. The code is valid for 10 minutes and one use.'}</p>
+              <p className="text-xs text-slate-500 mt-1">{isAr ? 'اربط حسابك بالبوت لاستقبال الإشعارات الخاصة بك. الرمز صالح 10 دقائق ولمرة واحدة.' : 'Connect your account to receive your notifications. The code is valid for 10 minutes and one use.'}</p>
               {!code ? (
                 <button disabled={busy} onClick={generate} className="mt-3 rounded-xl bg-sky-600 text-white px-4 py-2 text-xs font-bold disabled:opacity-50">
                   {busy ? (isAr ? 'جارٍ الإنشاء...' : 'Generating...') : (isAr ? 'إنشاء رمز الربط' : 'Generate link code')}
