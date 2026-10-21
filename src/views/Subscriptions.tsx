@@ -774,9 +774,7 @@ export function Subscriptions({
           players={players}
           planAmounts={planAmounts}
           lang={lang}
-          onSave={(data) => {
-            handleSaveSub(data, activateSub.id);
-          }}
+          onSave={(data) => handleSaveSub({ ...data, version: activateSub.version }, activateSub.id)}
           onClose={() => setActivateSub(null)}
         />
       )}
@@ -837,7 +835,7 @@ function SubscriptionForm({
   players: Player[];
   planAmounts: Record<Subscription['planType'], number>;
   lang: Lang;
-  onSave: (data: Omit<Subscription, 'id'>, id?: string) => void;
+  onSave: (data: Omit<Subscription, 'id'>, id?: string) => Promise<void>;
   onClose: () => void;
 }) {
   const t = tr(lang);
