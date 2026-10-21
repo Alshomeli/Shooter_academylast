@@ -104,8 +104,8 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       }
       const member = await db.getCurrentUser();
       if (!member) throw new Error(text('تعذر تحميل حسابك. حاول مجددًا.', 'Could not load your account. Please try again.'));
-      if (!member.registrationOnly && member.role !== 'parent') {
-        await db.addLoginAuditLog({ id: '', action: 'login', details: 'Signed in', timestamp: '', userRole: '', userName: '' }).catch(console.error);
+      if (!member.registrationOnly && !member.accountDisabled) {
+        await db.addLoginAuditLog({ id: '', action: 'login', details: '', timestamp: '', userRole: '', userName: '' }).catch(console.error);
       }
       onLogin(member);
     } catch (e) {
