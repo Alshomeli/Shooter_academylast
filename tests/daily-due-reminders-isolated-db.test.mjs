@@ -24,7 +24,7 @@ async function setup(){
  insert into staff values('m','22222222-2222-4222-8222-222222222222','active','manager','Manager',now());
  insert into internal.telegram_manager_bindings values('m',true,42);
  insert into subscriptions values('due','p','unpaid',25,current_date-1),('paid','p','paid',25,current_date-1),('future','p','unpaid',25,current_date+2),('archived','archived','unpaid',25,current_date-1);
- `);await db.exec(sql);
+ `);await db.exec(sql);await db.exec(await readFile(new URL('../supabase/migrations/20261021030454_preserve_unpaid_subscription_replacement.sql',import.meta.url),'utf8'));
  await db.exec("insert into telegram_user_links(user_id,chat_id,role,is_active) values('11111111-1111-4111-8111-111111111111',99,'parent',true)");
  return db;
 }
@@ -60,5 +60,13 @@ test('parent identity remains parent; sensitive queue functions are service-only
  assert.equal((await db.query('select public.my_telegram_staff_role() role')).rows[0].role,'parent');
  assert.equal((await db.query('select * from internal.telegram_identity(99)')).rows[0].role,'parent');
  assert.equal((await db.query("select has_function_privilege('authenticated','public.telegram_claim_subscription_reminders(integer)','execute') allowed")).rows[0].allowed,false);
+ }finally{await db.close();}
+});
+
+test('reminder bookkeeping does not block existing manager replacement of an unpaid draft',async()=>{
+ const db=await setup();try{
+ await db.exec("select internal.queue_daily_subscription_reminders(); delete from subscriptions where id='due';");
+ assert.equal((await db.query('select count(*)::int n from internal.subscription_reminder_days')).rows[0].n,0);
+ assert.equal((await db.query('select count(*)::int n from internal.subscription_telegram_reminders')).rows[0].n,0);
  }finally{await db.close();}
 });
