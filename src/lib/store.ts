@@ -368,7 +368,14 @@ export const db = {
     if (error) throw error;
   },
 
-  async getTeams(): Promise<Team[]> { return fetchAll('teams', mapTeam as never); },
+  async getTeams(coachOnly = false): Promise<Team[]> {
+    const teams = await fetchAll('teams', mapTeam as never) as Team[];
+    if (!coachOnly) return teams;
+    const { data, error } = await supabase.rpc('get_my_coach_team_ids');
+    if (error) throw error;
+    const allowed = new Set((data || []) as string[]);
+    return teams.filter(team => allowed.has(team.id));
+  },
   async saveTeam(t: Team): Promise<Team> { return upsertRow('teams', teamToRow(t) as unknown as Record<string, unknown>, mapTeam as never); },
   async deleteTeam(id: string): Promise<void> {
     const { error } = await supabase.rpc('delete_team_safely', { p_team_id: id });
