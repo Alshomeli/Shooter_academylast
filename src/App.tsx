@@ -261,6 +261,9 @@ export default function App() {
           setCurrentUser(member);
           if (member) {
             setActiveRole(member.role);
+            if ((_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') && !member.registrationOnly && !member.accountDisabled) {
+              void db.addLoginAuditLog({ id: '', action: 'login', details: '', timestamp: '', userRole: '', userName: '' }).catch(console.error);
+            }
             if (member.registrationOnly && member.registrationMode === 'staff') setCurrentTab('staff-registration');
             else if (member.role === 'parent' && !member.registrationOnly) setCurrentTab('dashboard');
           }
