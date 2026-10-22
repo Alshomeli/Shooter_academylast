@@ -265,3 +265,16 @@
 .ah-news > img { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: contain; background: #10141b; }
 @media (max-width: 800px) { .ah-news > img { height: auto; aspect-ratio: 16 / 10; } }
 @media (max-width: 420px) { .ah-news { padding: 14px; } .ah-news-grid { gap: 14px; } }
+
+
+/* Player of the Month: dismissible, responsive and above the public homepage only. */
+.ah-featured-backdrop{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:16px;background:rgba(8,12,20,.78);overflow-y:auto}
+.ah-featured-modal{position:relative;width:min(100%,480px);max-height:calc(100dvh - 32px);overflow-y:auto;border-radius:18px;background:#fff;color:#18202e;padding:28px 24px;text-align:center;box-shadow:0 20px 70px #0008}
+.ah-featured-modal h2{font-size:clamp(22px,4vw,30px);margin:12px 0}
+.ah-featured-modal p{line-height:1.85;overflow-wrap:anywhere}
+.ah-featured-kicker{font-size:15px;font-weight:900;color:#b21631}
+.ah-featured-modal-image{display:block;width:100%;max-height:min(43dvh,340px);object-fit:contain;margin:12px auto;background:#f1f3f6;border-radius:12px}
+.ah-featured-close{position:absolute;inset-inline-end:12px;top:12px;z-index:1;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;border:1px solid #a5aeba;background:#fff;color:#172031;cursor:pointer}
+.ah-featured-modal-link{display:inline-block;margin-top:16px;padding:10px 18px;background:#bd1731;color:white!important;border-radius:8px;font-weight:800}
+.ah-featured-close:focus-visible,.ah-featured-modal-link:focus-visible{outline:3px solid #dc2843;outline-offset:3px}
+@media(max-width:480px){.ah-featured-modal{padding:26px 16px 18px}.ah-featured-modal-image{max-height:38dvh}}
