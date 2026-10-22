@@ -58,6 +58,11 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     if(selected.kind==='contact') for(const key of contacts){const value=selected.payload[key];if(value){const url=new URL(value);if(url.protocol!=='https:') throw new Error('روابط التواصل يجب أن تبدأ بـ HTTPS.');}}
     const saved=await saveContent(selected,isNew);setSelected(saved);setIsNew(false);await reload();return saved;
   };
+  const askContentWriter=async(prompt:string)=> {
+    const result=await askManagementAI('communication',prompt,lang);
+    if(result.provider!=='gemini') throw new Error(lang==='ar'?'خدمة إنشاء المحتوى غير متاحة الآن. لم يتم إنشاء مقترح.':'Content generation is unavailable; no draft was created.');
+    return result.reply;
+  };
   const generateNewsDraft=async()=> {
     if(!selected || selected.kind!=='news') return;
     if(!selected.payload.title?.trim() || !selected.payload.body?.trim()) {
@@ -75,8 +80,8 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
         'Source event facts: '+selected.payload.body,
         'Date: '+(selected.payload.date||'not provided'),
       ].join('\\n');
-      const result=await askManagementAI('communication',prompt,lang);
-      setAiProposal(result.reply);
+      const reply=await askContentWriter(prompt);
+      setAiProposal(reply);
     }catch(e){setError(e instanceof Error?e.message:String(e));}
     finally{setAiBusy(false);}
   };
@@ -93,8 +98,8 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
         'Return a short recognition heading, a 2-3 sentence popup caption, a short news-ready paragraph and a natural search-friendly title. No keyword stuffing.',
         'Player: '+person, 'Verified reasons: '+facts,
       ].join('\\n');
-      const result=await askManagementAI('communication',prompt,lang);
-      setAiProposal(result.reply);
+      const reply=await askContentWriter(prompt);
+      setAiProposal(reply);
     }catch(e){setError(e instanceof Error?e.message:String(e));}
     finally{setAiBusy(false);}
   };
@@ -117,7 +122,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     };
     setAiWorkspaceBusy(true);setError('');setAiWorkspaceReply('');
     try{
-      const response=await askManagementAI('communication',[
+      const response=await askContentWriter([
         'You are the Shooter Academy content editor for the manager dashboard.',
         'Task: '+task[aiTask],
         'Respond in '+(aiTask==='translate'?(ar?'English':'Arabic'):(ar?'Arabic':'English'))+'.',
@@ -128,8 +133,8 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
         'Existing content: '+(source.slice(0,420)||'No existing text'),
         'Manager instructions: '+(aiInstructions.slice(0,290)||'No additional instructions'),
         'Return only the proposed material, for manual review.'
-      ].join('\\n'),lang);
-      setAiWorkspaceReply(response.reply.slice(0,6000));
+      ].join('\\n'));
+      setAiWorkspaceReply(response.slice(0,6000));
     }catch(e){setError(e instanceof Error?e.message:String(e));}
     finally{setAiWorkspaceBusy(false);}
   };
