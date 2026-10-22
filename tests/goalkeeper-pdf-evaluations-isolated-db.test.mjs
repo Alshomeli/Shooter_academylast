@@ -24,7 +24,11 @@ async function setup() {
  insert into teams(id,name,age_group,coach_id) values('t1','U12','U12','team-coach'),('t2','U14','U14',null);
  insert into players values('gk1','Keeper 1','t1','حارس مرمى','active',null),('gk2','Keeper 2','t2','GK','active',null),('p1','Forward','t1','مهاجم','active',null),('old','Archived','t1','goalkeeper','inactive',now());
  `);
+ await db.exec(`create function public.save_player_evaluation_v2(jsonb) returns uuid language sql as $$select gen_random_uuid()$$;
+ create function internal.save_player_evaluation_v2_impl(jsonb) returns uuid language sql as $$select gen_random_uuid()$$;
+ grant execute on function public.save_player_evaluation_v2(jsonb),internal.save_player_evaluation_v2_impl(jsonb) to authenticated;`);
  await db.exec(migration);
+ await db.exec(await readFile(new URL('../supabase/migrations/20261022004923_retire_legacy_evaluation_writes.sql',import.meta.url),'utf8'));
  await db.exec(`
  create trigger training_link before insert or update on attendance for each row execute function internal.validate_attendance_training_link();
  create trigger session_link before insert or update on attendance for each row execute function internal.validate_attendance_session_link();
@@ -85,6 +89,7 @@ test('keeper PDF saves measurements, nutrition, signatures, automatic category a
 test('backend blocks mixed templates, invalid scores, incomplete publication and unauthorized staff',async()=>{
  const db=await setup();try{
  await actor(db,3);
+ assert.equal((await db.query("select has_function_privilege('authenticated','public.save_player_evaluation_v2(jsonb)','execute') allowed")).rows[0].allowed,false);
  await assert.rejects(save(db,{...form(),detailedScores:{...keeperScores(),shooting:5}}),/template/);
  await assert.rejects(save(db,{...form(),detailedScores:{...keeperScores(),gk_focus:5.5}}),/integer/);
  await assert.rejects(save(db,{...form(),heightCm:999}),/check constraint/);
