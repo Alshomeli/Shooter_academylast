@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Save, Eye, Upload, History, Globe } from 'lucide-react';
+import { Plus, Save, Eye, Upload, History, Globe, Sparkles } from 'lucide-react';
+import { askManagementAI } from '@/lib/ai-assistant';
 import type { Lang, Role, Staff } from '@/types';
 import { publishContent, readContentHistory, readManagerContent, resolveContentMedia, saveContent, uploadContentFile, type ContentItem, type ContentKind, type ContentRevision } from '@/lib/site-content';
 import { featuredImageStyle, featuredPlayerValidationError } from '@/lib/featured-player';
@@ -26,6 +27,8 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
   const [message,setMessage]=useState('');
+  const [aiProposal,setAiProposal]=useState('');
+  const [aiBusy,setAiBusy]=useState(false);
   const [preview,setPreview]=useState<ContentItem|null>(null);
   const [history,setHistory]=useState<ContentRevision[]>([]);
   const [showHistory,setShowHistory]=useState(false);
@@ -48,6 +51,28 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     if(selected.kind!=='contact'&&!selected.payload.title?.trim()) throw new Error('العنوان مطلوب.');
     if(selected.kind==='contact') for(const key of contacts){const value=selected.payload[key];if(value){const url=new URL(value);if(url.protocol!=='https:') throw new Error('روابط التواصل يجب أن تبدأ بـ HTTPS.');}}
     const saved=await saveContent(selected,isNew);setSelected(saved);setIsNew(false);await reload();return saved;
+  };
+  const generateNewsDraft=async()=> {
+    if(!selected || selected.kind!=='news') return;
+    if(!selected.payload.title?.trim() || !selected.payload.body?.trim()) {
+      setError(ar?'أدخل عنوان الخبر ووقائعه الأساسية أولًا.':'Enter a headline and factual event details first.');
+      return;
+    }
+    setAiBusy(true);setError('');setAiProposal('');
+    try {
+      const prompt = [
+        'You are editing a football academy news release for search discoverability.',
+        'Write in '+(ar?'Arabic':'English')+'. Only use facts present in the following source. Do not invent names, results, dates, prizes, quotations or claims.',
+        'Return a suggested SEO headline, a concise meta description (maximum 160 characters), a readable news body and suggested search phrases.',
+        'Avoid keyword stuffing, clickbait, and unsupported claims. Use explicit headings.',
+        'Source headline: '+selected.payload.title,
+        'Source event facts: '+selected.payload.body,
+        'Date: '+(selected.payload.date||'not provided'),
+      ].join('\\n');
+      const result=await askManagementAI('communication',prompt,lang);
+      setAiProposal(result.reply);
+    }catch(e){setError(e instanceof Error?e.message:String(e));}
+    finally{setAiBusy(false);}
   };
   const defaultPrograms = [
     {title:'تطوير المهارات',body:'التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.',image:programImages[0]},
@@ -131,6 +156,15 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           <label className="block space-y-1"><span className="text-sm font-bold">{kind==='coach'?'نبذة المدرب':'الوصف / التعليق'}</span><textarea className={input} rows={4} maxLength={6000} disabled={busy} value={selected.payload.body||''} onChange={e=>setField('body',e.target.value)}/></label>
           <label className="block space-y-1"><span className="text-sm font-bold">{kind==='coach'?'Coach Bio (English) — optional':'Description / Caption (English) — optional'}</span><textarea className={input} rows={4} maxLength={6000} disabled={busy} value={selected.payload.body_en||''} onChange={e=>setField('body_en',e.target.value)}/></label>
           {kind==='news'&&field('date','تاريخ الخبر','date')}
+          {kind==='news'&&<section className="rounded-xl border border-red-300 dark:border-red-800 p-3 space-y-3">
+            <div><h4 className="font-black flex items-center gap-2"><Sparkles size={17}/>{ar?'مساعد صياغة الخبر لمحركات البحث':'SEO news writing assistant'}</h4>
+              <p className="text-xs mt-1 text-slate-600 dark:text-slate-300">{ar?'اكتب الوقائع في الوصف أعلاه، ثم اطلب اقتراحًا وراجعه. لا تُحفظ الاقتراحات تلقائيًا ولا تُنشر.':'Enter facts above, generate a suggestion, and review it. AI drafts are neither saved nor published automatically.'}</p></div>
+            <button type="button" className={button} disabled={busy||aiBusy||!selected.payload.title?.trim()||!selected.payload.body?.trim()} onClick={()=>void generateNewsDraft()}><Sparkles size={16}/>{aiBusy?(ar?'جارٍ الإنشاء…':'Generating…'):(ar?'اقتراح خبر احترافي':'Suggest SEO news copy')}</button>
+            {aiProposal&&<div className="space-y-2"><label className="text-sm font-bold block" htmlFor="ai-news-proposal">{ar?'المقترح للمراجعة (غير منشور)':'Draft suggestion (not published)'}</label>
+              <textarea id="ai-news-proposal" className={input} rows={10} value={aiProposal} onChange={e=>setAiProposal(e.target.value)} maxLength={6000}/>
+              <button type="button" className={button} disabled={busy} onClick={()=>{setField('body',aiProposal);setAiProposal('');setMessage(ar?'تم نقل المقترح إلى الوصف للمراجعة. احفظ المسودة بعد التأكد من صحة الوقائع.':'Suggestion moved into the editor for review. Verify facts before saving.');}}>{ar?'نقل المقترح إلى الوصف':'Use suggestion in editor'}</button>
+            </div>}
+          </section>}
           {kind==='gallery'&&<>{field('album','اسم النشاط / الألبوم (الصور التي لها نفس الاسم تظهر ضمن مجموعة واحدة)')}{field('album_en','Album / Activity Name (English) — optional')}</>}
           {(kind==='gallery'||kind==='video')&&<label className="block space-y-1">
             <span className="text-sm font-bold">الخبر المرتبط بهذا {kind==='gallery'?'الصورة':'الفيديو'} (اختياري)</span>
