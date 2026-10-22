@@ -104,7 +104,7 @@ export default function AcademyHome() {
       }));
   const contact = content.find(i => i.kind === 'contact')?.payload;
   const [featuredOpen, setFeaturedOpen] = useState(false);
-  const featuredKey = contact?.featured_name?.trim() && contact?.featured_image
+  const featuredKey = contact?.featured_enabled!=='false' && contact?.featured_name?.trim() && contact?.featured_image
     ? 'shooter-featured-' + [contact.featured_name, contact.featured_image].join(':')
     : '';
   useEffect(() => {
@@ -200,7 +200,7 @@ export default function AcademyHome() {
       <a className="ah-button ah-login" href={platform}>{tr("دخول منصة الأكاديمية")} <ArrowUpLeft size={17}/></a>
       <button className="ah-menu" onClick={() => setMenu(v => !v)} aria-expanded={menu} aria-controls="ah-navigation" aria-label={menu ? tr("إغلاق القائمة") : tr("فتح القائمة")}>{menu ? <X/> : <Menu/>}</button>
     </header>
-    {featuredOpen && contact?.featured_image && contact?.featured_name && <div className="ah-featured-backdrop" onClick={dismissFeatured}>
+    {featuredOpen && contact?.featured_enabled!=='false' && contact?.featured_image && contact?.featured_name && <div className="ah-featured-backdrop" onClick={dismissFeatured}>
       <section role="dialog" aria-modal="true" aria-labelledby="ah-featured-modal-title" aria-describedby="ah-featured-modal-description" className="ah-featured-modal" onClick={event => event.stopPropagation()} onKeyDown={event => {if(event.key === 'Escape') dismissFeatured();}}>
         <button type="button" autoFocus className="ah-featured-close" onClick={dismissFeatured} aria-label={lang === 'ar' ? 'إغلاق نافذة لاعب الشهر' : 'Close Player of the Month'}><X size={23}/></button>
         <p className="ah-featured-kicker">{tr(contact.featured_heading || 'لاعب الشهر', contact.featured_heading_en)}</p>
