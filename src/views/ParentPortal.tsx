@@ -22,6 +22,8 @@ import { uploadPlayerFile } from '@/lib/uploads';
 import { Home, Users, Upload, Shield, Sun, Moon, Trophy } from 'lucide-react';
 
 import { ParentActivities } from '@/components/ParentActivities';
+import { readPublicContent } from '@/lib/site-content';
+import { isRecognizedChild } from '@/lib/player-recognition';
 
 const Registration = lazy(() => import('@/views/Registration').then((module) => ({ default: module.Registration })));
 
@@ -49,6 +51,26 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [attachmentError, setAttachmentError] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
+  const [monthlyStar, setMonthlyStar] = useState<{name:string;heading:string;body:string;image:string;playerId:string;video:string}|null>(null);
+  const [monthlyStarOpen, setMonthlyStarOpen] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void readPublicContent().then(items => {
+      if (!alive) return;
+      const contact = items.find(item => item.kind === 'contact')?.payload;
+      if (!contact?.featured_name?.trim() || !contact.featured_image) return;
+      const video = items.find(item => item.kind === 'video' && item.id === contact.featured_video_id)?.payload.video || '';
+      setMonthlyStar({
+        playerId: contact.featured_player_id || '',
+        video,
+        name: lang === 'en' && contact.featured_name_en ? contact.featured_name_en : contact.featured_name,
+        heading: (lang === 'en' && contact.featured_heading_en ? contact.featured_heading_en : contact.featured_heading) || (lang === 'ar' ? 'لاعب الشهر' : 'Player of the Month'),
+        body: (lang === 'en' && contact.featured_body_en ? contact.featured_body_en : contact.featured_body) || '',
+        image: contact.featured_image,
+      });
+    }).catch(() => { /* Featured content is optional; parent data remains usable. */ });
+    return () => { alive = false; };
+  }, [lang]);
   const sections = [
     { id: 'overview', ar: 'الرئيسية', en: 'Home', icon: Home },
     { id: 'children', ar: 'أبنائي', en: 'My children', icon: Users },
@@ -285,6 +307,18 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           <span className="arena-social-icon arena-social-maps"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M12 2a8 8 0 0 0-8 8c0 2.6 1.5 4.8 3.2 7L12 10Z"/><path fill="#EA4335" d="M12 2a8 8 0 0 1 8 8l-8 4-4-4Z"/><path fill="#FBBC04" d="m4.3 12.1 5.1-5.2 5.2 5.2-5.9 6.8c-1.9-2.4-3.7-4.7-4.4-6.8Z"/><path fill="#34A853" d="m20 10-8 12-3.3-3.1 7-8.9Z"/><circle cx="12" cy="10" r="3" fill="#fff"/></svg></span><span>{text('الموقع', 'Location')}</span>
         </a>
       </nav>
+      {isRecognizedChild(monthlyStar?.playerId, players.map(player => player.id)) && <p role="status" className="rounded-xl border border-amber-400 bg-amber-50 p-4 font-bold text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">{text('مبروك! تم اختيار ابنكم لاعب الشهر في أكاديمية شوتر. نفتخر فيه وبجهوده.','Congratulations! Your child is Shooter Academy Player of the Month. We are proud of their dedication.')}</p>}
+      {monthlyStar && <section className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-700 dark:bg-amber-950/20 dark:text-amber-100" aria-label={text('تكريم لاعب الشهر','Player of the Month recognition')}>
+        <div className="flex flex-wrap items-center gap-4">
+          <img src={monthlyStar.image} alt={monthlyStar.name} loading="lazy" className="h-24 w-24 rounded-xl object-contain" />
+          <div className="min-w-0 flex-1 space-y-1"><p className="text-xs font-bold">{monthlyStar.heading}</p><h2 className="text-xl font-black">{monthlyStar.name}</h2>
+            <button type="button" onClick={()=>setMonthlyStarOpen(true)} className="rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white">{text('شاهد تكريم لاعب الشهر','View player recognition')}</button>
+          </div>
+        </div>
+      </section>}
+      <Modal open={monthlyStarOpen && !!monthlyStar} onClose={()=>setMonthlyStarOpen(false)} title={monthlyStar?.heading || text('لاعب الشهر','Player of the Month')}>
+        {monthlyStar&&<div className="space-y-3 text-center"><img src={monthlyStar.image} alt={monthlyStar.name} className="mx-auto max-h-72 w-full object-contain"/><h3 className="text-xl font-black">{monthlyStar.name}</h3><p className="whitespace-pre-wrap">{monthlyStar.body}</p>{monthlyStar.video&&<video controls playsInline preload="metadata" className="w-full rounded-xl" src={monthlyStar.video} aria-label={text('فيديو تكريم لاعب الشهر','Player of the Month recognition video')}/>}</div>}
+      </Modal>
       <TelegramLinkCard lang={lang} />
       {error && <p role="alert" className="text-red-700 bg-red-50 p-3 rounded-lg">{error}</p>}
       {renewalNotices.map(({ subscription, player, daysUntilExpiry }) => <div key={subscription.id} role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"><strong>{player?.name}</strong><p>{daysUntilExpiry < 0 ? text('انتهت فترة الاشتراك. يرجى مراجعة الإدارة للتجديد؛ الفترة السابقة مسددة.', 'The subscription has expired. Contact the academy to renew; the previous period is paid.') : text(`ينتهي الاشتراك خلال ${daysUntilExpiry} يوم. يرجى مراجعة الإدارة للتجديد.`, `Subscription expires in ${daysUntilExpiry} days. Contact the academy to renew.`)}</p></div>)}

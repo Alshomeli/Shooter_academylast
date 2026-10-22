@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Save, Eye, Upload, History, Globe, Sparkles } from 'lucide-react';
+import { Plus, Save, Eye, Upload, History, Globe, Sparkles, Film } from 'lucide-react';
 import { PhotoVideoStudio } from '@/components/PhotoVideoStudio';
 import { askManagementAI } from '@/lib/ai-assistant';
 import type { Lang, Role, Staff } from '@/types';
@@ -30,6 +30,11 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   const [message,setMessage]=useState('');
   const [aiProposal,setAiProposal]=useState('');
   const [aiBusy,setAiBusy]=useState(false);
+  const [aiTask,setAiTask]=useState<'improve'|'article'|'social'|'seo'|'translate'|'script'>('improve');
+  const [aiInstructions,setAiInstructions]=useState('');
+  const [aiWorkspaceReply,setAiWorkspaceReply]=useState('');
+  const [aiWorkspaceBusy,setAiWorkspaceBusy]=useState(false);
+  useEffect(()=>{setAiWorkspaceReply('');setAiInstructions('');},[selected?.id]);
   const [preview,setPreview]=useState<ContentItem|null>(null);
   const [history,setHistory]=useState<ContentRevision[]>([]);
   const [showHistory,setShowHistory]=useState(false);
@@ -53,6 +58,11 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     if(selected.kind==='contact') for(const key of contacts){const value=selected.payload[key];if(value){const url=new URL(value);if(url.protocol!=='https:') throw new Error('روابط التواصل يجب أن تبدأ بـ HTTPS.');}}
     const saved=await saveContent(selected,isNew);setSelected(saved);setIsNew(false);await reload();return saved;
   };
+  const askContentWriter=async(prompt:string)=> {
+    const result=await askManagementAI('communication',prompt,lang);
+    if(result.provider!=='gemini') throw new Error(lang==='ar'?'خدمة إنشاء المحتوى غير متاحة الآن. لم يتم إنشاء مقترح.':'Content generation is unavailable; no draft was created.');
+    return result.reply;
+  };
   const generateNewsDraft=async()=> {
     if(!selected || selected.kind!=='news') return;
     if(!selected.payload.title?.trim() || !selected.payload.body?.trim()) {
@@ -70,8 +80,8 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
         'Source event facts: '+selected.payload.body,
         'Date: '+(selected.payload.date||'not provided'),
       ].join('\\n');
-      const result=await askManagementAI('communication',prompt,lang);
-      setAiProposal(result.reply);
+      const reply=await askContentWriter(prompt);
+      setAiProposal(reply);
     }catch(e){setError(e instanceof Error?e.message:String(e));}
     finally{setAiBusy(false);}
   };
@@ -88,10 +98,45 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
         'Return a short recognition heading, a 2-3 sentence popup caption, a short news-ready paragraph and a natural search-friendly title. No keyword stuffing.',
         'Player: '+person, 'Verified reasons: '+facts,
       ].join('\\n');
-      const result=await askManagementAI('communication',prompt,lang);
-      setAiProposal(result.reply);
+      const reply=await askContentWriter(prompt);
+      setAiProposal(reply);
     }catch(e){setError(e instanceof Error?e.message:String(e));}
     finally{setAiBusy(false);}
+  };
+  const generateComponentCopy=async()=> {
+    if(!selected || aiWorkspaceBusy) return;
+    const source=selected.kind==='contact'
+      ? [selected.payload.featured_name,selected.payload.featured_body,selected.payload.about_body,selected.payload.programs_intro].filter(Boolean).join('\\n')
+      : [selected.payload.title,selected.payload.body,selected.payload.role].filter(Boolean).join('\\n');
+    if(!source.trim()&&!aiInstructions.trim()){
+      setError(ar?'أدخل نصًا في المكون أو ملاحظات للمساعد أولًا.':'Enter component text or instructions first.');
+      return;
+    }
+    const task:{[key in typeof aiTask]:string}={
+      improve:'Improve clarity, tone, and grammar without changing verified facts.',
+      article:'Draft a structured article with an appropriate headline, short introduction and clear sections.',
+      social:'Draft concise social media copy and a suitable caption without invented hashtags or claims.',
+      seo:'Suggest an SEO title, meta description (maximum 160 characters), natural headings and alt-text when relevant.',
+      translate:'Translate the provided text accurately into the other language (Arabic or English), keeping proper names.',
+      script:'Prepare a short video storyboard and voiceover script using only supplied facts and imagery descriptions.'
+    };
+    setAiWorkspaceBusy(true);setError('');setAiWorkspaceReply('');
+    try{
+      const response=await askContentWriter([
+        'You are the Shooter Academy content editor for the manager dashboard.',
+        'Task: '+task[aiTask],
+        'Respond in '+(aiTask==='translate'?(ar?'English':'Arabic'):(ar?'Arabic':'English'))+'.',
+        'Use only facts supplied by the manager; never invent results, ages, identities, awards, statistics or testimonials.',
+        'Do not create or claim actual video, images, publication, or approved consent.',
+        'Do not disclose private player or family information. Do not request sensitive data.',
+        'Content category: '+selected.kind,
+        'Existing content: '+(source.slice(0,420)||'No existing text'),
+        'Manager instructions: '+(aiInstructions.slice(0,290)||'No additional instructions'),
+        'Return only the proposed material, for manual review.'
+      ].join('\\n'));
+      setAiWorkspaceReply(response.slice(0,6000));
+    }catch(e){setError(e instanceof Error?e.message:String(e));}
+    finally{setAiWorkspaceBusy(false);}
   };
   const defaultPrograms = [
     {title:'تطوير المهارات',body:'التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.',image:programImages[0]},
@@ -113,13 +158,42 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     <div className="grid grid-cols-2 gap-3"><div className={box}>{ar?'منشور':'Published'} <b>{published.length}</b></div><div className={box}>{ar?'غير منشور':'Unpublished'} <b>{items.filter(i=>!published.some(p=>p.id===i.id)).length}</b></div></div>
     {error&&<div role="alert" className="rounded-lg bg-red-100 p-3 text-red-900">{error}<button className="ms-3 underline" onClick={()=>void reload()}>{ar?'إعادة التحميل':'Reload'}</button></div>}
     {message&&<p role="status" className="rounded-lg bg-green-100 p-3 text-green-900">{message}</p>}
-    <nav className="flex flex-wrap gap-2" aria-label="أقسام المحتوى">{kinds.map(k=><button key={k.kind} disabled={busy} onClick={()=>{setKind(k.kind);setSelected(null);setPreview(null);setAiProposal('');setShowHistory(false);}} className={`${button} ${kind!==k.kind?'!bg-slate-600':''}`}>{ar?k.ar:k.en}</button>)}</nav>
+    <nav className="flex flex-wrap gap-2" aria-label="أقسام المحتوى">{kinds.map(k=><button key={k.kind} disabled={busy} onClick={()=>{setKind(k.kind);setSelected(null);setPreview(null);setAiProposal('');setShowHistory(false);}} className={`${button} ${kind!==k.kind?'!bg-slate-600':''}`}>{ar?k.ar:k.en}</button>)}<button type="button" disabled={busy} className={`${button} !bg-slate-800 dark:!bg-slate-700`} onClick={()=>{setKind('news');setSelected({id:crypto.randomUUID(),kind:'news',payload:{},sort_order:items.length,version:1});setIsNew(true);setPreview(null);setAiProposal('');setShowHistory(false);}}><Sparkles size={16}/>{ar?'المكونات / أدوات الكتابة الذكية':'Components / AI writing tools'}</button><button type="button" disabled={busy} className={`${button} !bg-slate-800 dark:!bg-slate-700`} onClick={()=>{setKind('video');setSelected({id:crypto.randomUUID(),kind:'video',payload:{},sort_order:items.length,version:1});setIsNew(true);setPreview(null);setAiProposal('');setShowHistory(false);}}><Film size={16}/>{ar?'المكونات / أدوات إنشاء الفيديو':'Components / Video creation tools'}</button></nav>
     <div className="grid gap-5 lg:grid-cols-[minmax(230px,1fr)_2fr]">
       <div className={`${box} space-y-3`}><button className={`${button} w-full`} disabled={busy||loading||kind==='contact'&&items.some(i=>i.kind==='contact')} onClick={()=>{setSelected({id:crypto.randomUUID(),kind,payload:{},sort_order:items.length,version:1});setIsNew(true);setPreview(null);setShowHistory(false);}}><Plus size={16}/>{ar?'إضافة محتوى':'Add content'}</button>
         {loading?<p role="status">{ar?'جارٍ التحميل…':'Loading…'}</p>:items.filter(i=>i.kind===kind).map(i=><button className={`${input} text-start ${selected?.id===i.id?'!border-red-600':''}`} disabled={busy} key={i.id} onClick={()=>{setSelected({...i,payload:{...i.payload}});setIsNew(false);setPreview(null);setShowHistory(false);}}><b className="block truncate">{i.payload.title||'روابط التواصل'}</b><span className="text-xs">{published.some(p=>p.id===i.id)?'منشور':'مسودة / مخفي'} · {i.sort_order}</span></button>)}
         {!loading&&!items.some(i=>i.kind===kind)&&<p className="text-sm">{ar?'لا يوجد محتوى في هذا القسم.':'No content in this section.'}</p>}
       </div>
       {selected?<div className={`${box} space-y-4`} key={selected.id}>
+        <section id="ai-content-components" className="space-y-3 rounded-xl border border-red-300 p-4 dark:border-red-800" aria-label={ar?'المكونات الذكية لتحرير المحتوى':'AI content components'}>
+          <h3 className="flex items-center gap-2 font-black"><Sparkles size={18}/>{ar?'المكونات / مساعد الذكاء الاصطناعي':'Components / AI content assistant'}</h3>
+          <p className="text-xs text-slate-600 dark:text-slate-300">{ar?'للنصوص والمقالات والإعلانات والترجمة وتحسين البحث وسيناريو الفيديو. الاقتراح للمراجعة فقط؛ لا حفظ أو نشر تلقائيًا.':'For copy, articles, social posts, SEO, translation and video scripts. Suggestions require review; nothing saves or publishes automatically.'}</p>
+          <label className="block space-y-1 text-sm font-bold">{ar?'نوع المهمة':'Task'}
+            <select className={input} value={aiTask} disabled={aiWorkspaceBusy||busy} onChange={e=>setAiTask(e.target.value as typeof aiTask)}>
+              <option value="improve">{ar?'تحسين وإعادة صياغة':'Rewrite and improve'}</option>
+              <option value="article">{ar?'مقال احترافي':'Article'}</option>
+              <option value="social">{ar?'إعلان ومنشور تواصل':'Social media post'}</option>
+              <option value="seo">{ar?'تحسين محركات البحث':'SEO metadata'}</option>
+              <option value="translate">{ar?'ترجمة عربية / إنجليزية':'Arabic / English translation'}</option>
+              <option value="script">{ar?'سيناريو فيديو وتعليق صوتي':'Video script and voiceover'}</option>
+            </select>
+          </label>
+          <label className="block space-y-1 text-sm font-bold">{ar?'معلوماتك أو تعليماتك الإضافية (اختياري)':'Additional facts or instructions (optional)'}
+            <textarea className={input} rows={3} maxLength={3000} disabled={aiWorkspaceBusy||busy} value={aiInstructions} onChange={e=>setAiInstructions(e.target.value)}/>
+          </label>
+          <button type="button" className={button} disabled={aiWorkspaceBusy||busy} onClick={()=>void generateComponentCopy()}><Sparkles size={16}/>{aiWorkspaceBusy?(ar?'جارٍ إعداد المقترح…':'Preparing suggestion…'):(ar?'اقترح المحتوى':'Generate suggestion')}</button>
+          {aiWorkspaceReply&&<div className="space-y-2">
+            <label className="block text-sm font-bold">{ar?'المقترح القابل للتحرير — غير منشور':'Editable proposal — not published'}
+              <textarea className={input} rows={8} maxLength={6000} value={aiWorkspaceReply} onChange={e=>setAiWorkspaceReply(e.target.value)}/>
+            </label>
+            <button type="button" className={button} disabled={busy} onClick={()=>{
+              setField(selected.kind==='contact'?'featured_body':'body',aiWorkspaceReply.slice(0,selected.kind==='contact'?1800:6000));
+              setMessage(ar?'نُقل المقترح إلى حقل النص فقط. راجعه قبل حفظ المسودة.':'Text moved to the editor only. Review before saving the draft.');
+              setAiWorkspaceReply('');
+            }}>{ar?'نقل المقترح إلى محرر النص':'Use proposal in text editor'}</button>
+            <p className="text-xs text-slate-600 dark:text-slate-300">{ar?'يمكنك مراجعة النص يدويًا. لا تعتمد معلومات غير موثقة عن اللاعبين.':'Review facts manually. Do not include unverified player information.'}</p>
+          </div>}
+        </section>
         {kind==='contact'?<>
           <nav aria-label={ar?'أقسام الصفحة الرئيسية':'Homepage sections'} className="rounded-xl border border-slate-300 p-3 dark:border-slate-700">
             <h3 className="mb-2 font-black">{ar?'أقسام الصفحة الرئيسية — بنفس ترتيب العرض':'Homepage sections — display order'}</h3>
@@ -167,23 +241,23 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
             <p className="text-xs text-slate-600 dark:text-slate-300">استبدال صورة البرنامج لا يغير موقع البطاقة أو ترتيبها؛ استخدم أسهم النقل فقط إذا أردت تغيير ترتيب البرامج. حذف البطاقة يزيلها من الصفحة بعد النشر فقط، ولا يمسح الصور من التخزين أو النسخ السابقة. حد أقصى 12 برنامجاً.</p>
           </section>
           <section id="home-section-guidance" className="scroll-mt-24 rounded-xl border border-slate-300 p-3 dark:border-slate-700"><h3 className="font-black">03 / التدريب والتوجيه</h3><p className="text-sm">هذا القسم لا يملك حقول تحرير مستقلة بعد؛ سيظل محتواه الحالي كما هو حتى إضافة دعم آمن له.</p></section>
-          <section className="space-y-3 rounded-xl border border-red-300 p-4">
-            <h3 className="text-lg font-black">موظف الشهر — بطاقة مستقلة</h3>
-            <p className="text-xs text-slate-600 dark:text-slate-300">تظهر البطاقة في الصفحة الرئيسية بعد النشر فقط، ولا تفتح نافذة منبثقة ثانية.</p>
-            {field('employee_name','اسم موظف الشهر')}
-            {field('employee_name_en','Employee of the Month (English)')}
-            {field('employee_heading','عنوان التكريم')}
-            {field('employee_heading_en','Recognition heading (English)')}
-            <label className="block space-y-1"><span className="text-sm font-bold">سبب التكريم ونبذة مختصرة</span><textarea className={input} rows={3} maxLength={1800} disabled={busy} value={selected.payload.employee_body||''} onChange={e=>setField('employee_body',e.target.value)}/></label>
-            <label className="block space-y-1"><span className="text-sm font-bold">Recognition description (English)</span><textarea className={input} rows={3} maxLength={1800} disabled={busy} value={selected.payload.employee_body_en||''} onChange={e=>setField('employee_body_en',e.target.value)}/></label>
-            {upload('employee_image','صورة موظف الشهر')}
-          </section>
+
           <h3 id="home-section-contact" className="scroll-mt-24 font-black text-lg">06 / نلتقي في الملعب — روابط التواصل</h3>
           {contacts.map(c=>field(c,c,'url'))}
           <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-3">
             <h3 className="font-black text-lg">لاعب الشهر — بطاقة التكريم</h3>
             <p className="text-xs text-slate-600 dark:text-slate-300">تظل خلفية الواجهة ثابتة، وتظهر فوقها صورة اللاعب الشفافة فقط بعد نشر اسمه وصورته. استخدم PNG أو WebP بخلفية شفافة.</p>
             {field('featured_name','اسم اللاعب')}
+            <label className="block space-y-1 text-sm font-bold"><span>{ar?'معرّف اللاعب الرسمي (اختياري للتهنئة الخاصة)':'Official player ID (optional for private congratulations)'}</span>
+              <input className={input} type="text" maxLength={100} value={selected.payload.featured_player_id||''} disabled={busy} onChange={e=>setField('featured_player_id',e.target.value)}/>
+              <span className="text-xs font-normal">{ar?'يجب استخدام معرّف اللاعب نفسه من إدارة اللاعبين؛ لا نستخدم تشابه الأسماء لتحديد ولي الأمر.':'Copy the exact player ID from player management; names are never used to determine the guardian.'}</span>
+            </label>
+            <label className="block space-y-1 text-sm font-bold"><span>{ar?'فيديو التكريم المنشور (اختياري)':'Published recognition video (optional)'}</span>
+              <select className={input} value={selected.payload.featured_video_id||''} disabled={busy} onChange={e=>setField('featured_video_id',e.target.value)}>
+                <option value="">{ar?'بدون فيديو':'No video'}</option>
+                {items.filter(i=>i.kind==='video'&&published.some(p=>p.id===i.id)).map(i=><option key={i.id} value={i.id}>{i.payload.title||i.id}</option>)}
+              </select>
+            </label>
             {field('featured_name_en','Player Name (English) — optional')}
             {field('featured_heading','عنوان بطاقة التكريم')}
             {field('featured_heading_en','Recognition Title (English) — optional')}
@@ -227,7 +301,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           {kind==='coach'&&<>{field('role','التخصص / الدور')}{field('role_en','Coach Role (English) — optional')}</>}
           {field('alt','وصف الصورة للقارئ')}
           {field('alt_en','Image Alt Text (English) — optional')}
-          {kind==='video'?<><PhotoVideoStudio onMp4={async file => { await run(async()=>{ const path=await uploadContentFile(file,true);setPreview(null);setSelected(s=>s?{...s,payload:{...s.payload,video_path:path,video:''}}:s);setMessage('تم إنشاء الفيديو ورفعه. احفظ المسودة ثم عاينها قبل النشر.'); }); }}/>{upload('video','رفع الفيديو',true)}{upload('poster','صورة غلاف الفيديو')}</>:upload('image','رفع الصورة')}
+          {kind==='video'?<><div id="video-components" className="scroll-mt-24"><PhotoVideoStudio lang={lang} onMp4={async file => { await run(async()=>{ const path=await uploadContentFile(file,true);setPreview(null);setSelected(s=>s?{...s,payload:{...s.payload,video_path:path,video:''}}:s);setMessage('تم إنشاء الفيديو ورفعه. احفظ المسودة ثم عاينها قبل النشر.'); }); }}/></div>{upload('video','رفع الفيديو',true)}{upload('poster','صورة غلاف الفيديو')}</>:upload('image','رفع الصورة')}
         </>}
         <label className="block space-y-1"><span className="text-sm font-bold">ترتيب الظهور (الأصغر أولًا)</span><input className={input} type="number" min={0} max={10000} value={selected.sort_order} disabled={busy} onChange={e=>{setPreview(null);setSelected({...selected,sort_order:Math.max(0,Math.min(10000,Number(e.target.value)||0))});}}/></label>
         <p className="text-xs text-slate-500 dark:text-slate-400">الملفات المرفوعة خاصة حتى نشر المحتوى. تغيير المحتوى لا يغيّر النسخة المنشورة تلقائيًا. اضغط «معاينة» بعد أي تغيير لتفعيل زر النشر.</p>
