@@ -32,6 +32,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   const [aiBusy,setAiBusy]=useState(false);
   const [aiTask,setAiTask]=useState<'improve'|'article'|'social'|'seo'|'translate'|'script'>('improve');
   const [aiInstructions,setAiInstructions]=useState('');
+  const [aiTarget,setAiTarget]=useState<'about_body'|'programs_intro'|'featured_body'|'body'>('body');
   const [aiWorkspaceReply,setAiWorkspaceReply]=useState('');
   const [aiWorkspaceBusy,setAiWorkspaceBusy]=useState(false);
   useEffect(()=>{setAiWorkspaceReply('');setAiInstructions('');},[selected?.id]);
@@ -105,9 +106,8 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   };
   const generateComponentCopy=async()=> {
     if(!selected || aiWorkspaceBusy) return;
-    const source=selected.kind==='contact'
-      ? [selected.payload.featured_name,selected.payload.featured_body,selected.payload.about_body,selected.payload.programs_intro].filter(Boolean).join('\\n')
-      : [selected.payload.title,selected.payload.body,selected.payload.role].filter(Boolean).join('\\n');
+    const target=selected.kind==='contact'?(aiTarget==='body'?'about_body':aiTarget):'body';
+    const source=[selected.payload.title, selected.payload[target], selected.kind==='contact'&&target==='featured_body'?selected.payload.featured_name:''].filter(Boolean).join('\\n');
     if(!source.trim()&&!aiInstructions.trim()){
       setError(ar?'أدخل نصًا في المكون أو ملاحظات للمساعد أولًا.':'Enter component text or instructions first.');
       return;
@@ -168,6 +168,13 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
         <section id="ai-content-components" className="space-y-3 rounded-xl border border-red-300 p-4 dark:border-red-800" aria-label={ar?'المكونات الذكية لتحرير المحتوى':'AI content components'}>
           <h3 className="flex items-center gap-2 font-black"><Sparkles size={18}/>{ar?'المكونات / مساعد الذكاء الاصطناعي':'Components / AI content assistant'}</h3>
           <p className="text-xs text-slate-600 dark:text-slate-300">{ar?'للنصوص والمقالات والإعلانات والترجمة وتحسين البحث وسيناريو الفيديو. الاقتراح للمراجعة فقط؛ لا حفظ أو نشر تلقائيًا.':'For copy, articles, social posts, SEO, translation and video scripts. Suggestions require review; nothing saves or publishes automatically.'}</p>
+          {selected.kind==='contact'&&<label className="block space-y-1 text-sm font-bold">{ar?'اختر الباكيت الذي ستُعدّل نصه':'Select the section to edit'}
+            <select className={input} value={aiTarget==='body'?'about_body':aiTarget} disabled={busy||aiWorkspaceBusy} onChange={e=>{setAiTarget(e.target.value as typeof aiTarget);setAiWorkspaceReply('');}}>
+              <option value="about_body">{ar?'01 / عن الأكاديمية':'01 / About the academy'}</option>
+              <option value="programs_intro">{ar?'02 / البرامج التدريبية':'02 / Training programs'}</option>
+              <option value="featured_body">{ar?'لاعب الشهر':'Player of the Month'}</option>
+            </select>
+          </label>}
           <label className="block space-y-1 text-sm font-bold">{ar?'نوع المهمة':'Task'}
             <select className={input} value={aiTask} disabled={aiWorkspaceBusy||busy} onChange={e=>setAiTask(e.target.value as typeof aiTask)}>
               <option value="improve">{ar?'تحسين وإعادة صياغة':'Rewrite and improve'}</option>
@@ -187,7 +194,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
               <textarea className={input} rows={8} maxLength={6000} value={aiWorkspaceReply} onChange={e=>setAiWorkspaceReply(e.target.value)}/>
             </label>
             <button type="button" className={button} disabled={busy} onClick={()=>{
-              setField(selected.kind==='contact'?'featured_body':'body',aiWorkspaceReply.slice(0,selected.kind==='contact'?1800:6000));
+              setField(selected.kind==='contact'?(aiTarget==='body'?'about_body':aiTarget):'body',aiWorkspaceReply.slice(0,selected.kind==='contact'&&aiTarget==='featured_body'?1800:6000));
               setMessage(ar?'نُقل المقترح إلى حقل النص فقط. راجعه قبل حفظ المسودة.':'Text moved to the editor only. Review before saving the draft.');
               setAiWorkspaceReply('');
             }}>{ar?'نقل المقترح إلى محرر النص':'Use proposal in text editor'}</button>
