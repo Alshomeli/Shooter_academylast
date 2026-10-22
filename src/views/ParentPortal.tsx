@@ -50,7 +50,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [attachmentError, setAttachmentError] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
-  const [monthlyStar, setMonthlyStar] = useState<{name:string;heading:string;body:string;image:string;video:string}|null>(null);
+  const [monthlyStar, setMonthlyStar] = useState<{name:string;heading:string;body:string;image:string}|null>(null);
   const [monthlyStarOpen, setMonthlyStarOpen] = useState(false);
   useEffect(() => {
     let alive = true;
@@ -63,7 +63,6 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
         heading: (lang === 'en' && contact.featured_heading_en ? contact.featured_heading_en : contact.featured_heading) || (lang === 'ar' ? 'لاعب الشهر' : 'Player of the Month'),
         body: (lang === 'en' && contact.featured_body_en ? contact.featured_body_en : contact.featured_body) || '',
         image: contact.featured_image,
-        video: '',
       });
     }).catch(() => { /* Featured content is optional; parent data remains usable. */ });
     return () => { alive = false; };
