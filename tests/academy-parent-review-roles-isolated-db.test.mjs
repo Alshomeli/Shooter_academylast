@@ -13,7 +13,7 @@ test('isolated parent review RLS accepts active guardian and blocks unapproved u
   await db.exec(`
    create role anon; create role authenticated;
    create schema auth; create table auth.users(id uuid primary key);
-   create function auth.uid() returns uuid language sql stable as $ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $;
+   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
    create table public.parents(user_id uuid,status text);
    create table public.staff(user_id uuid,role text,status text);
    grant usage on schema public,auth to authenticated;
