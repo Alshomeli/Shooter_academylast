@@ -29,7 +29,7 @@ export function EvaluationCard({ ev, player, coach, lang, onEdit }: {
       <div className="flex items-start justify-between mb-3">
         <div>
           <h4 className="text-sm font-black text-slate-900 dark:text-white">{player?.name || ev.playerId}</h4>
-          <p className="text-xs font-bold text-brand-600">{ev.evaluationType === 'goalkeeper' ? (isAr ? 'تقييم حارس المرمى' : 'Goalkeeper evaluation') : (isAr ? 'تقييم اللاعب' : 'Player evaluation')}</p>
+          <p className="text-xs font-bold text-brand-600">{ev.evaluationType === 'goalkeeper' ? (isAr ? 'تقييم مدرب الحراس — حارس المرمى' : 'Goalkeeper coach — Goalkeeper evaluation') : (isAr ? 'تقييم مدرب اللاعبين — اللاعب' : 'Team coach — Player evaluation')}</p>
           {ev.teamName && <p className="text-xs text-slate-500">{isAr ? 'الفئة' : 'Category'}: {ev.teamName}</p>}
           <p className="text-[11px] text-slate-400 mt-0.5">{ev.evaluationDate} &middot; {periodLabel}</p>
           {coach && <p className="text-[11px] text-slate-400">{isAr ? 'المدرب' : 'Coach'}: {coach.name}</p>}

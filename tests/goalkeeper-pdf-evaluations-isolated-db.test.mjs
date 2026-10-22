@@ -29,6 +29,7 @@ async function setup() {
  grant execute on function public.save_player_evaluation_v2(jsonb),internal.save_player_evaluation_v2_impl(jsonb) to authenticated;`);
  await db.exec(migration);
  await db.exec(await readFile(new URL('../supabase/migrations/20261022004923_retire_legacy_evaluation_writes.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261022011429_evaluation_template_by_coach.sql',import.meta.url),'utf8'));
  await db.exec(`
  create trigger training_link before insert or update on attendance for each row execute function internal.validate_attendance_training_link();
  create trigger session_link before insert or update on attendance for each row execute function internal.validate_attendance_session_link();

@@ -428,6 +428,12 @@ export const db = {
     if (error) throw error;
     return (data || []).map(r => mapEvaluation(r as never));
   },
+  async getMyEvaluationKind(): Promise<'outfield' | 'goalkeeper'> {
+    const { data, error } = await supabase.rpc('get_my_evaluation_kind');
+    if (error) throw error;
+    if (data !== 'outfield' && data !== 'goalkeeper') throw new Error('تعذر تحديد نوع المدرب. يرجى مراجعة الإدارة.');
+    return data;
+  },
   async savePlayerEvaluation(ev: EvaluationDraft): Promise<string> {
     const { data, error } = await supabase.rpc('save_player_evaluation_v3', { p_form: ev });
     if (error) throw error;

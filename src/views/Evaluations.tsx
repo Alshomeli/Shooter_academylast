@@ -1,12 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, Star, X, TrendingUp, History, CalendarClock } from 'lucide-react';
 import { averageEvaluationScores as average, evaluationFrameworkScores as frameworkScores } from '@/lib/evaluation-scores';
 import type { Player, Team, Staff, PlayerEvaluation, Role, Lang } from '@/types';
 import { tr } from '@/lib/i18n';
 import { EvaluationCard } from '@/components/EvaluationCard';
 import { PdfEvaluationForm } from '@/components/PdfEvaluationForm';
-import { evaluationCriteria, emptyEvaluation, draftFromEvaluation } from '@/lib/evaluation-template';
-import { isGoalkeeper } from '@/lib/goalkeepers';
+import { evaluationCriteria, emptyEvaluation, draftFromEvaluation, type EvaluationKind } from '@/lib/evaluation-template';
 import { academyToday } from '@/lib/report-dates';
 import { db } from '@/lib/store';
 import { PageHeader, Badge, EmptyState, inputCls } from '@/components/ui';
@@ -38,7 +37,25 @@ function formatDelta(current: number | null, previous: number | null) {
 export function Evaluations({ evaluations, players, teams, staff, activeRole, lang, onRefresh }: Props) {
   const t = tr(lang);
   const isAr = lang === 'ar';
-  const canEdit = activeRole === 'manager' || activeRole === 'coach';
+  const [coachKind, setCoachKind] = useState<EvaluationKind | null>(null);
+  const [kindError, setKindError] = useState('');
+  const [kindRequest, setKindRequest] = useState(0);
+  const [filterKind, setFilterKind] = useState<EvaluationKind>('outfield');
+  const canEdit = activeRole === 'manager' || (activeRole === 'coach' && coachKind !== null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCoachKind(null);
+    setKindError('');
+    if (activeRole === 'coach') {
+      void db.getMyEvaluationKind().then(kind => {
+        if (!cancelled) { setCoachKind(kind); setFilterKind(kind); }
+      }).catch((err: unknown) => {
+        if (!cancelled) setKindError(err instanceof Error ? err.message : 'تعذر تحديد نوع المدرب');
+      });
+    }
+    return () => { cancelled = true; };
+  }, [activeRole, kindRequest]);
 
   const [showForm, setShowForm] = useState(false);
   const [filterTeam, setFilterTeam] = useState('');
@@ -53,6 +70,7 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
 
   const filtered = useMemo(() => {
     return evaluations.filter(ev => {
+      if ((ev.evaluationType || 'outfield') !== filterKind) return false;
       if (filterStatus && ev.status !== filterStatus) return false;
       if (filterPeriod && ev.periodType !== filterPeriod) return false;
       if (filterTeam) {
@@ -64,13 +82,13 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
       }
       return true;
     }).sort((a, b) => b.evaluationDate.localeCompare(a.evaluationDate));
-  }, [evaluations, filterStatus, filterPeriod, filterTeam, searchQ, players]);
+  }, [evaluations, filterKind, filterStatus, filterPeriod, filterTeam, searchQ, players]);
 
   const activePlayers = useMemo(() => players.filter(p => p.status === 'active'), [players]);
 
   const publishedEvaluations = useMemo(
-    () => evaluations.filter(ev => ev.status === 'published').sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate)),
-    [evaluations],
+    () => evaluations.filter(ev => ev.status === 'published' && (ev.evaluationType || 'outfield') === filterKind).sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate)),
+    [evaluations, filterKind],
   );
 
   const latestPublishedByPlayer = useMemo(() => {
@@ -121,10 +139,10 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
     [latestPublishedByPlayer, today],
   );
 
-  const openNew = () => { setForm(emptyEvaluation(academyToday())); setShowForm(true); setError(''); };
+  const openNew = () => { setForm({ ...emptyEvaluation(academyToday()), evaluationType: activeRole === 'manager' ? filterKind : coachKind || 'outfield' }); setShowForm(true); setError(''); };
   const openEdit = (ev: PlayerEvaluation) => {
     const draft = draftFromEvaluation(ev);
-    const kind = ev.templateVersion === 2 ? ev.evaluationType || 'outfield' : isGoalkeeper(players.find(p => p.id === ev.playerId)?.position || '') ? 'goalkeeper' : 'outfield';
+    const kind = ev.templateVersion === 2 ? ev.evaluationType || 'outfield' : activeRole === 'manager' ? filterKind : coachKind || 'outfield';
     const keys = new Set(evaluationCriteria(kind).map(c => c.key));
     setForm({ ...draft, evaluationType: kind, detailedScores: Object.fromEntries(Object.entries(draft.detailedScores).filter(([key]) => keys.has(key))) });
     setShowForm(true); setError('');
@@ -142,6 +160,7 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
       setForm(prev => ({ ...prev, id: evalId }));
       if (publish) await db.publishPlayerEvaluation(form.id || evalId);
       await onRefresh();
+      setFilterKind(form.evaluationType || 'outfield');
       setShowForm(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : (isAr ? 'حدث خطأ' : 'An error occurred'));
@@ -149,7 +168,7 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
   };
 
   if (showForm) return <PdfEvaluationForm form={form} setForm={setForm} players={activePlayers}
-    teams={teams} lang={lang} saving={saving} error={error}
+    teams={teams} lang={lang} saving={saving} error={error} canChooseKind={activeRole === 'manager'}
     onSave={handleSave} onClose={() => setShowForm(false)} />;
 
   return (
@@ -162,6 +181,15 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
           </button>
         )}
       </PageHeader>
+
+      {kindError && <div role="alert" className="rounded-xl bg-red-50 p-3 text-red-700"><p>{kindError}</p><button type="button" onClick={() => setKindRequest(v => v + 1)} className="mt-2 font-bold">{isAr ? 'إعادة المحاولة' : 'Retry'}</button></div>}
+      <div className="flex flex-wrap gap-2" role="group" aria-label={isAr ? 'نوع التقييم' : 'Evaluation type'}>
+        {(['outfield', 'goalkeeper'] as const).map(kind => <button key={kind} type="button" aria-pressed={filterKind === kind}
+          onClick={() => { setFilterKind(kind); setProgressPlayerId(''); }}
+          className={`rounded-xl px-4 py-2 text-sm font-bold ${filterKind === kind ? 'bg-brand-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'}`}>
+          {kind === 'goalkeeper' ? (isAr ? 'تقييمات مدرب الحراس' : 'Goalkeeper coach evaluations') : (isAr ? 'تقييمات مدرب اللاعبين' : 'Team coach evaluations')}
+        </button>)}
+      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {CRITERIA_GROUPS.map(group => {

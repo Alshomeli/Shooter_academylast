@@ -7,16 +7,17 @@ import { FormField, inputCls } from '@/components/ui';
 
 interface Props {
   form: EvaluationDraft; setForm: Dispatch<SetStateAction<EvaluationDraft>>;
-  players: Player[]; teams: Team[]; lang: Lang; saving: boolean; error: string;
+  players: Player[]; teams: Team[]; lang: Lang; saving: boolean; error: string; canChooseKind: boolean;
   onSave: (publish: boolean) => Promise<void>; onClose: () => void;
 }
-export function PdfEvaluationForm({ form, setForm, players, teams, lang, saving, error, onSave, onClose }: Props) {
+export function PdfEvaluationForm({ form, setForm, players, teams, lang, saving, error, canChooseKind, onSave, onClose }: Props) {
   const ar = lang === 'ar';
   const text = (a: string, e: string) => ar ? a : e;
   const [confirmPublish, setConfirmPublish] = useState(false);
   const player = players.find(p => p.id === form.playerId);
-  const kind = form.id && form.evaluationType ? form.evaluationType : isGoalkeeper(player?.position || '') ? 'goalkeeper' : 'outfield';
+  const kind = form.evaluationType || 'outfield';
   const keeper = kind === 'goalkeeper';
+  const eligiblePlayers = keeper ? players.filter(p => isGoalkeeper(p.position)) : players;
   const criteria = evaluationCriteria(kind);
   const detailGroups = keeper ? SCORE_GROUPS.map(g => ({ ...g, groups: [g.key] })) : [
     ...SCORE_GROUPS.slice(0,3).map(g => ({ ...g, groups: [g.key] })),
@@ -41,11 +42,17 @@ export function PdfEvaluationForm({ form, setForm, players, teams, lang, saving,
     <form onSubmit={e => { e.preventDefault(); void onSave(false); }} className="space-y-5">
       {error && <p role="alert" className="rounded-xl bg-red-50 dark:bg-red-950/30 p-3 text-red-700 dark:text-red-300">{error}</p>}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <FormField label={text('نوع التقييم حسب المدرب', 'Evaluation by coach type')}>
+          {canChooseKind && !form.id ? <select value={kind} disabled={saving} onChange={e => { setConfirmPublish(false); setForm({ ...emptyEvaluation(form.evaluationDate), periodType: form.periodType, evaluationType: e.target.value as 'outfield' | 'goalkeeper' }); }} className={inputCls}>
+            <option value="outfield">{text('مدرب اللاعبين — تقييم اللاعب', 'Team coach — Player evaluation')}</option>
+            <option value="goalkeeper">{text('مدرب الحراس — تقييم حارس المرمى', 'Goalkeeper coach — Goalkeeper evaluation')}</option>
+          </select> : <input readOnly value={keeper ? text('مدرب الحراس — تقييم حارس المرمى', 'Goalkeeper coach — Goalkeeper evaluation') : text('مدرب اللاعبين — تقييم اللاعب', 'Team coach — Player evaluation')} className={inputCls}/>}
+        </FormField>
         <FormField label={keeper ? text('اسم الحارس *', 'Goalkeeper *') : text('اختر اللاعب *', 'Player *')}>
-          <select required disabled={!!form.id || saving} value={form.playerId} onChange={e => setForm({ ...emptyEvaluation(form.evaluationDate), playerId: e.target.value, periodType: form.periodType })} className={inputCls}>
+          <select required disabled={!!form.id || saving} value={form.playerId} onChange={e => { setConfirmPublish(false); setForm({ ...emptyEvaluation(form.evaluationDate), playerId: e.target.value, periodType: form.periodType, evaluationType: kind }); }} className={inputCls}>
             <option value="">{text('اختر اللاعب', 'Select player')}</option>
-            {players.map(p => <option key={p.id} value={p.id}>{p.name}{isGoalkeeper(p.position) ? text(' — حارس مرمى', ' — Goalkeeper') : ''}</option>)}
-            {form.id && !player && <option value={form.playerId}>{form.playerId}</option>}
+            {eligiblePlayers.map(p => <option key={p.id} value={p.id}>{p.name}{isGoalkeeper(p.position) ? text(' — حارس مرمى', ' — Goalkeeper') : ''}</option>)}
+            {form.id && !eligiblePlayers.some(p => p.id === form.playerId) && <option value={form.playerId}>{player?.name || form.playerId}</option>}
           </select>
         </FormField>
         <FormField label={text('تاريخ التقييم *', 'Evaluation date *')}><input required type="date" value={form.evaluationDate} onChange={e => patch('evaluationDate', e.target.value)} className={inputCls}/></FormField>
