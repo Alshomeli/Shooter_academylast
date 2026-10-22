@@ -103,19 +103,6 @@ export default function AcademyHome() {
         newsId: galleryNewsId(i.payload.image, i.payload.news_id, publicNews),
       }));
   const contact = content.find(i => i.kind === 'contact')?.payload;
-  const [featuredOpen, setFeaturedOpen] = useState(false);
-  const featuredKey = contact?.featured_name?.trim() && contact?.featured_image
-    ? 'shooter-featured-' + [contact.featured_name, contact.featured_image].join(':')
-    : '';
-  useEffect(() => {
-    if (!featuredKey) { setFeaturedOpen(false); return; }
-    try {
-      if (sessionStorage.getItem(featuredKey) === 'seen') { setFeaturedOpen(false); return; }
-      sessionStorage.setItem(featuredKey, 'seen');
-    } catch { /* Browsers may block storage; the popup still remains dismissible. */ }
-    setFeaturedOpen(true);
-  }, [featuredKey]);
-  const dismissFeatured = () => setFeaturedOpen(false);
   const sectionText = (key: string, fallback: string) => {
     const arValue = contact?.[key];
     const enValue = contact?.[`${key}_en`]?.trim();
@@ -200,16 +187,6 @@ export default function AcademyHome() {
       <a className="ah-button ah-login" href={platform}>{tr("دخول منصة الأكاديمية")} <ArrowUpLeft size={17}/></a>
       <button className="ah-menu" onClick={() => setMenu(v => !v)} aria-expanded={menu} aria-controls="ah-navigation" aria-label={menu ? tr("إغلاق القائمة") : tr("فتح القائمة")}>{menu ? <X/> : <Menu/>}</button>
     </header>
-    {featuredOpen && contact?.featured_image && contact?.featured_name && <div className="ah-featured-backdrop" onClick={dismissFeatured}>
-      <section role="dialog" aria-modal="true" aria-labelledby="ah-featured-modal-title" aria-describedby="ah-featured-modal-description" className="ah-featured-modal" onClick={event => event.stopPropagation()} onKeyDown={event => {if(event.key === 'Escape') dismissFeatured();}}>
-        <button type="button" autoFocus className="ah-featured-close" onClick={dismissFeatured} aria-label={lang === 'ar' ? 'إغلاق نافذة لاعب الشهر' : 'Close Player of the Month'}><X size={23}/></button>
-        <p className="ah-featured-kicker">{tr(contact.featured_heading || 'لاعب الشهر', contact.featured_heading_en)}</p>
-        <img className="ah-featured-modal-image" src={contact.featured_image} alt={tr(contact.featured_name, contact.featured_name_en)}/>
-        <h2 id="ah-featured-modal-title">{tr(contact.featured_name, contact.featured_name_en)}</h2>
-        <p id="ah-featured-modal-description">{tr(contact.featured_body || 'نفتخر بإنجازات لاعبنا.', contact.featured_body_en)}</p>
-        <a className="ah-featured-modal-link" href="#news" onClick={dismissFeatured}>{lang === 'ar' ? 'تصفح أخبار شوتر' : 'Explore Shooter news'}</a>
-      </section>
-    </div>}
     <main>
       {staffSubmitted && <div role="status" className="mx-auto my-4 flex max-w-3xl items-center justify-between gap-4 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-900">
         <p className="font-bold">{lang === 'ar' ? 'تم إرسال طلبك، بانتظار مراجعة الإدارة.' : 'Your application has been submitted and is awaiting management review.'}</p>
@@ -267,6 +244,14 @@ export default function AcademyHome() {
         <iframe title={tr("خريطة موقع أكاديمية شوتر في حالة النعيم، البحرين")} loading="lazy" referrerPolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=Shooter%20Academy%2C%20Halat%20Naim%2C%20Bahrain&output=embed"/>
         <p className="ah-map-note">{tr("للوصول إلى الموقع المحدد للأكاديمية، استخدم زر الاتجاهات المرتبط بالخريطة المعتمدة.")}</p>
       </section>
+      {(() => {
+        let reviews:Array<{name:string;quote:string;rating:number;consent:boolean}>=[];
+        try{
+          const parsed:unknown=JSON.parse(contact?.parent_reviews_v1||'[]');
+          if(Array.isArray(parsed))reviews=parsed.filter((r):r is typeof reviews[number]=>Boolean(r&&typeof r==='object'&&typeof r.name==='string'&&typeof r.quote==='string'&&typeof r.rating==='number'&&r.consent===true)).filter(r=>r.name.trim()&&r.quote.trim()&&Number.isInteger(r.rating)&&r.rating>=1&&r.rating<=5).slice(0,12);
+        }catch{reviews=[];}
+        return <section className="ah-section" id="reviews" aria-labelledby="ah-reviews-title"><div className="ah-section-head"><div><p className="ah-eyebrow">{lang==='ar'?'07 / آراء أولياء الأمور':'07 / Parent reviews'}</p><h2 id="ah-reviews-title">{lang==='ar'?'ماذا يقول أولياء الأمور عن أكاديمية شوتر؟':'What parents say about Shooter Academy'}</h2></div></div><div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{reviews.map((review,i)=><blockquote key={i} className="rounded-xl border border-slate-700 p-5"><p aria-label={lang==='ar'?'التقييم '+review.rating+' من 5':'Rating '+review.rating+' out of 5'} className="mb-3 font-bold text-amber-400">{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</p><p className="mb-3 leading-relaxed">“{review.quote}”</p><footer className="font-bold">{review.name}</footer></blockquote>)}{!reviews.length&&<p className="rounded-xl border border-slate-700 p-5 text-sm">{lang==='ar'?'مساحة لآراء أولياء الأمور. ستُعرض التقييمات الحقيقية هنا بعد موافقتهم ومراجعة الإدارة.':'Parent review section. Genuine testimonials will appear here after consent and moderation.'}</p>}</div></section>;
+      })()}
       <section className="ah-section ah-contact" id="contact"><div><p className="ah-eyebrow">{tr("06 / تواصل معنا")}</p><h2>{tr("نلتقي في")} <em>{tr("الملعب.")}</em></h2><p className="ah-muted">{tr("شارع 28، حالة النعيم 997، البحرين")}</p><a className="ah-text-link" href={links.maps} target="_blank" rel="noopener noreferrer"><MapPin size={18}/> {tr("الاتجاهات على خرائط Google")}</a></div><div className="ah-contact-links"><a href="tel:+97332287776"><Phone size={20}/><bdi>+973 3228 7776</bdi></a><a href="mailto:shooter.academy.bh@gmail.com"><Mail size={20}/><span>shooter.academy.bh@gmail.com</span></a></div></section>
     </main>
     <section className="ah-section ah-faq" id="faq" aria-labelledby="ah-faq-title"><p className="ah-eyebrow">{tr("مساعدة أولياء الأمور")}</p><h2 id="ah-faq-title">{tr("الأسئلة الشائعة")}</h2>

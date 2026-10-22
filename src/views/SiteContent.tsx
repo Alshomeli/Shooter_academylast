@@ -30,8 +30,38 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   const [message,setMessage]=useState('');
   const [aiProposal,setAiProposal]=useState('');
   const [aiBusy,setAiBusy]=useState(false);
+  const [pendingReviews,setPendingReviews]=useState<Array<{id:string;display_name:string;quote:string;rating:number;created_at:string}>>([]);
+  const [reviewsLoading,setReviewsLoading]=useState(false);
+  const loadPendingReviews=async()=>{
+    setReviewsLoading(true);
+    try {
+      const {supabase}=await import('@/lib/supabase');
+      const {data,error}=await supabase.rpc('manager_review_parent_reviews');
+      if(error) throw error;
+      setPendingReviews(data||[]);
+    }catch{setError(ar?'تعذّر تحميل مراجعات أولياء الأمور. تحقق من تفعيل ترحيل قاعدة البيانات.':'Unable to load parent reviews; verify the database migration.');}
+    finally{setReviewsLoading(false);}
+  };
+  const moderateParentReview=async(id:string,approve:boolean)=>{
+    await run(async()=>{
+      const {supabase}=await import('@/lib/supabase');
+      const review=pendingReviews.find(item=>item.id===id);
+      if(!review) return;
+      if(approve && (!selected || selected.kind!=='contact')) throw new Error('افتح قسم التواصل ولاعب الشهر أولًا');
+      if(approve && parentReviews().length>=12) throw new Error('بلغت الحد الأقصى لعرض التقييمات');
+      const {error}=await supabase.rpc('manager_approve_parent_review',{p_review_id:id,p_approve:approve});
+      if(error) throw error;
+      if(approve){
+        if(!selected||selected.kind!=='contact') throw new Error('افتح قسم التواصل أولًا');
+        updateParentReviews([...parentReviews(),{name:review.display_name,quote:review.quote,rating:review.rating,consent:true}]);
+        setMessage(ar?'تمت الموافقة ونقل الرأي إلى مسودة الصفحة. احفظ وعاين ثم انشر.':'Approved and added to page draft. Save, preview and publish.');
+      }
+      setPendingReviews(items=>items.filter(item=>item.id!==id));
+    });
+  };
   const [aiTask,setAiTask]=useState<'improve'|'article'|'social'|'seo'|'translate'|'script'>('improve');
   const [aiInstructions,setAiInstructions]=useState('');
+  const [aiTarget,setAiTarget]=useState<'about_body'|'programs_intro'|'featured_body'|'body'>('body');
   const [aiWorkspaceReply,setAiWorkspaceReply]=useState('');
   const [aiWorkspaceBusy,setAiWorkspaceBusy]=useState(false);
   useEffect(()=>{setAiWorkspaceReply('');setAiInstructions('');},[selected?.id]);
@@ -55,6 +85,10 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   const save=async()=>{
     if(!selected) throw new Error('اختر محتوى أولًا.');
     if(selected.kind!=='contact'&&!selected.payload.title?.trim()) throw new Error('العنوان مطلوب.');
+    if(selected.kind==='contact'){
+      const reviews=parentReviews();
+      if(reviews.some(r=>(r.name.trim()||r.quote.trim())&&(!r.name.trim()||!r.quote.trim()||!r.consent||!Number.isInteger(r.rating)||r.rating<1||r.rating>5))) throw new Error('أكمل اسم ولي الأمر والتقييم والموافقة قبل حفظ الشهادة.');
+    }
     if(selected.kind==='contact') for(const key of contacts){const value=selected.payload[key];if(value){const url=new URL(value);if(url.protocol!=='https:') throw new Error('روابط التواصل يجب أن تبدأ بـ HTTPS.');}}
     const saved=await saveContent(selected,isNew);setSelected(saved);setIsNew(false);await reload();return saved;
   };
@@ -105,9 +139,8 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   };
   const generateComponentCopy=async()=> {
     if(!selected || aiWorkspaceBusy) return;
-    const source=selected.kind==='contact'
-      ? [selected.payload.featured_name,selected.payload.featured_body,selected.payload.about_body,selected.payload.programs_intro].filter(Boolean).join('\\n')
-      : [selected.payload.title,selected.payload.body,selected.payload.role].filter(Boolean).join('\\n');
+    const target=selected.kind==='contact'?(aiTarget==='body'?'about_body':aiTarget):'body';
+    const source=[selected.payload.title, selected.payload[target], selected.kind==='contact'&&target==='featured_body'?selected.payload.featured_name:''].filter(Boolean).join('\\n');
     if(!source.trim()&&!aiInstructions.trim()){
       setError(ar?'أدخل نصًا في المكون أو ملاحظات للمساعد أولًا.':'Enter component text or instructions first.');
       return;
@@ -125,6 +158,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
       const response=await askContentWriter([
         'You are the Shooter Academy content editor for the manager dashboard.',
         'Task: '+task[aiTask],
+        'Write useful, natural, search-friendly content with relevant terms, descriptive headings and accessible alt text when relevant. Never keyword-stuff, claim guaranteed ranking, or invent customer reviews.',
         'Respond in '+(aiTask==='translate'?(ar?'English':'Arabic'):(ar?'Arabic':'English'))+'.',
         'Use only facts supplied by the manager; never invent results, ages, identities, awards, statistics or testimonials.',
         'Do not create or claim actual video, images, publication, or approved consent.',
@@ -138,6 +172,14 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     }catch(e){setError(e instanceof Error?e.message:String(e));}
     finally{setAiWorkspaceBusy(false);}
   };
+  type ParentReview={name:string;quote:string;rating:number;consent:boolean};
+  const parentReviews=():ParentReview[]=>{
+    try{
+      const parsed:unknown=JSON.parse(selected?.payload.parent_reviews_v1||'[]');
+      return Array.isArray(parsed)?parsed.slice(0,12).filter((r):r is ParentReview=>Boolean(r&&typeof r==='object'&&typeof r.name==='string'&&typeof r.quote==='string'&&typeof r.rating==='number'&&typeof r.consent==='boolean')):[];
+    }catch{return [];}
+  };
+  const updateParentReviews=(reviews:ParentReview[])=>setField('parent_reviews_v1',JSON.stringify(reviews));
   const defaultPrograms = [
     {title:'تطوير المهارات',body:'التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.',image:programImages[0]},
     {title:'اللياقة البدنية',body:'تنمية القوة والتحمل والمرونة، لبناء جاهزية بدنية تدعم أداء اللاعب في الملعب.',image:programImages[1]},
@@ -168,6 +210,13 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
         <section id="ai-content-components" className="space-y-3 rounded-xl border border-red-300 p-4 dark:border-red-800" aria-label={ar?'المكونات الذكية لتحرير المحتوى':'AI content components'}>
           <h3 className="flex items-center gap-2 font-black"><Sparkles size={18}/>{ar?'المكونات / مساعد الذكاء الاصطناعي':'Components / AI content assistant'}</h3>
           <p className="text-xs text-slate-600 dark:text-slate-300">{ar?'للنصوص والمقالات والإعلانات والترجمة وتحسين البحث وسيناريو الفيديو. الاقتراح للمراجعة فقط؛ لا حفظ أو نشر تلقائيًا.':'For copy, articles, social posts, SEO, translation and video scripts. Suggestions require review; nothing saves or publishes automatically.'}</p>
+          {selected.kind==='contact'&&<label className="block space-y-1 text-sm font-bold">{ar?'اختر الباكيت الذي ستُعدّل نصه':'Select the section to edit'}
+            <select className={input} value={aiTarget==='body'?'about_body':aiTarget} disabled={busy||aiWorkspaceBusy} onChange={e=>{setAiTarget(e.target.value as typeof aiTarget);setAiWorkspaceReply('');}}>
+              <option value="about_body">{ar?'01 / عن الأكاديمية':'01 / About the academy'}</option>
+              <option value="programs_intro">{ar?'02 / البرامج التدريبية':'02 / Training programs'}</option>
+              <option value="featured_body">{ar?'لاعب الشهر':'Player of the Month'}</option>
+            </select>
+          </label>}
           <label className="block space-y-1 text-sm font-bold">{ar?'نوع المهمة':'Task'}
             <select className={input} value={aiTask} disabled={aiWorkspaceBusy||busy} onChange={e=>setAiTask(e.target.value as typeof aiTask)}>
               <option value="improve">{ar?'تحسين وإعادة صياغة':'Rewrite and improve'}</option>
@@ -187,7 +236,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
               <textarea className={input} rows={8} maxLength={6000} value={aiWorkspaceReply} onChange={e=>setAiWorkspaceReply(e.target.value)}/>
             </label>
             <button type="button" className={button} disabled={busy} onClick={()=>{
-              setField(selected.kind==='contact'?'featured_body':'body',aiWorkspaceReply.slice(0,selected.kind==='contact'?1800:6000));
+              setField(selected.kind==='contact'?(aiTarget==='body'?'about_body':aiTarget):'body',aiWorkspaceReply.slice(0,selected.kind==='contact'&&aiTarget==='featured_body'?1800:6000));
               setMessage(ar?'نُقل المقترح إلى حقل النص فقط. راجعه قبل حفظ المسودة.':'Text moved to the editor only. Review before saving the draft.');
               setAiWorkspaceReply('');
             }}>{ar?'نقل المقترح إلى محرر النص':'Use proposal in text editor'}</button>
@@ -219,6 +268,31 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
             {field('about_extra','الفقرة الإضافية')}
             {field('about_extra_en','Additional paragraph (English)')}
           </section>
+          <section id="home-section-reviews" className="space-y-3 rounded-xl border border-red-300 p-4">
+            <h3 className="text-lg font-black">{ar?'07 / آراء وتقييمات أولياء الأمور':'07 / Parent reviews'}</h3>
+            <p className="text-xs">{ar?'أدخل شهادات حقيقية بموافقة أصحابها فقط. لن يولّد الذكاء الاصطناعي تقييمات أو درجات أو شهادات وهمية.':'Only verified parent reviews with permission. AI must not invent testimonials or star ratings.'}</p>
+            <div className="space-y-3 rounded-xl border border-slate-300 p-3 dark:border-slate-700">
+              <button type="button" className={button} disabled={reviewsLoading||busy} onClick={()=>void loadPendingReviews()}>{reviewsLoading?(ar?'جارٍ التحميل…':'Loading…'):(ar?'تحميل آراء أولياء الأمور الواردة':'Load submitted parent reviews')}</button>
+              {pendingReviews.map(review=><article key={review.id} className="rounded-lg border p-3">
+                <p className="font-bold">{review.display_name} · {review.rating}/5</p>
+                <p className="my-2 whitespace-pre-wrap text-sm">{review.quote}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className={button} disabled={busy} onClick={()=>void moderateParentReview(review.id,true)}>{ar?'اعتماد للمسودة':'Approve for draft'}</button>
+                  <button type="button" className="rounded-lg border border-red-500 p-2 text-red-700 dark:text-red-300" disabled={busy} onClick={()=>void moderateParentReview(review.id,false)}>{ar?'رفض':'Reject'}</button>
+                </div>
+              </article>)}
+            </div>
+            {parentReviews().map((review,i)=><div key={i} className="space-y-2 rounded-xl border p-3 dark:border-slate-700">
+              <b>{ar?'التقييم':'Review'} {i+1}</b>
+              <input className={input} placeholder={ar?'اسم ولي الأمر أو لقب بموافقته':'Approved display name'} value={review.name} onChange={e=>{const rows=parentReviews();rows[i]={...review,name:e.target.value.slice(0,100)};updateParentReviews(rows);}}/>
+              <textarea className={input} rows={3} maxLength={500} placeholder={ar?'نص رأي ولي الأمر الحقيقي':'Original parent review'} value={review.quote} onChange={e=>{const rows=parentReviews();rows[i]={...review,quote:e.target.value};updateParentReviews(rows);}}/>
+              <label className="block text-sm">{ar?'التقييم بالأرقام (من رأي ولي الأمر)':'Original star rating'} <select className={input} value={review.rating} onChange={e=>{const rows=parentReviews();rows[i]={...review,rating:Number(e.target.value)};updateParentReviews(rows);}}>{[5,4,3,2,1].map(n=><option key={n} value={n}>{n} / 5</option>)}</select></label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={review.consent} onChange={e=>{const rows=parentReviews();rows[i]={...review,consent:e.target.checked};updateParentReviews(rows);}}/>{ar?'لدي موافقة ولي الأمر على عرض هذا الرأي':'Parent permitted publication of this review'}</label>
+              <button type="button" className="text-sm font-bold text-red-700 dark:text-red-300" onClick={()=>updateParentReviews(parentReviews().filter((_,j)=>j!==i))}>{ar?'إزالة التقييم من القائمة':'Remove review'}</button>
+            </div>)}
+            <button type="button" className={button} disabled={busy||parentReviews().length>=12} onClick={()=>updateParentReviews([...parentReviews(),{name:'',quote:'',rating:5,consent:false}])}><Plus size={16}/>{ar?'إضافة رأي حقيقي':'Add real review'}</button>
+            <p className="text-xs">{ar?'لا تظهر إلا التقييمات المكتملة التي تم تأكيد موافقة أصحابها، وبعد نشر المسودة.':'Only completed reviews with confirmed consent appear after publishing.'}</p>
+          </section>
           <section id="home-section-programs" className="scroll-mt-24 space-y-3 rounded-xl border border-red-300 p-4">
             <h3 className="font-black text-lg">02 / برامجنا التدريبية — إدارة البطاقات</h3>
             {field('programs_title','عنوان قسم البرامج')}
@@ -246,6 +320,16 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           {contacts.map(c=>field(c,c,'url'))}
           <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-3">
             <h3 className="font-black text-lg">لاعب الشهر — بطاقة التكريم</h3>
+            <label className="flex items-center gap-2 rounded-xl border border-amber-400 p-3 text-sm font-bold dark:border-amber-700">
+              <input type="checkbox" checked={selected.payload.featured_enabled!=='false'} disabled={busy} onChange={e=>setField('featured_enabled',e.target.checked?'true':'false')}/>
+              {ar?'إظهار تكريم لاعب الشهر ونافذة Pop-up':'Show Player of the Month and pop-up'}
+            </label>
+            <p className="text-xs text-slate-600 dark:text-slate-300">{ar?'لإزالة النافذة من الموقع، ألغِ العلامة ثم احفظ المسودة واضغط معاينة ثم نشر. ستظل الصورة محفوظة لاستعمالها لاحقًا، ولن تُحذف من التخزين.':'To hide the pop-up, uncheck this option, save, preview, then publish. The uploaded image is retained.'}</p>
+            {(selected.payload.featured_image_path||selected.payload.featured_image)&&<div className="rounded-xl border border-slate-300 p-3 text-sm dark:border-slate-700">
+              <p className="font-bold">{ar?'الصورة الحالية للاعب الشهر':'Current featured player image'}</p>
+              <p className="break-all text-xs">{selected.payload.featured_image_path||selected.payload.featured_image}</p>
+              <button type="button" className="mt-2 rounded-lg border border-red-600 px-3 py-2 text-red-700 dark:text-red-300" disabled={busy} onClick={()=>{setField('featured_image_path','');setField('featured_image','');}}>{ar?'فصل الصورة عن التكريم (بدون حذف الملف)':'Detach image without deleting file'}</button>
+            </div>}
             <p className="text-xs text-slate-600 dark:text-slate-300">تظل خلفية الواجهة ثابتة، وتظهر فوقها صورة اللاعب الشفافة فقط بعد نشر اسمه وصورته. استخدم PNG أو WebP بخلفية شفافة.</p>
             {field('featured_name','اسم اللاعب')}
             <label className="block space-y-1 text-sm font-bold"><span>{ar?'معرّف اللاعب الرسمي (اختياري للتهنئة الخاصة)':'Official player ID (optional for private congratulations)'}</span>
@@ -313,7 +397,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           {!isNew&&<button className={`${button} !bg-slate-600`} disabled={busy} onClick={()=>void run(async()=>{setHistory(await readContentHistory(selected.id));setShowHistory(true);})}><History size={16}/>سجل النسخ</button>}
         </div>
         {preview&&<article className="space-y-2 rounded-xl border border-red-200 p-4"><h3 className="font-black">معاينة — غير منشورة</h3>{preview.payload.image&&<img className="max-h-80 w-full object-contain" src={preview.payload.image} alt={preview.payload.alt||preview.payload.title}/>}
-        {preview.payload.featured_image&&<div className="academy-home"><section className="ah-hero ah-hero-featured ah-featured-preview" aria-label="معاينة واجهة لاعب الشهر"><img className="ah-hero-image" src="/parent-hero.png" alt="خلفية واجهة الأكاديمية"/><div className="ah-hero-shade"/><img className="ah-featured-cutout" style={featuredImageStyle(preview.payload)} src={preview.payload.featured_image} alt={preview.payload.featured_name||'لاعب الشهر'}/><div className="ah-hero-content"><p className="ah-eyebrow">شغف اليوم. أبطال الغد.</p><h2 className="ah-preview-heading">هنا تبدأ رحلتك الكروية</h2><aside className="ah-featured-honor"><span>{preview.payload.featured_heading||'لاعب الشهر'}</span><strong>{preview.payload.featured_name}</strong><p>{preview.payload.featured_body}</p></aside></div></section></div>} {preview.payload.video&&<video className="max-h-80 w-full" controls playsInline src={preview.payload.video} poster={preview.payload.poster}/>}<h4 className="font-bold">{preview.payload.title}</h4><p className="whitespace-pre-wrap">{preview.payload.body}</p>{kind==='contact'&&contacts.map(c=><p className="break-all" key={c}>{c}: {preview.payload[c]}</p>)}{(preview.payload.title_en||preview.payload.body_en||preview.payload.featured_heading_en||preview.payload.featured_body_en)&&<section lang="en" dir="ltr" className="rounded-xl border border-slate-400 p-3 text-start"><h4 className="font-bold">English text preview</h4><strong>{preview.payload.title_en||preview.payload.featured_heading_en}</strong><p>{preview.payload.body_en||preview.payload.featured_body_en}</p></section>}</article>}
+        {preview.payload.featured_enabled!=='false'&&preview.payload.featured_image&&<div className="academy-home"><section className="ah-hero ah-hero-featured ah-featured-preview" aria-label="معاينة واجهة لاعب الشهر"><img className="ah-hero-image" src="/parent-hero.png" alt="خلفية واجهة الأكاديمية"/><div className="ah-hero-shade"/><img className="ah-featured-cutout" style={featuredImageStyle(preview.payload)} src={preview.payload.featured_image} alt={preview.payload.featured_name||'لاعب الشهر'}/><div className="ah-hero-content"><p className="ah-eyebrow">شغف اليوم. أبطال الغد.</p><h2 className="ah-preview-heading">هنا تبدأ رحلتك الكروية</h2><aside className="ah-featured-honor"><span>{preview.payload.featured_heading||'لاعب الشهر'}</span><strong>{preview.payload.featured_name}</strong><p>{preview.payload.featured_body}</p></aside></div></section></div>} {preview.payload.video&&<video className="max-h-80 w-full" controls playsInline src={preview.payload.video} poster={preview.payload.poster}/>}<h4 className="font-bold">{preview.payload.title}</h4><p className="whitespace-pre-wrap">{preview.payload.body}</p>{kind==='contact'&&contacts.map(c=><p className="break-all" key={c}>{c}: {preview.payload[c]}</p>)}{(preview.payload.title_en||preview.payload.body_en||preview.payload.featured_heading_en||preview.payload.featured_body_en)&&<section lang="en" dir="ltr" className="rounded-xl border border-slate-400 p-3 text-start"><h4 className="font-bold">English text preview</h4><strong>{preview.payload.title_en||preview.payload.featured_heading_en}</strong><p>{preview.payload.body_en||preview.payload.featured_body_en}</p></section>}</article>}
         {showHistory&&<div className="space-y-2"><h3 className="font-bold">النسخ السابقة — الاسترجاع يحفظ كمسودة</h3>{history.map(h=><div key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2"><span>نسخة {h.version} · {new Date(h.changed_at).toLocaleString('ar-BH')} · {h.action} · {h.changed_by ? staff.find(s=>s.userId===h.changed_by)?.name || 'الإدارة' : 'محتوى أولي'}</span><button className={button} disabled={busy} onClick={()=>void run(async()=>{const saved=await saveContent({...selected,payload:h.payload,sort_order:h.sort_order},false);setPreview(null);setSelected(saved);setHistory(await readContentHistory(selected.id));await reload();setMessage('تم استرجاع النسخة كمسودة. اضغط نشر لاعتمادها.');})}>استرجاع كمسودة</button></div>)}</div>}
       </div>:<div className={box}>اختر محتوى للتعديل، أو أضف محتوى جديدًا.</div>}
     </div>

@@ -51,6 +51,27 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [attachmentError, setAttachmentError] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
+  const [reviewName,setReviewName]=useState(user.name || '');
+  const [reviewRating,setReviewRating]=useState(5);
+  const [reviewQuote,setReviewQuote]=useState('');
+  const [reviewConsent,setReviewConsent]=useState(false);
+  const [reviewBusy,setReviewBusy]=useState(false);
+  const [reviewStatus,setReviewStatus]=useState('');
+  const submitParentReview=async()=>{
+    if(reviewBusy || !reviewConsent || reviewQuote.trim().length<10 || reviewName.trim().length<2) return;
+    setReviewBusy(true);setReviewStatus('');
+    try {
+      const {data:auth,error:authError}=await supabase.auth.getUser();
+      if(authError || !auth.user || auth.user.id!==user.authUserId) throw new Error('session_invalid');
+      const {error:reviewError}=await supabase.from('academy_parent_reviews').insert({
+        parent_user_id:auth.user.id,display_name:reviewName.trim(),quote:reviewQuote.trim(),rating:reviewRating,publication_consent:true
+      });
+      if(reviewError) throw reviewError;
+      setReviewQuote('');setReviewConsent(false);
+      setReviewStatus(lang==='ar'?'وصل رأيك للإدارة للمراجعة. لن يُنشر قبل الموافقة.':'Your review was sent for moderation. It will not be published automatically.');
+    }catch{setReviewStatus(lang==='ar'?'تعذّر إرسال الرأي. قد تحتاج ميزة التقييمات إلى التفعيل. حاول لاحقًا.':'Could not submit the review. The reviews feature may not be enabled yet.');}
+    finally{setReviewBusy(false);}
+  };
   const [monthlyStar, setMonthlyStar] = useState<{name:string;heading:string;body:string;image:string;playerId:string;video:string}|null>(null);
   const [monthlyStarOpen, setMonthlyStarOpen] = useState(false);
   useEffect(() => {
@@ -58,7 +79,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
     void readPublicContent().then(items => {
       if (!alive) return;
       const contact = items.find(item => item.kind === 'contact')?.payload;
-      if (!contact?.featured_name?.trim() || !contact.featured_image) return;
+      if (!contact?.featured_name?.trim() || !contact.featured_image || contact.featured_enabled==='false') { setMonthlyStar(null); setMonthlyStarOpen(false); return; }
       const video = items.find(item => item.kind === 'video' && item.id === contact.featured_video_id)?.payload.video || '';
       setMonthlyStar({
         playerId: contact.featured_player_id || '',
@@ -77,6 +98,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
     { id: 'subscriptions', ar: 'الاشتراكات', en: 'Subscriptions', icon: CreditCard },
     { id: 'documents', ar: 'المستندات', en: 'Documents', icon: FileText },
     { id: 'evaluations', ar: 'التقييمات', en: 'Evaluations', icon: Star },
+    { id: 'parent-reviews', ar: 'رأيك في الأكاديمية', en: 'Review the academy', icon: Star },
     { id: 'trainings', ar: 'التدريبات', en: 'Training', icon: CalendarCheck2 },
     { id: 'competitions', ar: 'المنافسات', en: 'Competitions', icon: Trophy },
     { id: 'attendance', ar: 'الحضور', en: 'Attendance', icon: CalendarCheck2 },
@@ -319,6 +341,18 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
       <Modal open={monthlyStarOpen && !!monthlyStar} onClose={()=>setMonthlyStarOpen(false)} title={monthlyStar?.heading || text('لاعب الشهر','Player of the Month')}>
         {monthlyStar&&<div className="space-y-3 text-center"><img src={monthlyStar.image} alt={monthlyStar.name} className="mx-auto max-h-72 w-full object-contain"/><h3 className="text-xl font-black">{monthlyStar.name}</h3><p className="whitespace-pre-wrap">{monthlyStar.body}</p>{monthlyStar.video&&<video controls playsInline preload="metadata" className="w-full rounded-xl" src={monthlyStar.video} aria-label={text('فيديو تكريم لاعب الشهر','Player of the Month recognition video')}/>}</div>}
       </Modal>
+      <section id="parent-parent-reviews" className="rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+        <h2 className="mb-2 text-lg font-black">{text('رأيك في أكاديمية شوتر يهمنا','Share your experience with Shooter Academy')}</h2>
+        <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">{text('شارك تجربتك الحقيقية. نراجعها قبل نشرها على الموقع، والمشاركة اختيارية.','Tell us about your real experience. Reviews are moderated before publication, and participation is optional.')}</p>
+        <div className="grid gap-3">
+          <label className="text-sm font-bold">{text('الاسم الذي توافق على عرضه','Approved display name')}<input className="mt-1 w-full rounded-lg border border-slate-300 bg-white p-2 text-slate-900 dark:bg-slate-950 dark:text-white" maxLength={100} value={reviewName} onChange={e=>setReviewName(e.target.value)} /></label>
+          <label className="text-sm font-bold">{text('تقييم الأكاديمية','Academy rating')}<select className="mt-1 w-full rounded-lg border border-slate-300 bg-white p-2 text-slate-900 dark:bg-slate-950 dark:text-white" value={reviewRating} onChange={e=>setReviewRating(Number(e.target.value))}>{[5,4,3,2,1].map(n=><option key={n} value={n}>{n} / 5</option>)}</select></label>
+          <label className="text-sm font-bold">{text('اكتب رأيك','Your review')}<textarea className="mt-1 w-full rounded-lg border border-slate-300 bg-white p-2 text-slate-900 dark:bg-slate-950 dark:text-white" maxLength={500} rows={4} value={reviewQuote} onChange={e=>setReviewQuote(e.target.value)} placeholder={text('تجربتك الحقيقية مع الأكاديمية','Your genuine experience with the academy')}/></label>
+          <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={reviewConsent} onChange={e=>setReviewConsent(e.target.checked)}/>{text('أوافق على عرض اسمي المحدد ورأيي وتقييمي علنًا بعد مراجعة الإدارة.','I consent to publicly displaying my chosen name, review and rating after moderation.')}</label>
+          <button type="button" className="w-fit rounded-lg bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-50" disabled={reviewBusy||!reviewConsent||reviewQuote.trim().length<10||reviewName.trim().length<2} onClick={()=>void submitParentReview()}>{reviewBusy?text('جارٍ الإرسال…','Submitting…'):text('إرسال الرأي للمراجعة','Submit review')}</button>
+          {reviewStatus&&<p role="status" className="text-sm">{reviewStatus}</p>}
+        </div>
+      </section>
       <TelegramLinkCard lang={lang} />
       {error && <p role="alert" className="text-red-700 bg-red-50 p-3 rounded-lg">{error}</p>}
       {renewalNotices.map(({ subscription, player, daysUntilExpiry }) => <div key={subscription.id} role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"><strong>{player?.name}</strong><p>{daysUntilExpiry < 0 ? text('انتهت فترة الاشتراك. يرجى مراجعة الإدارة للتجديد؛ الفترة السابقة مسددة.', 'The subscription has expired. Contact the academy to renew; the previous period is paid.') : text(`ينتهي الاشتراك خلال ${daysUntilExpiry} يوم. يرجى مراجعة الإدارة للتجديد.`, `Subscription expires in ${daysUntilExpiry} days. Contact the academy to renew.`)}</p></div>)}
