@@ -125,8 +125,8 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
         'Do not create or claim actual video, images, publication, or approved consent.',
         'Do not disclose private player or family information. Do not request sensitive data.',
         'Content category: '+selected.kind,
-        'Existing content: '+(source||'No existing text'),
-        'Manager instructions: '+(aiInstructions||'No additional instructions'),
+        'Existing content: '+(source.slice(0,420)||'No existing text'),
+        'Manager instructions: '+(aiInstructions.slice(0,290)||'No additional instructions'),
         'Return only the proposed material, for manual review.'
       ].join('\\n'),lang);
       setAiWorkspaceReply(response.reply.slice(0,6000));
