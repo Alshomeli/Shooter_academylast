@@ -30,6 +30,10 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   const [message,setMessage]=useState('');
   const [aiProposal,setAiProposal]=useState('');
   const [aiBusy,setAiBusy]=useState(false);
+  const [aiTask,setAiTask]=useState<'improve'|'article'|'social'|'seo'|'translate'|'script'>('improve');
+  const [aiInstructions,setAiInstructions]=useState('');
+  const [aiWorkspaceReply,setAiWorkspaceReply]=useState('');
+  const [aiWorkspaceBusy,setAiWorkspaceBusy]=useState(false);
   const [preview,setPreview]=useState<ContentItem|null>(null);
   const [history,setHistory]=useState<ContentRevision[]>([]);
   const [showHistory,setShowHistory]=useState(false);
@@ -93,6 +97,41 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     }catch(e){setError(e instanceof Error?e.message:String(e));}
     finally{setAiBusy(false);}
   };
+  const generateComponentCopy=async()=> {
+    if(!selected || aiWorkspaceBusy) return;
+    const source=selected.kind==='contact'
+      ? [selected.payload.featured_name,selected.payload.featured_body,selected.payload.about_body,selected.payload.programs_intro].filter(Boolean).join('\\n')
+      : [selected.payload.title,selected.payload.body,selected.payload.role].filter(Boolean).join('\\n');
+    if(!source.trim()&&!aiInstructions.trim()){
+      setError(ar?'أدخل نصًا في المكون أو ملاحظات للمساعد أولًا.':'Enter component text or instructions first.');
+      return;
+    }
+    const task:{[key in typeof aiTask]:string}={
+      improve:'Improve clarity, tone, and grammar without changing verified facts.',
+      article:'Draft a structured article with an appropriate headline, short introduction and clear sections.',
+      social:'Draft concise social media copy and a suitable caption without invented hashtags or claims.',
+      seo:'Suggest an SEO title, meta description (maximum 160 characters), natural headings and alt-text when relevant.',
+      translate:'Translate the provided text accurately into the other language (Arabic or English), keeping proper names.',
+      script:'Prepare a short video storyboard and voiceover script using only supplied facts and imagery descriptions.'
+    };
+    setAiWorkspaceBusy(true);setError('');setAiWorkspaceReply('');
+    try{
+      const response=await askManagementAI('communication',[
+        'You are the Shooter Academy content editor for the manager dashboard.',
+        'Task: '+task[aiTask],
+        'Respond in '+(aiTask==='translate'?(ar?'English':'Arabic'):(ar?'Arabic':'English'))+'.',
+        'Use only facts supplied by the manager; never invent results, ages, identities, awards, statistics or testimonials.',
+        'Do not create or claim actual video, images, publication, or approved consent.',
+        'Do not disclose private player or family information. Do not request sensitive data.',
+        'Content category: '+selected.kind,
+        'Existing content: '+(source||'No existing text'),
+        'Manager instructions: '+(aiInstructions||'No additional instructions'),
+        'Return only the proposed material, for manual review.'
+      ].join('\\n'),lang);
+      setAiWorkspaceReply(response.reply.slice(0,6000));
+    }catch(e){setError(e instanceof Error?e.message:String(e));}
+    finally{setAiWorkspaceBusy(false);}
+  };
   const defaultPrograms = [
     {title:'تطوير المهارات',body:'التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.',image:programImages[0]},
     {title:'اللياقة البدنية',body:'تنمية القوة والتحمل والمرونة، لبناء جاهزية بدنية تدعم أداء اللاعب في الملعب.',image:programImages[1]},
@@ -120,6 +159,35 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
         {!loading&&!items.some(i=>i.kind===kind)&&<p className="text-sm">{ar?'لا يوجد محتوى في هذا القسم.':'No content in this section.'}</p>}
       </div>
       {selected?<div className={`${box} space-y-4`} key={selected.id}>
+        <section id="ai-content-components" className="space-y-3 rounded-xl border border-red-300 p-4 dark:border-red-800" aria-label={ar?'المكونات الذكية لتحرير المحتوى':'AI content components'}>
+          <h3 className="flex items-center gap-2 font-black"><Sparkles size={18}/>{ar?'المكونات / مساعد الذكاء الاصطناعي':'Components / AI content assistant'}</h3>
+          <p className="text-xs text-slate-600 dark:text-slate-300">{ar?'للنصوص والمقالات والإعلانات والترجمة وتحسين البحث وسيناريو الفيديو. الاقتراح للمراجعة فقط؛ لا حفظ أو نشر تلقائيًا.':'For copy, articles, social posts, SEO, translation and video scripts. Suggestions require review; nothing saves or publishes automatically.'}</p>
+          <label className="block space-y-1 text-sm font-bold">{ar?'نوع المهمة':'Task'}
+            <select className={input} value={aiTask} disabled={aiWorkspaceBusy||busy} onChange={e=>setAiTask(e.target.value as typeof aiTask)}>
+              <option value="improve">{ar?'تحسين وإعادة صياغة':'Rewrite and improve'}</option>
+              <option value="article">{ar?'مقال احترافي':'Article'}</option>
+              <option value="social">{ar?'إعلان ومنشور تواصل':'Social media post'}</option>
+              <option value="seo">{ar?'تحسين محركات البحث':'SEO metadata'}</option>
+              <option value="translate">{ar?'ترجمة عربية / إنجليزية':'Arabic / English translation'}</option>
+              <option value="script">{ar?'سيناريو فيديو وتعليق صوتي':'Video script and voiceover'}</option>
+            </select>
+          </label>
+          <label className="block space-y-1 text-sm font-bold">{ar?'معلوماتك أو تعليماتك الإضافية (اختياري)':'Additional facts or instructions (optional)'}
+            <textarea className={input} rows={3} maxLength={3000} disabled={aiWorkspaceBusy||busy} value={aiInstructions} onChange={e=>setAiInstructions(e.target.value)}/>
+          </label>
+          <button type="button" className={button} disabled={aiWorkspaceBusy||busy} onClick={()=>void generateComponentCopy()}><Sparkles size={16}/>{aiWorkspaceBusy?(ar?'جارٍ إعداد المقترح…':'Preparing suggestion…'):(ar?'اقترح المحتوى':'Generate suggestion')}</button>
+          {aiWorkspaceReply&&<div className="space-y-2">
+            <label className="block text-sm font-bold">{ar?'المقترح القابل للتحرير — غير منشور':'Editable proposal — not published'}
+              <textarea className={input} rows={8} maxLength={6000} value={aiWorkspaceReply} onChange={e=>setAiWorkspaceReply(e.target.value)}/>
+            </label>
+            <button type="button" className={button} disabled={busy} onClick={()=>{
+              setField(selected.kind==='contact'?'featured_body':'body',aiWorkspaceReply.slice(0,selected.kind==='contact'?1800:6000));
+              setMessage(ar?'نُقل المقترح إلى حقل النص فقط. راجعه قبل حفظ المسودة.':'Text moved to the editor only. Review before saving the draft.');
+              setAiWorkspaceReply('');
+            }}>{ar?'نقل المقترح إلى محرر النص':'Use proposal in text editor'}</button>
+            <p className="text-xs text-slate-600 dark:text-slate-300">{ar?'يمكنك مراجعة النص يدويًا. لا تعتمد معلومات غير موثقة عن اللاعبين.':'Review facts manually. Do not include unverified player information.'}</p>
+          </div>}
+        </section>
         {kind==='contact'?<>
           <nav aria-label={ar?'أقسام الصفحة الرئيسية':'Homepage sections'} className="rounded-xl border border-slate-300 p-3 dark:border-slate-700">
             <h3 className="mb-2 font-black">{ar?'أقسام الصفحة الرئيسية — بنفس ترتيب العرض':'Homepage sections — display order'}</h3>
