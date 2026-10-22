@@ -167,6 +167,17 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
             <p className="text-xs text-slate-600 dark:text-slate-300">استبدال صورة البرنامج لا يغير موقع البطاقة أو ترتيبها؛ استخدم أسهم النقل فقط إذا أردت تغيير ترتيب البرامج. حذف البطاقة يزيلها من الصفحة بعد النشر فقط، ولا يمسح الصور من التخزين أو النسخ السابقة. حد أقصى 12 برنامجاً.</p>
           </section>
           <section id="home-section-guidance" className="scroll-mt-24 rounded-xl border border-slate-300 p-3 dark:border-slate-700"><h3 className="font-black">03 / التدريب والتوجيه</h3><p className="text-sm">هذا القسم لا يملك حقول تحرير مستقلة بعد؛ سيظل محتواه الحالي كما هو حتى إضافة دعم آمن له.</p></section>
+          <section className="space-y-3 rounded-xl border border-red-300 p-4">
+            <h3 className="text-lg font-black">موظف الشهر — بطاقة مستقلة</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-300">تظهر البطاقة في الصفحة الرئيسية بعد النشر فقط، ولا تفتح نافذة منبثقة ثانية.</p>
+            {field('employee_name','اسم موظف الشهر')}
+            {field('employee_name_en','Employee of the Month (English)')}
+            {field('employee_heading','عنوان التكريم')}
+            {field('employee_heading_en','Recognition heading (English)')}
+            <label className="block space-y-1"><span className="text-sm font-bold">سبب التكريم ونبذة مختصرة</span><textarea className={input} rows={3} maxLength={1800} disabled={busy} value={selected.payload.employee_body||''} onChange={e=>setField('employee_body',e.target.value)}/></label>
+            <label className="block space-y-1"><span className="text-sm font-bold">Recognition description (English)</span><textarea className={input} rows={3} maxLength={1800} disabled={busy} value={selected.payload.employee_body_en||''} onChange={e=>setField('employee_body_en',e.target.value)}/></label>
+            {upload('employee_image','صورة موظف الشهر')}
+          </section>
           <h3 id="home-section-contact" className="scroll-mt-24 font-black text-lg">06 / نلتقي في الملعب — روابط التواصل</h3>
           {contacts.map(c=>field(c,c,'url'))}
           <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-3">
