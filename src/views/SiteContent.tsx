@@ -243,6 +243,16 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
             <h3 className="font-black text-lg">لاعب الشهر — بطاقة التكريم</h3>
             <p className="text-xs text-slate-600 dark:text-slate-300">تظل خلفية الواجهة ثابتة، وتظهر فوقها صورة اللاعب الشفافة فقط بعد نشر اسمه وصورته. استخدم PNG أو WebP بخلفية شفافة.</p>
             {field('featured_name','اسم اللاعب')}
+            <label className="block space-y-1 text-sm font-bold"><span>{ar?'معرّف اللاعب الرسمي (اختياري للتهنئة الخاصة)':'Official player ID (optional for private congratulations)'}</span>
+              <input className={input} type="text" maxLength={100} value={selected.payload.featured_player_id||''} disabled={busy} onChange={e=>setField('featured_player_id',e.target.value)}/>
+              <span className="text-xs font-normal">{ar?'يجب استخدام معرّف اللاعب نفسه من إدارة اللاعبين؛ لا نستخدم تشابه الأسماء لتحديد ولي الأمر.':'Copy the exact player ID from player management; names are never used to determine the guardian.'}</span>
+            </label>
+            <label className="block space-y-1 text-sm font-bold"><span>{ar?'فيديو التكريم المنشور (اختياري)':'Published recognition video (optional)'}</span>
+              <select className={input} value={selected.payload.featured_video_id||''} disabled={busy} onChange={e=>setField('featured_video_id',e.target.value)}>
+                <option value="">{ar?'بدون فيديو':'No video'}</option>
+                {items.filter(i=>i.kind==='video'&&published.some(p=>p.id===i.id)).map(i=><option key={i.id} value={i.id}>{i.payload.title||i.id}</option>)}
+              </select>
+            </label>
             {field('featured_name_en','Player Name (English) — optional')}
             {field('featured_heading','عنوان بطاقة التكريم')}
             {field('featured_heading_en','Recognition Title (English) — optional')}
