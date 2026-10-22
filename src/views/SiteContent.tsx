@@ -56,6 +56,10 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   const save=async()=>{
     if(!selected) throw new Error('اختر محتوى أولًا.');
     if(selected.kind!=='contact'&&!selected.payload.title?.trim()) throw new Error('العنوان مطلوب.');
+    if(selected.kind==='contact'){
+      const reviews=parentReviews();
+      if(reviews.some(r=>(r.name.trim()||r.quote.trim())&&(!r.name.trim()||!r.quote.trim()||!r.consent||!Number.isInteger(r.rating)||r.rating<1||r.rating>5))) throw new Error('أكمل اسم ولي الأمر والتقييم والموافقة قبل حفظ الشهادة.');
+    }
     if(selected.kind==='contact') for(const key of contacts){const value=selected.payload[key];if(value){const url=new URL(value);if(url.protocol!=='https:') throw new Error('روابط التواصل يجب أن تبدأ بـ HTTPS.');}}
     const saved=await saveContent(selected,isNew);setSelected(saved);setIsNew(false);await reload();return saved;
   };
@@ -125,6 +129,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
       const response=await askContentWriter([
         'You are the Shooter Academy content editor for the manager dashboard.',
         'Task: '+task[aiTask],
+        'Write useful, natural, search-friendly content with relevant terms, descriptive headings and accessible alt text when relevant. Never keyword-stuff, claim guaranteed ranking, or invent customer reviews.',
         'Respond in '+(aiTask==='translate'?(ar?'English':'Arabic'):(ar?'Arabic':'English'))+'.',
         'Use only facts supplied by the manager; never invent results, ages, identities, awards, statistics or testimonials.',
         'Do not create or claim actual video, images, publication, or approved consent.',
@@ -138,6 +143,14 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     }catch(e){setError(e instanceof Error?e.message:String(e));}
     finally{setAiWorkspaceBusy(false);}
   };
+  type ParentReview={name:string;quote:string;rating:number;consent:boolean};
+  const parentReviews=():ParentReview[]=>{
+    try{
+      const parsed:unknown=JSON.parse(selected?.payload.parent_reviews_v1||'[]');
+      return Array.isArray(parsed)?parsed.slice(0,12).filter((r):r is ParentReview=>Boolean(r&&typeof r==='object'&&typeof r.name==='string'&&typeof r.quote==='string'&&typeof r.rating==='number'&&typeof r.consent==='boolean')):[];
+    }catch{return [];}
+  };
+  const updateParentReviews=(reviews:ParentReview[])=>setField('parent_reviews_v1',JSON.stringify(reviews));
   const defaultPrograms = [
     {title:'تطوير المهارات',body:'التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.',image:programImages[0]},
     {title:'اللياقة البدنية',body:'تنمية القوة والتحمل والمرونة، لبناء جاهزية بدنية تدعم أداء اللاعب في الملعب.',image:programImages[1]},
@@ -225,6 +238,20 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
             {field('about_body_en','Main description (English)')}
             {field('about_extra','الفقرة الإضافية')}
             {field('about_extra_en','Additional paragraph (English)')}
+          </section>
+          <section id="home-section-reviews" className="space-y-3 rounded-xl border border-red-300 p-4">
+            <h3 className="text-lg font-black">{ar?'07 / آراء وتقييمات أولياء الأمور':'07 / Parent reviews'}</h3>
+            <p className="text-xs">{ar?'أدخل شهادات حقيقية بموافقة أصحابها فقط. لن يولّد الذكاء الاصطناعي تقييمات أو درجات أو شهادات وهمية.':'Only verified parent reviews with permission. AI must not invent testimonials or star ratings.'}</p>
+            {parentReviews().map((review,i)=><div key={i} className="space-y-2 rounded-xl border p-3 dark:border-slate-700">
+              <b>{ar?'التقييم':'Review'} {i+1}</b>
+              <input className={input} placeholder={ar?'اسم ولي الأمر أو لقب بموافقته':'Approved display name'} value={review.name} onChange={e=>{const rows=parentReviews();rows[i]={...review,name:e.target.value.slice(0,100)};updateParentReviews(rows);}}/>
+              <textarea className={input} rows={3} maxLength={500} placeholder={ar?'نص رأي ولي الأمر الحقيقي':'Original parent review'} value={review.quote} onChange={e=>{const rows=parentReviews();rows[i]={...review,quote:e.target.value};updateParentReviews(rows);}}/>
+              <label className="block text-sm">{ar?'التقييم بالأرقام (من رأي ولي الأمر)':'Original star rating'} <select className={input} value={review.rating} onChange={e=>{const rows=parentReviews();rows[i]={...review,rating:Number(e.target.value)};updateParentReviews(rows);}}>{[5,4,3,2,1].map(n=><option key={n} value={n}>{n} / 5</option>)}</select></label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={review.consent} onChange={e=>{const rows=parentReviews();rows[i]={...review,consent:e.target.checked};updateParentReviews(rows);}}/>{ar?'لدي موافقة ولي الأمر على عرض هذا الرأي':'Parent permitted publication of this review'}</label>
+              <button type="button" className="text-sm font-bold text-red-700 dark:text-red-300" onClick={()=>updateParentReviews(parentReviews().filter((_,j)=>j!==i))}>{ar?'إزالة التقييم من القائمة':'Remove review'}</button>
+            </div>)}
+            <button type="button" className={button} disabled={busy||parentReviews().length>=12} onClick={()=>updateParentReviews([...parentReviews(),{name:'',quote:'',rating:5,consent:false}])}><Plus size={16}/>{ar?'إضافة رأي حقيقي':'Add real review'}</button>
+            <p className="text-xs">{ar?'لا تظهر إلا التقييمات المكتملة التي تم تأكيد موافقة أصحابها، وبعد نشر المسودة.':'Only completed reviews with confirmed consent appear after publishing.'}</p>
           </section>
           <section id="home-section-programs" className="scroll-mt-24 space-y-3 rounded-xl border border-red-300 p-4">
             <h3 className="font-black text-lg">02 / برامجنا التدريبية — إدارة البطاقات</h3>
