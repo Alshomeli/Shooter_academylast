@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Save, Eye, Upload, History, Globe } from 'lucide-react';
+import { Plus, Save, Eye, Upload, History, Globe, Sparkles } from 'lucide-react';
+import { PhotoVideoStudio } from '@/components/PhotoVideoStudio';
+import { askManagementAI } from '@/lib/ai-assistant';
 import type { Lang, Role, Staff } from '@/types';
 import { publishContent, readContentHistory, readManagerContent, resolveContentMedia, saveContent, uploadContentFile, type ContentItem, type ContentKind, type ContentRevision } from '@/lib/site-content';
 import { featuredImageStyle, featuredPlayerValidationError } from '@/lib/featured-player';
@@ -26,6 +28,8 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
   const [message,setMessage]=useState('');
+  const [aiProposal,setAiProposal]=useState('');
+  const [aiBusy,setAiBusy]=useState(false);
   const [preview,setPreview]=useState<ContentItem|null>(null);
   const [history,setHistory]=useState<ContentRevision[]>([]);
   const [showHistory,setShowHistory]=useState(false);
@@ -49,6 +53,46 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     if(selected.kind==='contact') for(const key of contacts){const value=selected.payload[key];if(value){const url=new URL(value);if(url.protocol!=='https:') throw new Error('روابط التواصل يجب أن تبدأ بـ HTTPS.');}}
     const saved=await saveContent(selected,isNew);setSelected(saved);setIsNew(false);await reload();return saved;
   };
+  const generateNewsDraft=async()=> {
+    if(!selected || selected.kind!=='news') return;
+    if(!selected.payload.title?.trim() || !selected.payload.body?.trim()) {
+      setError(ar?'أدخل عنوان الخبر ووقائعه الأساسية أولًا.':'Enter a headline and factual event details first.');
+      return;
+    }
+    setAiBusy(true);setError('');setAiProposal('');
+    try {
+      const prompt = [
+        'You are editing a football academy news release for search discoverability.',
+        'Write in '+(ar?'Arabic':'English')+'. Only use facts present in the following source. Do not invent names, results, dates, prizes, quotations or claims.',
+        'Return a suggested SEO headline, a concise meta description (maximum 160 characters), a readable news body and suggested search phrases.',
+        'Avoid keyword stuffing, clickbait, and unsupported claims. Use explicit headings.',
+        'Source headline: '+selected.payload.title,
+        'Source event facts: '+selected.payload.body,
+        'Date: '+(selected.payload.date||'not provided'),
+      ].join('\\n');
+      const result=await askManagementAI('communication',prompt,lang);
+      setAiProposal(result.reply);
+    }catch(e){setError(e instanceof Error?e.message:String(e));}
+    finally{setAiBusy(false);}
+  };
+  const generateFeaturedDraft=async()=> {
+    if(!selected || selected.kind!=='contact') return;
+    const person=selected.payload.featured_name?.trim();
+    const facts=selected.payload.featured_body?.trim();
+    if(!person || !facts) {setError(ar?'أدخل اسم اللاعب وسبب تكريمه أولًا.':'Enter the player name and verified recognition details first.');return;}
+    setAiBusy(true);setError('');setAiProposal('');
+    try {
+      const prompt=[
+        'Draft a concise, warm public football academy Player of the Month recognition in '+(ar?'Arabic':'English')+'.',
+        'Use ONLY the confirmed details supplied; never invent names, performances, prizes, statistics or quotations.',
+        'Return a short recognition heading, a 2-3 sentence popup caption, a short news-ready paragraph and a natural search-friendly title. No keyword stuffing.',
+        'Player: '+person, 'Verified reasons: '+facts,
+      ].join('\\n');
+      const result=await askManagementAI('communication',prompt,lang);
+      setAiProposal(result.reply);
+    }catch(e){setError(e instanceof Error?e.message:String(e));}
+    finally{setAiBusy(false);}
+  };
   const defaultPrograms = [
     {title:'تطوير المهارات',body:'التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.',image:programImages[0]},
     {title:'اللياقة البدنية',body:'تنمية القوة والتحمل والمرونة، لبناء جاهزية بدنية تدعم أداء اللاعب في الملعب.',image:programImages[1]},
@@ -69,7 +113,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     <div className="grid grid-cols-2 gap-3"><div className={box}>{ar?'منشور':'Published'} <b>{published.length}</b></div><div className={box}>{ar?'غير منشور':'Unpublished'} <b>{items.filter(i=>!published.some(p=>p.id===i.id)).length}</b></div></div>
     {error&&<div role="alert" className="rounded-lg bg-red-100 p-3 text-red-900">{error}<button className="ms-3 underline" onClick={()=>void reload()}>{ar?'إعادة التحميل':'Reload'}</button></div>}
     {message&&<p role="status" className="rounded-lg bg-green-100 p-3 text-green-900">{message}</p>}
-    <nav className="flex flex-wrap gap-2" aria-label="أقسام المحتوى">{kinds.map(k=><button key={k.kind} disabled={busy} onClick={()=>{setKind(k.kind);setSelected(null);setPreview(null);setShowHistory(false);}} className={`${button} ${kind!==k.kind?'!bg-slate-600':''}`}>{ar?k.ar:k.en}</button>)}</nav>
+    <nav className="flex flex-wrap gap-2" aria-label="أقسام المحتوى">{kinds.map(k=><button key={k.kind} disabled={busy} onClick={()=>{setKind(k.kind);setSelected(null);setPreview(null);setAiProposal('');setShowHistory(false);}} className={`${button} ${kind!==k.kind?'!bg-slate-600':''}`}>{ar?k.ar:k.en}</button>)}</nav>
     <div className="grid gap-5 lg:grid-cols-[minmax(230px,1fr)_2fr]">
       <div className={`${box} space-y-3`}><button className={`${button} w-full`} disabled={busy||loading||kind==='contact'&&items.some(i=>i.kind==='contact')} onClick={()=>{setSelected({id:crypto.randomUUID(),kind,payload:{},sort_order:items.length,version:1});setIsNew(true);setPreview(null);setShowHistory(false);}}><Plus size={16}/>{ar?'إضافة محتوى':'Add content'}</button>
         {loading?<p role="status">{ar?'جارٍ التحميل…':'Loading…'}</p>:items.filter(i=>i.kind===kind).map(i=><button className={`${input} text-start ${selected?.id===i.id?'!border-red-600':''}`} disabled={busy} key={i.id} onClick={()=>{setSelected({...i,payload:{...i.payload}});setIsNew(false);setPreview(null);setShowHistory(false);}}><b className="block truncate">{i.payload.title||'روابط التواصل'}</b><span className="text-xs">{published.some(p=>p.id===i.id)?'منشور':'مسودة / مخفي'} · {i.sort_order}</span></button>)}
@@ -77,7 +121,21 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
       </div>
       {selected?<div className={`${box} space-y-4`} key={selected.id}>
         {kind==='contact'?<>
-          <section className="space-y-3 rounded-xl border border-red-300 p-4">
+          <nav aria-label={ar?'أقسام الصفحة الرئيسية':'Homepage sections'} className="rounded-xl border border-slate-300 p-3 dark:border-slate-700">
+            <h3 className="mb-2 font-black">{ar?'أقسام الصفحة الرئيسية — بنفس ترتيب العرض':'Homepage sections — display order'}</h3>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                ['01','عن الأكاديمية','About the academy','home-section-about'],
+                ['02','البرامج التدريبية','Training programs','home-section-programs'],
+                ['03','التدريب والتوجيه','Training and guidance','home-section-guidance'],
+                ['04','من قلب الملعب','From the field','home-section-field'],
+                ['05','أخبار شوتر','Shooter news','home-section-news'],
+                ['06','نلتقي في الملعب','Meet on the field','home-section-contact'],
+              ].map(([number,labelAr,labelEn,target])=><a key={number} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold hover:border-red-600 dark:border-slate-700" href={target==='home-section-news'?'#site-news-editor':target==='home-section-field'?'#site-gallery-editor':'#'+target} onClick={()=>{if(target==='home-section-news'||target==='home-section-field'){setKind(target==='home-section-news'?'news':'gallery');setSelected(null);setPreview(null);}}}>{number} / {ar?labelAr:labelEn}</a>)}
+            </div>
+            <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{ar?'الأقسام ذات المحتوى المستقل تفتح محررها من القائمة. تغيير الصور لا يعيد ترتيب البطاقات.':'Sections with separate content open their editor. Replacing images never reorders cards.'}</p>
+          </nav>
+          <section id="home-section-about" className="scroll-mt-24 space-y-3 rounded-xl border border-red-300 p-4">
             <h3 className="font-black text-lg">01 / عن الأكاديمية — إدارة النصوص</h3>
             <p className="text-xs">يمكنك تغيير أو إفراغ النصوص ثم حفظ المسودة ونشرها. النص الإنجليزي اختياري.</p>
             {field('about_title','عنوان القسم 01')}
@@ -87,14 +145,14 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
             {field('about_extra','الفقرة الإضافية')}
             {field('about_extra_en','Additional paragraph (English)')}
           </section>
-          <section className="space-y-3 rounded-xl border border-red-300 p-4">
+          <section id="home-section-programs" className="scroll-mt-24 space-y-3 rounded-xl border border-red-300 p-4">
             <h3 className="font-black text-lg">02 / برامجنا التدريبية — إدارة البطاقات</h3>
             {field('programs_title','عنوان قسم البرامج')}
             {field('programs_title_en','Programs title (English)')}
             {field('programs_intro','وصف قسم البرامج')}
             {field('programs_intro_en','Programs description (English)')}
             {currentPrograms().map((p,i)=><div key={i} className="space-y-2 rounded-xl border border-slate-300 p-3">
-              <div className="flex justify-between gap-2"><b>برنامج {i+1}</b><button type="button" disabled={busy} className="text-red-700 underline" onClick={()=>updatePrograms(currentPrograms().filter((_,j)=>j!==i))}>حذف البطاقة</button></div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><b>برنامج {i+1} — ترتيبه ثابت حتى تغيّره يدويًا</b><div className="flex flex-wrap gap-3"><button type="button" disabled={busy||i===0} className="underline disabled:opacity-40" onClick={()=>{const rows=currentPrograms();[rows[i-1],rows[i]]=[rows[i],rows[i-1]];updatePrograms(rows);}}>↑ لأعلى</button><button type="button" disabled={busy||i===currentPrograms().length-1} className="underline disabled:opacity-40" onClick={()=>{const rows=currentPrograms();[rows[i+1],rows[i]]=[rows[i],rows[i+1]];updatePrograms(rows);}}>↓ لأسفل</button><button type="button" disabled={busy} className="text-red-700 underline" onClick={()=>updatePrograms(currentPrograms().filter((_,j)=>j!==i))}>حذف البطاقة</button></div></div>
               {programField(p,i,'title','اسم البرنامج')}
               {programField(p,i,'title_en','Program name (English)')}
               {programField(p,i,'body','الوصف')}
@@ -106,9 +164,21 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
               {p.image_path&&<p className="text-xs">صورة مرفوعة في التخزين: {p.image_path}</p>}
             </div>)}
             <button className={button} type="button" disabled={busy||currentPrograms().length>=12} onClick={()=>updatePrograms([...currentPrograms(),{title:'برنامج جديد',body:'',image:''}])}><Plus size={16}/>إضافة برنامج جديد</button>
-            <p className="text-xs text-slate-600 dark:text-slate-300">حذف البطاقة يزيلها من الصفحة بعد النشر فقط، ولا يمسح الصور من التخزين أو النسخ السابقة. حد أقصى 12 برنامجاً.</p>
+            <p className="text-xs text-slate-600 dark:text-slate-300">استبدال صورة البرنامج لا يغير موقع البطاقة أو ترتيبها؛ استخدم أسهم النقل فقط إذا أردت تغيير ترتيب البرامج. حذف البطاقة يزيلها من الصفحة بعد النشر فقط، ولا يمسح الصور من التخزين أو النسخ السابقة. حد أقصى 12 برنامجاً.</p>
           </section>
-          <h3 className="font-black text-lg">روابط التواصل</h3>
+          <section id="home-section-guidance" className="scroll-mt-24 rounded-xl border border-slate-300 p-3 dark:border-slate-700"><h3 className="font-black">03 / التدريب والتوجيه</h3><p className="text-sm">هذا القسم لا يملك حقول تحرير مستقلة بعد؛ سيظل محتواه الحالي كما هو حتى إضافة دعم آمن له.</p></section>
+          <section className="space-y-3 rounded-xl border border-red-300 p-4">
+            <h3 className="text-lg font-black">موظف الشهر — بطاقة مستقلة</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-300">تظهر البطاقة في الصفحة الرئيسية بعد النشر فقط، ولا تفتح نافذة منبثقة ثانية.</p>
+            {field('employee_name','اسم موظف الشهر')}
+            {field('employee_name_en','Employee of the Month (English)')}
+            {field('employee_heading','عنوان التكريم')}
+            {field('employee_heading_en','Recognition heading (English)')}
+            <label className="block space-y-1"><span className="text-sm font-bold">سبب التكريم ونبذة مختصرة</span><textarea className={input} rows={3} maxLength={1800} disabled={busy} value={selected.payload.employee_body||''} onChange={e=>setField('employee_body',e.target.value)}/></label>
+            <label className="block space-y-1"><span className="text-sm font-bold">Recognition description (English)</span><textarea className={input} rows={3} maxLength={1800} disabled={busy} value={selected.payload.employee_body_en||''} onChange={e=>setField('employee_body_en',e.target.value)}/></label>
+            {upload('employee_image','صورة موظف الشهر')}
+          </section>
+          <h3 id="home-section-contact" className="scroll-mt-24 font-black text-lg">06 / نلتقي في الملعب — روابط التواصل</h3>
           {contacts.map(c=>field(c,c,'url'))}
           <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-3">
             <h3 className="font-black text-lg">لاعب الشهر — بطاقة التكريم</h3>
@@ -119,6 +189,11 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
             {field('featured_heading_en','Recognition Title (English) — optional')}
             <label className="block space-y-1"><span className="text-sm font-bold">نبذة وسبب التميز</span><textarea className={input} rows={3} maxLength={1800} disabled={busy} value={selected.payload.featured_body||''} onChange={e=>setField('featured_body',e.target.value)}/></label>
             <label className="block space-y-1"><span className="text-sm font-bold">Recognition Reason (English) — optional</span><textarea className={input} rows={3} maxLength={1800} disabled={busy} value={selected.payload.featured_body_en||''} onChange={e=>setField('featured_body_en',e.target.value)}/></label>
+            <div className="space-y-2 rounded-lg border border-slate-300 p-3 dark:border-slate-700">
+              <p className="text-sm font-bold">{ar?'مساعد ذكي لصياغة تكريم لاعب الشهر':'AI Player of the Month writing assistant'}</p>
+              <button type="button" className={button} disabled={busy||aiBusy||!selected.payload.featured_name?.trim()||!selected.payload.featured_body?.trim()} onClick={()=>void generateFeaturedDraft()}><Sparkles size={16}/>{aiBusy?(ar?'جارٍ الاقتراح…':'Generating…'):(ar?'صياغة تكريم احترافي':'Suggest recognition text')}</button>
+              {aiProposal&&<><textarea className={input} rows={6} aria-label={ar?'النص المقترح للمراجعة':'Review proposed text'} maxLength={6000} value={aiProposal} onChange={e=>setAiProposal(e.target.value)}/><p className="text-xs">{ar?'اقتراح للمراجعة فقط، لا يُحفظ أو يُنشر تلقائيًا. انسخ النص المناسب إلى الحقول بعد التحقق من الوقائع.':'Review only. Nothing is saved or published automatically; copy verified text into the appropriate fields.'}</p><button type="button" className={button} onClick={()=>{setField('featured_body',aiProposal);setAiProposal('');}}>{ar?'نقل النص إلى نبذة اللاعب':'Use as player description'}</button></>}
+            </div>
             {upload('featured_image','صورة اللاعب (PNG / WebP بخلفية شفافة مفضلة)')}
             <div className="grid gap-3 sm:grid-cols-3">
               {([['featured_left','الموقع الأفقي',-20,30,1],['featured_width','عرض اللاعب',28,70,50],['featured_height','ارتفاع اللاعب',50,100,94]] as const).map(([key,label,min,max,fallback])=><label key={key} className="block space-y-2 text-sm"><span className="font-bold">{label}: {selected.payload[key] || fallback}%</span><input className="w-full accent-red-700" type="range" min={min} max={max} step={1} value={selected.payload[key] || fallback} disabled={busy} onChange={e=>setField(key,e.target.value)}/></label>)}
@@ -131,6 +206,15 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           <label className="block space-y-1"><span className="text-sm font-bold">{kind==='coach'?'نبذة المدرب':'الوصف / التعليق'}</span><textarea className={input} rows={4} maxLength={6000} disabled={busy} value={selected.payload.body||''} onChange={e=>setField('body',e.target.value)}/></label>
           <label className="block space-y-1"><span className="text-sm font-bold">{kind==='coach'?'Coach Bio (English) — optional':'Description / Caption (English) — optional'}</span><textarea className={input} rows={4} maxLength={6000} disabled={busy} value={selected.payload.body_en||''} onChange={e=>setField('body_en',e.target.value)}/></label>
           {kind==='news'&&field('date','تاريخ الخبر','date')}
+          {kind==='news'&&<section className="rounded-xl border border-red-300 dark:border-red-800 p-3 space-y-3">
+            <div><h4 className="font-black flex items-center gap-2"><Sparkles size={17}/>{ar?'مساعد صياغة الخبر لمحركات البحث':'SEO news writing assistant'}</h4>
+              <p className="text-xs mt-1 text-slate-600 dark:text-slate-300">{ar?'اكتب الوقائع في الوصف أعلاه، ثم اطلب اقتراحًا وراجعه. لا تُحفظ الاقتراحات تلقائيًا ولا تُنشر.':'Enter facts above, generate a suggestion, and review it. AI drafts are neither saved nor published automatically.'}</p></div>
+            <button type="button" className={button} disabled={busy||aiBusy||!selected.payload.title?.trim()||!selected.payload.body?.trim()} onClick={()=>void generateNewsDraft()}><Sparkles size={16}/>{aiBusy?(ar?'جارٍ الإنشاء…':'Generating…'):(ar?'اقتراح خبر احترافي':'Suggest SEO news copy')}</button>
+            {aiProposal&&<div className="space-y-2"><label className="text-sm font-bold block" htmlFor="ai-news-proposal">{ar?'المقترح للمراجعة (غير منشور)':'Draft suggestion (not published)'}</label>
+              <textarea id="ai-news-proposal" className={input} rows={10} value={aiProposal} onChange={e=>setAiProposal(e.target.value)} maxLength={6000}/>
+              <button type="button" className={button} disabled={busy} onClick={()=>{setField('body',aiProposal);setAiProposal('');setMessage(ar?'تم نقل المقترح إلى الوصف للمراجعة. احفظ المسودة بعد التأكد من صحة الوقائع.':'Suggestion moved into the editor for review. Verify facts before saving.');}}>{ar?'نقل المقترح إلى الوصف':'Use suggestion in editor'}</button>
+            </div>}
+          </section>}
           {kind==='gallery'&&<>{field('album','اسم النشاط / الألبوم (الصور التي لها نفس الاسم تظهر ضمن مجموعة واحدة)')}{field('album_en','Album / Activity Name (English) — optional')}</>}
           {(kind==='gallery'||kind==='video')&&<label className="block space-y-1">
             <span className="text-sm font-bold">الخبر المرتبط بهذا {kind==='gallery'?'الصورة':'الفيديو'} (اختياري)</span>
@@ -143,7 +227,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           {kind==='coach'&&<>{field('role','التخصص / الدور')}{field('role_en','Coach Role (English) — optional')}</>}
           {field('alt','وصف الصورة للقارئ')}
           {field('alt_en','Image Alt Text (English) — optional')}
-          {kind==='video'?<>{upload('video','رفع الفيديو',true)}{upload('poster','صورة غلاف الفيديو')}</>:upload('image','رفع الصورة')}
+          {kind==='video'?<><PhotoVideoStudio onMp4={async file => { await run(async()=>{ const path=await uploadContentFile(file,true);setPreview(null);setSelected(s=>s?{...s,payload:{...s.payload,video_path:path,video:''}}:s);setMessage('تم إنشاء الفيديو ورفعه. احفظ المسودة ثم عاينها قبل النشر.'); }); }}/>{upload('video','رفع الفيديو',true)}{upload('poster','صورة غلاف الفيديو')}</>:upload('image','رفع الصورة')}
         </>}
         <label className="block space-y-1"><span className="text-sm font-bold">ترتيب الظهور (الأصغر أولًا)</span><input className={input} type="number" min={0} max={10000} value={selected.sort_order} disabled={busy} onChange={e=>{setPreview(null);setSelected({...selected,sort_order:Math.max(0,Math.min(10000,Number(e.target.value)||0))});}}/></label>
         <p className="text-xs text-slate-500 dark:text-slate-400">الملفات المرفوعة خاصة حتى نشر المحتوى. تغيير المحتوى لا يغيّر النسخة المنشورة تلقائيًا. اضغط «معاينة» بعد أي تغيير لتفعيل زر النشر.</p>

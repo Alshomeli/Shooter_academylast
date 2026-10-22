@@ -1,4 +1,5 @@
 import { EvaluationCard } from '@/components/EvaluationCard';
+import { EvaluationProgressInsights } from '@/components/EvaluationProgressInsights';
 import { TelegramLinkCard } from '@/components/TelegramLinkCard';
 import { supabase } from '@/lib/supabase';
 import { getSubscriptionReminders } from '@/lib/reminders';
@@ -368,6 +369,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           </div>
 
           <div id="parent-evaluations" className="arena-card bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3"><h3 className="font-black">{tr(lang).playerEvaluations}</h3>{playerEvaluations.length===0 && <p className="text-sm text-slate-400">{text('لا توجد تقييمات منشورة بعد.','No published evaluations yet.')}</p>}
+            <EvaluationProgressInsights evaluations={playerEvaluations} lang={lang} compact />
             {playerEvaluations.slice(0,5).map(ev => <EvaluationCard key={ev.id} ev={ev} player={selectedPlayer || undefined} lang={lang} />)}
           </div>
         </section>}

@@ -4,6 +4,7 @@ import { averageEvaluationScores as average, evaluationFrameworkScores as framew
 import type { Player, Team, Staff, PlayerEvaluation, Role, Lang } from '@/types';
 import { tr } from '@/lib/i18n';
 import { EvaluationCard } from '@/components/EvaluationCard';
+import { EvaluationProgressInsights } from '@/components/EvaluationProgressInsights';
 import { PdfEvaluationForm } from '@/components/PdfEvaluationForm';
 import { evaluationCriteria, emptyEvaluation, draftFromEvaluation, type EvaluationKind } from '@/lib/evaluation-template';
 import { academyToday } from '@/lib/report-dates';
@@ -306,6 +307,8 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
           )}
         </section>
       )}
+
+      {progressPlayerId && <EvaluationProgressInsights lang={lang} evaluations={publishedEvaluations.filter(ev => ev.playerId === progressPlayerId)} />}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
