@@ -259,3 +259,9 @@
 .ah-banner-english-actions svg{width:1.1cqw;height:1.1cqw}
 .ah-banner-english-actions a:focus-visible{outline:3px solid white;outline-offset:3px}
 @media(max-width:800px){.ah-banner-english-copy{gap:2.4cqw}.ah-banner-english-copy h1{font-size:4.2cqw}.ah-banner-english-copy .ah-banner-kicker{font-size:1.3cqw}.ah-banner-english-copy .ah-banner-summary{font-size:1.5cqw}.ah-banner-english-actions{display:none}}
+
+/* Responsive news media: consistent card proportions without cropping images. */
+.ah-news-grid > * { min-width: 0; }
+.ah-news > img { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: contain; background: #10141b; }
+@media (max-width: 800px) { .ah-news > img { height: auto; aspect-ratio: 16 / 10; } }
+@media (max-width: 420px) { .ah-news { padding: 14px; } .ah-news-grid { gap: 14px; } }
