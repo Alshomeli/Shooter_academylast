@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Save, Eye, Upload, History, Globe, Sparkles } from 'lucide-react';
+import { PhotoVideoStudio } from '@/components/PhotoVideoStudio';
 import { askManagementAI } from '@/lib/ai-assistant';
 import type { Lang, Role, Staff } from '@/types';
 import { publishContent, readContentHistory, readManagerContent, resolveContentMedia, saveContent, uploadContentFile, type ContentItem, type ContentKind, type ContentRevision } from '@/lib/site-content';
@@ -177,7 +178,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           {kind==='coach'&&<>{field('role','التخصص / الدور')}{field('role_en','Coach Role (English) — optional')}</>}
           {field('alt','وصف الصورة للقارئ')}
           {field('alt_en','Image Alt Text (English) — optional')}
-          {kind==='video'?<>{upload('video','رفع الفيديو',true)}{upload('poster','صورة غلاف الفيديو')}</>:upload('image','رفع الصورة')}
+          {kind==='video'?<><PhotoVideoStudio onMp4={async file => { await run(async()=>{ const path=await uploadContentFile(file,true);setPreview(null);setSelected(s=>s?{...s,payload:{...s.payload,video_path:path,video:''}}:s);setMessage('تم إنشاء الفيديو ورفعه. احفظ المسودة ثم عاينها قبل النشر.'); }); }}/>{upload('video','رفع الفيديو',true)}{upload('poster','صورة غلاف الفيديو')}</>:upload('image','رفع الصورة')}
         </>}
         <label className="block space-y-1"><span className="text-sm font-bold">ترتيب الظهور (الأصغر أولًا)</span><input className={input} type="number" min={0} max={10000} value={selected.sort_order} disabled={busy} onChange={e=>{setPreview(null);setSelected({...selected,sort_order:Math.max(0,Math.min(10000,Number(e.target.value)||0))});}}/></label>
         <p className="text-xs text-slate-500 dark:text-slate-400">الملفات المرفوعة خاصة حتى نشر المحتوى. تغيير المحتوى لا يغيّر النسخة المنشورة تلقائيًا. اضغط «معاينة» بعد أي تغيير لتفعيل زر النشر.</p>
