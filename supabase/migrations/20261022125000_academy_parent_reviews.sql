@@ -15,14 +15,16 @@ create index if not exists academy_parent_reviews_parent_idx on public.academy_p
 alter table public.academy_parent_reviews enable row level security;
 revoke all on public.academy_parent_reviews from anon;
 grant select,insert on public.academy_parent_reviews to authenticated;
+drop policy if exists "Parents read only their reviews" on public.academy_parent_reviews;
 create policy "Parents read only their reviews" on public.academy_parent_reviews
   for select to authenticated using (parent_user_id = (select auth.uid()));
+drop policy if exists "Parents submit own pending reviews" on public.academy_parent_reviews;
 create policy "Parents submit own pending reviews" on public.academy_parent_reviews
   for insert to authenticated with check (
     parent_user_id = (select auth.uid()) and status = 'pending'
     and reviewed_by is null and reviewed_at is null
     and publication_consent = true
-    and exists(select 1 from public.parents p where p.user_id = (select auth.uid()))
+    and exists(select 1 from public.parents p where p.user_id = (select auth.uid()) and p.status = 'active')
   );
 -- Only service-side vetted manager RPC may change approval status.
 -- The admin dashboard can read pending reviews through the next protected RPC,
