@@ -1,4 +1,4 @@
-import { canAssignCategory } from '@/lib/goalkeepers';
+import { canAssignCategory, categoryPlayers } from '@/lib/goalkeepers';
 import { useState, useMemo, useEffect, useDeferredValue, type FormEvent } from 'react';
 import {
   Users, Plus, Search, Phone, Mail, Edit2, Trash2, Eye,
@@ -71,17 +71,18 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
     return () => { cancelled = true; };
   }, [players]);
 
+  const selectedTeam = teams.find(team => team.id === teamFilter);
   const filtered = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
     return players.filter((p) => {
       if (q && !p.name.toLowerCase().includes(q) && !p.parentName.toLowerCase().includes(q)) return false;
-      if (teamFilter !== 'all' && p.teamId !== teamFilter) return false;
+      if (teamFilter !== 'all' && (selectedTeam ? !categoryPlayers(selectedTeam, [p]).length : p.teamId !== teamFilter)) return false;
       if (statusFilter !== 'all' && p.status !== statusFilter) return false;
       if (parentLinkFilter === 'linked' && !p.parentId) return false;
       if (parentLinkFilter === 'unlinked' && p.parentId) return false;
       return true;
     });
-  }, [players, deferredSearch, teamFilter, statusFilter, parentLinkFilter]);
+  }, [players, deferredSearch, teamFilter, selectedTeam, statusFilter, parentLinkFilter]);
 
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name || (isAr ? 'غير محدد' : 'Not specified');
 
