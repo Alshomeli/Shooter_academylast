@@ -26,6 +26,14 @@ export function EvaluationProgressInsights({ evaluations, lang, compact = false 
         { titleAr: 'الوزن', titleEn: 'Weight', unit: ar ? 'كغ' : 'kg', current: valid(current.weightKg), previous: valid(previous?.weightKg), neutral: true },
         { titleAr: 'الطول', titleEn: 'Height', unit: ar ? 'سم' : 'cm', current: valid(current.heightCm), previous: valid(previous?.heightCm), neutral: true },
       ];
+      const scoreChange = current.overallScore != null && previous?.overallScore != null ? current.overallScore - previous.overallScore : null;
+      const summary = scoreChange == null
+        ? (ar ? 'لا توجد بيانات كافية لمقارنة الأداء حتى الآن.' : 'Not enough data yet to compare performance.')
+        : scoreChange > 0.05
+          ? (ar ? 'ارتفع تقييم اللاعب مقارنة بالتقييم السابق. يُنصح بالاستمرار في متابعة التطور.' : 'The player’s score improved since the previous review. Continue monitoring progress.')
+          : scoreChange < -0.05
+            ? (ar ? 'انخفض تقييم اللاعب مقارنة بالتقييم السابق. يُنصح بمراجعة ملاحظات المدرب وخطة التطوير.' : 'The player’s score declined since the previous review. Review coach notes and the development plan.')
+            : (ar ? 'التقييم العام مستقر مقارنة بالتقييم السابق.' : 'Overall performance is stable compared with the previous review.');
       return <div key={type} className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
           <div><h3 className="font-black text-slate-900 dark:text-white">{type === 'goalkeeper' ? (ar ? 'تطور تقييم الحراس' : 'Goalkeeper evaluation progress') : (ar ? 'تطور التقييم العام' : 'General evaluation progress')}</h3>
@@ -44,6 +52,11 @@ export function EvaluationProgressInsights({ evaluations, lang, compact = false 
               <p className={`mt-2 text-xs font-bold flex flex-wrap items-center gap-1 ${classes}`}><Icon size={15} aria-hidden="true"/>{delta === null ? (ar ? 'لا توجد مقارنة سابقة' : 'No previous comparison') : `${delta > 0 ? '+' : ''}${delta.toFixed(1)} ${m.unit}`}</p>
             </div>;
           })}
+        </div>
+        <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 p-3" aria-live="polite">
+          <p className="text-xs font-black text-slate-900 dark:text-white">{ar ? 'تحليل تلقائي للتقييم' : 'Automated evaluation insight'}</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{summary}</p>
+          <p className="mt-1 text-[11px] text-slate-500">{ar ? 'ملخص مبني على درجات التقييم المنشورة، وليس تشخيصًا أو تحليلًا توليديًا.' : 'Based on published ratings; not a diagnosis or generative AI analysis.'}</p>
         </div>
         <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{ar ? (previous ? `المقارنة مع تقييم ${previous.evaluationDate}. تغير الوزن لا يعني تحسنًا أو تراجعًا صحيًا تلقائيًا.` : 'يتطلب عرض التطور وجود تقييمين منشورين من نفس النوع.') : (previous ? `Compared with ${previous.evaluationDate}. Weight changes do not automatically indicate better or worse health.` : 'Two published evaluations of the same type are needed for trends.')}</p>
       </div>;
