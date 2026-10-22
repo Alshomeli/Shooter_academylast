@@ -30,6 +30,33 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
   const [message,setMessage]=useState('');
   const [aiProposal,setAiProposal]=useState('');
   const [aiBusy,setAiBusy]=useState(false);
+  const [pendingReviews,setPendingReviews]=useState<Array<{id:string;display_name:string;quote:string;rating:number;created_at:string}>>([]);
+  const [reviewsLoading,setReviewsLoading]=useState(false);
+  const loadPendingReviews=async()=>{
+    setReviewsLoading(true);
+    try {
+      const {supabase}=await import('@/lib/supabase');
+      const {data,error}=await supabase.rpc('manager_review_parent_reviews');
+      if(error) throw error;
+      setPendingReviews(data||[]);
+    }catch{setError(ar?'تعذّر تحميل مراجعات أولياء الأمور. تحقق من تفعيل ترحيل قاعدة البيانات.':'Unable to load parent reviews; verify the database migration.');}
+    finally{setReviewsLoading(false);}
+  };
+  const moderateParentReview=async(id:string,approve:boolean)=>{
+    await run(async()=>{
+      const {supabase}=await import('@/lib/supabase');
+      const review=pendingReviews.find(item=>item.id===id);
+      if(!review) return;
+      const {error}=await supabase.rpc('manager_approve_parent_review',{p_review_id:id,p_approve:approve});
+      if(error) throw error;
+      if(approve){
+        if(!selected||selected.kind!=='contact') throw new Error('افتح قسم التواصل أولًا');
+        updateParentReviews([...parentReviews(),{name:review.display_name,quote:review.quote,rating:review.rating,consent:true}]);
+        setMessage(ar?'تمت الموافقة ونقل الرأي إلى مسودة الصفحة. احفظ وعاين ثم انشر.':'Approved and added to page draft. Save, preview and publish.');
+      }
+      setPendingReviews(items=>items.filter(item=>item.id!==id));
+    });
+  };
   const [aiTask,setAiTask]=useState<'improve'|'article'|'social'|'seo'|'translate'|'script'>('improve');
   const [aiInstructions,setAiInstructions]=useState('');
   const [aiTarget,setAiTarget]=useState<'about_body'|'programs_intro'|'featured_body'|'body'>('body');
@@ -242,6 +269,17 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           <section id="home-section-reviews" className="space-y-3 rounded-xl border border-red-300 p-4">
             <h3 className="text-lg font-black">{ar?'07 / آراء وتقييمات أولياء الأمور':'07 / Parent reviews'}</h3>
             <p className="text-xs">{ar?'أدخل شهادات حقيقية بموافقة أصحابها فقط. لن يولّد الذكاء الاصطناعي تقييمات أو درجات أو شهادات وهمية.':'Only verified parent reviews with permission. AI must not invent testimonials or star ratings.'}</p>
+            <div className="space-y-3 rounded-xl border border-slate-300 p-3 dark:border-slate-700">
+              <button type="button" className={button} disabled={reviewsLoading||busy} onClick={()=>void loadPendingReviews()}>{reviewsLoading?(ar?'جارٍ التحميل…':'Loading…'):(ar?'تحميل آراء أولياء الأمور الواردة':'Load submitted parent reviews')}</button>
+              {pendingReviews.map(review=><article key={review.id} className="rounded-lg border p-3">
+                <p className="font-bold">{review.display_name} · {review.rating}/5</p>
+                <p className="my-2 whitespace-pre-wrap text-sm">{review.quote}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className={button} disabled={busy} onClick={()=>void moderateParentReview(review.id,true)}>{ar?'اعتماد للمسودة':'Approve for draft'}</button>
+                  <button type="button" className="rounded-lg border border-red-500 p-2 text-red-700 dark:text-red-300" disabled={busy} onClick={()=>void moderateParentReview(review.id,false)}>{ar?'رفض':'Reject'}</button>
+                </div>
+              </article>)}
+            </div>
             {parentReviews().map((review,i)=><div key={i} className="space-y-2 rounded-xl border p-3 dark:border-slate-700">
               <b>{ar?'التقييم':'Review'} {i+1}</b>
               <input className={input} placeholder={ar?'اسم ولي الأمر أو لقب بموافقته':'Approved display name'} value={review.name} onChange={e=>{const rows=parentReviews();rows[i]={...review,name:e.target.value.slice(0,100)};updateParentReviews(rows);}}/>
