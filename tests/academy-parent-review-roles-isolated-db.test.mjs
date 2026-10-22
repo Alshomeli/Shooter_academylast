@@ -34,5 +34,16 @@ test('isolated parent review RLS accepts active guardian and blocks unapproved u
   await assert.rejects(db.exec('select * from public.manager_review_parent_reviews();'));
   await assert.rejects(db.exec(`select public.manager_approve_parent_review('${id}',true);`));
   await db.exec('reset role;');
+  // The isolated test inserts a manager into its temporary database only.
+  await db.exec(`insert into public.staff values ('${b}','manager','active');`);
+  await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub','${b}',false);`);
+  const pending=await db.query('select * from public.manager_review_parent_reviews()');
+  assert.equal(pending.rows.length,1,'Only pending reviews are listed for the manager');
+  const reviewId=pending.rows[0].id;
+  await db.query('select public.manager_approve_parent_review($1,true)',[reviewId]);
+  const after=await db.query('select * from public.manager_review_parent_reviews()');
+  assert.equal(after.rows.length,0,'Approved reviews are removed from pending');
+  await assert.rejects(db.query('select public.manager_approve_parent_review($1,true)',[reviewId]),'Review cannot be approved twice');
+  await db.exec('reset role;');
  } finally {await db.close();}
 });
