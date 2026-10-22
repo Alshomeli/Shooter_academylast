@@ -50,7 +50,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [attachmentError, setAttachmentError] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
-  const [monthlyStar, setMonthlyStar] = useState<{name:string;heading:string;body:string;image:string}|null>(null);
+  const [monthlyStar, setMonthlyStar] = useState<{name:string;heading:string;body:string;image:string;playerId:string;video:string}|null>(null);
   const [monthlyStarOpen, setMonthlyStarOpen] = useState(false);
   useEffect(() => {
     let alive = true;
@@ -58,7 +58,10 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
       if (!alive) return;
       const contact = items.find(item => item.kind === 'contact')?.payload;
       if (!contact?.featured_name?.trim() || !contact.featured_image) return;
+      const video = items.find(item => item.kind === 'video' && item.id === contact.featured_video_id)?.payload.video || '';
       setMonthlyStar({
+        playerId: contact.featured_player_id || '',
+        video,
         name: lang === 'en' && contact.featured_name_en ? contact.featured_name_en : contact.featured_name,
         heading: (lang === 'en' && contact.featured_heading_en ? contact.featured_heading_en : contact.featured_heading) || (lang === 'ar' ? 'لاعب الشهر' : 'Player of the Month'),
         body: (lang === 'en' && contact.featured_body_en ? contact.featured_body_en : contact.featured_body) || '',
@@ -303,6 +306,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           <span className="arena-social-icon arena-social-maps"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M12 2a8 8 0 0 0-8 8c0 2.6 1.5 4.8 3.2 7L12 10Z"/><path fill="#EA4335" d="M12 2a8 8 0 0 1 8 8l-8 4-4-4Z"/><path fill="#FBBC04" d="m4.3 12.1 5.1-5.2 5.2 5.2-5.9 6.8c-1.9-2.4-3.7-4.7-4.4-6.8Z"/><path fill="#34A853" d="m20 10-8 12-3.3-3.1 7-8.9Z"/><circle cx="12" cy="10" r="3" fill="#fff"/></svg></span><span>{text('الموقع', 'Location')}</span>
         </a>
       </nav>
+      {monthlyStar?.playerId && players.some(player => player.id === monthlyStar.playerId) && <p role="status" className="rounded-xl border border-amber-400 bg-amber-50 p-4 font-bold text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">{text('مبروك! تم اختيار ابنكم لاعب الشهر في أكاديمية شوتر. نفتخر فيه وبجهوده.','Congratulations! Your child is Shooter Academy Player of the Month. We are proud of their dedication.')}</p>}
       {monthlyStar && <section className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-700 dark:bg-amber-950/20 dark:text-amber-100" aria-label={text('تكريم لاعب الشهر','Player of the Month recognition')}>
         <div className="flex flex-wrap items-center gap-4">
           <img src={monthlyStar.image} alt={monthlyStar.name} loading="lazy" className="h-24 w-24 rounded-xl object-contain" />
@@ -312,7 +316,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
         </div>
       </section>}
       <Modal open={monthlyStarOpen && !!monthlyStar} onClose={()=>setMonthlyStarOpen(false)} title={monthlyStar?.heading || text('لاعب الشهر','Player of the Month')}>
-        {monthlyStar&&<div className="space-y-3 text-center"><img src={monthlyStar.image} alt={monthlyStar.name} className="mx-auto max-h-72 w-full object-contain"/><h3 className="text-xl font-black">{monthlyStar.name}</h3><p className="whitespace-pre-wrap">{monthlyStar.body}</p></div>}
+        {monthlyStar&&<div className="space-y-3 text-center"><img src={monthlyStar.image} alt={monthlyStar.name} className="mx-auto max-h-72 w-full object-contain"/><h3 className="text-xl font-black">{monthlyStar.name}</h3><p className="whitespace-pre-wrap">{monthlyStar.body}</p>{monthlyStar.video&&<video controls playsInline preload="metadata" className="w-full rounded-xl" src={monthlyStar.video} aria-label={text('فيديو تكريم لاعب الشهر','Player of the Month recognition video')}/>}</div>}
       </Modal>
       <TelegramLinkCard lang={lang} />
       {error && <p role="alert" className="text-red-700 bg-red-50 p-3 rounded-lg">{error}</p>}
