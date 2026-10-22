@@ -103,6 +103,19 @@ export default function AcademyHome() {
         newsId: galleryNewsId(i.payload.image, i.payload.news_id, publicNews),
       }));
   const contact = content.find(i => i.kind === 'contact')?.payload;
+  const [featuredOpen, setFeaturedOpen] = useState(false);
+  const featuredKey = contact?.featured_name?.trim() && contact?.featured_image
+    ? 'shooter-featured-' + [contact.featured_name, contact.featured_image].join(':')
+    : '';
+  useEffect(() => {
+    if (!featuredKey) { setFeaturedOpen(false); return; }
+    try {
+      if (sessionStorage.getItem(featuredKey) === 'seen') { setFeaturedOpen(false); return; }
+      sessionStorage.setItem(featuredKey, 'seen');
+    } catch { /* Browsers may block storage; the popup still remains dismissible. */ }
+    setFeaturedOpen(true);
+  }, [featuredKey]);
+  const dismissFeatured = () => setFeaturedOpen(false);
   const sectionText = (key: string, fallback: string) => {
     const arValue = contact?.[key];
     const enValue = contact?.[`${key}_en`]?.trim();
@@ -187,6 +200,16 @@ export default function AcademyHome() {
       <a className="ah-button ah-login" href={platform}>{tr("دخول منصة الأكاديمية")} <ArrowUpLeft size={17}/></a>
       <button className="ah-menu" onClick={() => setMenu(v => !v)} aria-expanded={menu} aria-controls="ah-navigation" aria-label={menu ? tr("إغلاق القائمة") : tr("فتح القائمة")}>{menu ? <X/> : <Menu/>}</button>
     </header>
+    {featuredOpen && contact?.featured_image && contact?.featured_name && <div className="ah-featured-backdrop" onClick={dismissFeatured}>
+      <section role="dialog" aria-modal="true" aria-labelledby="ah-featured-modal-title" aria-describedby="ah-featured-modal-description" className="ah-featured-modal" onClick={event => event.stopPropagation()} onKeyDown={event => {if(event.key === 'Escape') dismissFeatured();}}>
+        <button type="button" autoFocus className="ah-featured-close" onClick={dismissFeatured} aria-label={lang === 'ar' ? 'إغلاق نافذة لاعب الشهر' : 'Close Player of the Month'}><X size={23}/></button>
+        <p className="ah-featured-kicker">{tr(contact.featured_heading || 'لاعب الشهر', contact.featured_heading_en)}</p>
+        <img className="ah-featured-modal-image" src={contact.featured_image} alt={tr(contact.featured_name, contact.featured_name_en)}/>
+        <h2 id="ah-featured-modal-title">{tr(contact.featured_name, contact.featured_name_en)}</h2>
+        <p id="ah-featured-modal-description">{tr(contact.featured_body || 'نفتخر بإنجازات لاعبنا.', contact.featured_body_en)}</p>
+        <a className="ah-featured-modal-link" href="#news" onClick={dismissFeatured}>{lang === 'ar' ? 'تصفح أخبار شوتر' : 'Explore Shooter news'}</a>
+      </section>
+    </div>}
     <main>
       {staffSubmitted && <div role="status" className="mx-auto my-4 flex max-w-3xl items-center justify-between gap-4 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-900">
         <p className="font-bold">{lang === 'ar' ? 'تم إرسال طلبك، بانتظار مراجعة الإدارة.' : 'Your application has been submitted and is awaiting management review.'}</p>
