@@ -1,3 +1,4 @@
+import { categoryPlayers } from '@/lib/goalkeepers';
 import { useState, useMemo, type FormEvent } from 'react';
 import {
   Trophy, Plus, Edit2, Trash2, Users, Calendar, Clock, MapPin, Phone, Eye,
@@ -42,12 +43,14 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
   const viewTeam = teams.find(team => team.id === viewTeamId);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const canEdit = activeRole === 'manager';
-  const sortedTeams = useMemo(() => [...teams].sort((a, b) => ageOrder(a) - ageOrder(b) || a.name.localeCompare(b.name)), [teams]);
+  const sortedTeams = useMemo(() => teams.filter(team => statusFilter === 'all' || (team.status || 'active') === statusFilter).sort((a, b) => ageOrder(a) - ageOrder(b) || a.name.localeCompare(b.name)), [teams, statusFilter]);
 
   const coachOf = (id: string) => staff.find((s) => s.id === id);
-  const playersIn = (teamId: string) => players.filter((p) => p.teamId === teamId).length;
+  const playersFor = (teamId: string) => { const team = teams.find(t => t.id === teamId); return team ? categoryPlayers(team, players) : []; };
+  const playersIn = (teamId: string) => playersFor(teamId).length;
 
   const handleSave = async (data: Omit<Team, 'id'>, id?: string) => {
     if (id) {
@@ -85,7 +88,8 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
         )}
       </PageHeader>
 
-      {teams.length === 0 ? (
+      <label className="flex items-center gap-3 text-sm font-bold">{isAr ? 'حالة الفئة' : 'Category status'}<select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={`${inputCls} max-w-48`}><option value="all">{isAr ? 'الكل' : 'All'}</option><option value="active">{isAr ? 'مفعّلة' : 'Active'}</option><option value="inactive">{isAr ? 'غير مفعّلة' : 'Inactive'}</option></select></label>
+      {sortedTeams.length === 0 ? (
         <EmptyState
           icon={<Trophy className="h-8 w-8" />}
           title={isAr ? 'لا توجد فرق مسجلة' : 'No teams registered'}
@@ -94,7 +98,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {sortedTeams.map((tm) => {
-            const coach = coachOf(tm.coachId);
+            const coach = coachOf(tm.categoryKind === 'goalkeeper' ? tm.goalkeeperCoachId || '' : tm.coachId);
             const count = playersIn(tm.id);
             return (
               <div
@@ -105,6 +109,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
                   <div className="relative z-10 min-w-0 pt-3">
                     <p className="text-xl font-black leading-relaxed text-white break-words">{tm.name}</p>
                     <span className="mt-2 inline-flex rounded-xl border border-emerald-400/30 bg-gradient-to-b from-green-500 to-green-700 px-3 py-1 text-sm font-black text-white shadow-lg">{tm.ageGroup}</span>
+                    <p className="mt-2 text-sm font-bold text-blue-100">{tm.categoryKind === 'goalkeeper' ? (isAr ? 'فئة الحراس' : 'Goalkeeper category') : (isAr ? 'فئة عادية' : 'Age category')} · {tm.status === 'inactive' ? (isAr ? 'غير مفعّلة' : 'Inactive') : (isAr ? 'مفعّلة' : 'Active')}</p>
                   </div>
                   <svg aria-hidden="true" viewBox="0 0 180 170" className="pointer-events-none absolute -end-6 bottom-0 h-40 w-44 opacity-90">
                     <defs><radialGradient id={`ball-${tm.id}`} cx="35%" cy="25%" r="75%"><stop offset="0%" stopColor="#fff"/><stop offset="65%" stopColor="#b4bdcc"/><stop offset="100%" stopColor="#4a5671"/></radialGradient></defs>
@@ -187,7 +192,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
                     >
                       <Edit2 className="h-3.5 w-3.5" /> {t.edit}
                     </button>}
-                    {activeRole === 'manager' && (
+                    {activeRole === 'manager' && tm.status === 'inactive' && (
                     <button
                       onClick={() => setDeleteId(tm.id)}
                       className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer"
@@ -219,7 +224,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
           </dl>
           <div>
             <h3 className="mb-2 font-bold text-slate-900 dark:text-white">{isAr ? 'لاعبو الفئة' : 'Category players'}</h3>
-            {playersIn(viewTeam.id) ? <ul tabIndex={0} aria-label={isAr ? 'قائمة لاعبي الفئة' : 'Category player list'} className="max-h-64 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 dark:border-slate-700 px-3 divide-y divide-slate-200 dark:divide-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">{players.filter(player => player.teamId === viewTeam.id).map(player => <li key={player.id} className="py-2 text-sm text-slate-700 dark:text-slate-200">{player.name}</li>)}</ul> : <p className="text-sm text-slate-500 dark:text-slate-400">{isAr ? 'لا يوجد لاعبون في هذه الفئة' : 'No players in this category'}</p>}
+            {playersIn(viewTeam.id) ? <ul tabIndex={0} aria-label={isAr ? 'قائمة لاعبي الفئة' : 'Category player list'} className="max-h-64 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 dark:border-slate-700 px-3 divide-y divide-slate-200 dark:divide-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">{playersFor(viewTeam.id).map(player => <li key={player.id} className="py-2 text-sm text-slate-700 dark:text-slate-200">{player.name}</li>)}</ul> : <p className="text-sm text-slate-500 dark:text-slate-400">{isAr ? 'لا يوجد لاعبون في هذه الفئة' : 'No players in this category'}</p>}
           </div>
         </div>
       </Modal>}
@@ -244,15 +249,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         title={t.deleteTeam}
-        message={(() => {
-          const count = deleteId ? players.filter((p) => p.teamId === deleteId).length : 0;
-          if (count > 0) {
-            return isAr
-              ? `تحذير: هذا الفريق يضم ${count} لاعب. سيتم إلغاء تعيينهم من الفريق. هل تريد المتابعة؟`
-              : `Warning: This team has ${count} player(s). They will be unassigned. Continue?`;
-          }
-          return t.deleteTeamConfirm;
-        })()}
+        message={isAr ? 'سيتم حذف الفئة غير المفعّلة فقط إذا لم يرتبط بها لاعبون أو تدريبات أو مباريات أو تقييمات. السجلات المرتبطة تمنع الحذف.' : 'Only an inactive category with no players, training sessions, matches or evaluations can be deleted. Linked records prevent deletion.'}
         confirmLabel={t.delete}
       />
     </div>
@@ -281,6 +278,8 @@ function TeamForm({
 
   const [form, setForm] = useState({
     version: team?.version,
+    categoryKind: team?.categoryKind || ('team' as 'team' | 'goalkeeper'),
+    status: team?.status || ('active' as 'active' | 'inactive'),
     name: team?.name || '',
     ageGroup: team?.ageGroup || '',
     coachId: team?.coachId || '',
@@ -306,7 +305,7 @@ function TeamForm({
     e.preventDefault();
     if (!form.name.trim()) return;
     const teamCoach = form.coachId ? staff.find(s => s.id === form.coachId) : null;
-    if (form.coachId && (!teamCoach || teamCoach.role !== 'coach' || teamCoach.status !== 'active' || (teamCoach.coachKind && teamCoach.coachKind !== 'team'))) {
+    if (form.categoryKind !== 'goalkeeper' && form.coachId && (!teamCoach || teamCoach.role !== 'coach' || teamCoach.status !== 'active' || (teamCoach.coachKind && teamCoach.coachKind !== 'team'))) {
       setSaveError(isAr ? 'يجب اختيار مدرب فريق نشط.' : 'Select an active team coach.');
       return;
     }
@@ -320,7 +319,7 @@ function TeamForm({
     if (saving) return;
     setSaving(true); setSaveError('');
     try {
-    await onSave(form, team?.id);
+    await onSave({ ...form, coachId: form.categoryKind === 'goalkeeper' ? '' : form.coachId }, team?.id);
 
     } catch { setSaveError(lang === 'ar' ? 'تعذر حفظ التغيير. راجع الرسالة وحاول مجددًا.' : 'Could not save this change. Review the error and retry.'); }
     finally { setSaving(false); }
@@ -335,7 +334,19 @@ function TeamForm({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label={isAr ? 'نوع الفئة' : 'Category type'}>
+            <select value={form.categoryKind} disabled={!!team} onChange={e => setForm({ ...form, categoryKind: e.target.value as 'team' | 'goalkeeper', coachId: '' })} className={inputCls}>
+              <option value="team">{isAr ? 'فئة عادية' : 'Age category'}</option>
+              <option value="goalkeeper">{isAr ? 'فئة الحراس' : 'Goalkeeper category'}</option>
+            </select>
+            {form.categoryKind === 'goalkeeper' && <p className="text-xs text-slate-500 mt-1">{isAr ? 'تجمع حراس جميع الفئات تلقائيًا مع بقاء كل حارس في فئته الأصلية.' : 'Automatically includes goalkeepers from all age categories while preserving their original category.'}</p>}
+          </Field>
+          <Field label={isAr ? 'حالة الفئة' : 'Category status'}>
+            <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as 'active' | 'inactive' })} className={inputCls}>
+              <option value="active">{isAr ? 'مفعّلة' : 'Active'}</option><option value="inactive">{isAr ? 'غير مفعّلة' : 'Inactive'}</option>
+            </select>
+          </Field>
           <Field label={isAr ? 'اسم الفريق' : 'Team name'}>
             <input
               value={form.name}
@@ -356,7 +367,7 @@ function TeamForm({
           </Field>
           <Field label={t.coach}>
             <select
-              value={form.coachId}
+              value={form.coachId} disabled={form.categoryKind === 'goalkeeper'}
               onChange={(e) => setForm({ ...form, coachId: e.target.value })}
               className={inputCls}
             >
@@ -373,7 +384,7 @@ function TeamForm({
               <option value="">{isAr ? 'غير معيّن' : 'Not assigned'}</option>
               {staff.filter(s => s.role === 'coach' && s.status === 'active' && s.coachKind === 'goalkeeper').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            <p className="text-xs text-slate-500 mt-1">{isAr ? 'يُسمح لمدرب الحراس المحدد ومساعده المرتبط به برؤية حراس هذا الفريق فقط.' : 'Only the assigned goalkeeper coach and their linked assistant can access this team’s goalkeepers.'}</p>
+            <p className="text-xs text-slate-500 mt-1">{isAr ? 'مدرب الحراس يرى حراس جميع الفئات فقط، وتعيينه هنا يحدد مسؤولية تدريبات فئة الحراس.' : 'Goalkeeper coaches see only goalkeepers across all age categories. This assignment controls goalkeeper category training.'}</p>
           </Field>
           <Field label={t.pitchNumber}>
             <input

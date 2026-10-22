@@ -454,7 +454,7 @@ function AppDetail({
           const assign = child.playerId ? assignData[child.playerId] : undefined;
           const activated = players.some(p => p.id === child.playerId && p.status === 'active' && p.teamId);
           const birthYear = child.birthDate?.slice(0, 4);
-          const birthTeam = teams.find((tm) => birthYear && new RegExp(`(^|[^0-9])${birthYear}([^0-9]|$)`).test(tm.name));
+          const birthTeam = teams.find((tm) => tm.status !== 'inactive' && tm.categoryKind !== 'goalkeeper' && birthYear && new RegExp(`(^|[^0-9])${birthYear}([^0-9]|$)`).test(tm.name));
           const selectedTeam = birthTeam || (assign?.teamId ? teams.find((tm) => tm.id === assign.teamId) : undefined);
 
           return (

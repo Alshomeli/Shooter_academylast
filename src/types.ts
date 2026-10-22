@@ -27,6 +27,8 @@ export interface Staff {
 }
 
 export interface Team {
+  categoryKind?: 'team' | 'goalkeeper';
+  status?: 'active' | 'inactive';
   goalkeeperCoachId?: string;
   version?: number;
   id: string;
@@ -152,6 +154,13 @@ export interface Tournament {
 }
 
 export interface PlayerEvaluation {
+  templateVersion?: number;
+  heightCm?: number | null; weightKg?: number | null;
+  nutritionPlan?: string; evaluatorName?: string; generalRating?: string;
+  evaluatorSignature?: string; coachSignature?: string;
+  totalScore?: number | null;
+  evaluationType?: 'outfield' | 'goalkeeper';
+  teamName?: string;
   id: string;
   playerId: string;
   teamId: string;

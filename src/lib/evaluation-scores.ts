@@ -1,3 +1,4 @@
+import { templateSummary, evaluationCriteria } from './evaluation-template';
 import type { PlayerEvaluation } from '@/types';
 
 const GROUP_KEYS = {
@@ -17,6 +18,11 @@ function detailedGroupScore(ev: PlayerEvaluation, group: keyof typeof GROUP_KEYS
 }
 
 export function evaluationFrameworkScores(ev: PlayerEvaluation) {
+  if (ev.templateVersion === 2) {
+    const summary = templateSummary(ev.evaluationType || 'outfield', ev.detailedScores);
+    return { technical: summary.technical, tactical: summary.tactical, physical: summary.physical,
+      psychosocial: averageEvaluationScores(evaluationCriteria(ev.evaluationType || 'outfield').filter(c => c.group === 'mental' || c.group === 'discipline').map(c => ev.detailedScores[c.key])) };
+  }
   return {
     technical: detailedGroupScore(ev, 'technical') ?? ev.technicalScore,
     tactical: detailedGroupScore(ev, 'tactical') ?? ev.tacticalScore,

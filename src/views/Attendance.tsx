@@ -1,3 +1,4 @@
+import { categoryPlayers } from '@/lib/goalkeepers';
 import { useState, useMemo } from 'react';
 import { assertNewAttendance } from '@/lib/attendance-identity';
 import { academyToday } from '@/lib/report-dates';
@@ -48,7 +49,8 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
       .filter((a) => {
         const player = playerById(a.playerId);
         if (!player) return false;
-        if (teamFilter !== 'all' && player.teamId !== teamFilter) return false;
+        const sessionTeamId = a.trainingId ? trainings.find(t => t.id === a.trainingId)?.teamId : a.matchId ? matches.find(m => m.id === a.matchId)?.teamId : player.teamId;
+        if (teamFilter !== 'all' && sessionTeamId !== teamFilter) return false;
         if (typeFilter !== 'all' && a.sessionType !== typeFilter) return false;
         if (dateFilter && a.sessionDate !== dateFilter) return false;
         if (search && !player.name.includes(search)) return false;
@@ -56,7 +58,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
       })
       .sort((a, b) => (a.sessionDate < b.sessionDate ? 1 : a.sessionDate > b.sessionDate ? -1 : 0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attendance, players, teamFilter, typeFilter, dateFilter, search]);
+  }, [attendance, players, trainings, matches, teamFilter, typeFilter, dateFilter, search]);
 
   const kpis = useMemo(() => {
     const total = attendance.length;
@@ -159,7 +161,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
             className="appearance-none px-3 py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/50"
           >
             <option value="all">{isAr ? 'كل الفرق' : 'All teams'}</option>
-            {teams.map((tm) => (
+            {teams.filter(tm => tm.status !== 'inactive').map((tm) => (
               <option key={tm.id} value={tm.id}>{tm.name}</option>
             ))}
           </select>
@@ -234,7 +236,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
                       </td>
                       <td className="py-3 px-4">
                         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                          {player ? teamName(player.teamId) : '—'}
+                          {teamName(a.trainingId ? trainings.find(t => t.id === a.trainingId)?.teamId || '' : a.matchId ? matches.find(m => m.id === a.matchId)?.teamId || '' : player?.teamId || '')}
                         </span>
                       </td>
                       <td className="py-3 px-4">
@@ -336,8 +338,8 @@ function BatchAttendanceForm({
   const [saveError, setSaveError] = useState('');
 
   const teamPlayers = useMemo(
-    () => players.filter((p) => p.teamId === teamId),
-    [players, teamId],
+    () => { const team = teams.find(t => t.id === teamId); return team ? categoryPlayers(team, players) : []; },
+    [players, teamId, teams],
   );
 
   const availableSessions = useMemo(() => {
@@ -406,7 +408,7 @@ function BatchAttendanceForm({
               className={inputCls}
             >
               <option value="">{isAr ? 'اختر الفريق...' : 'Select team...'}</option>
-              {teams.map((tm) => (
+              {teams.filter(tm => tm.status !== 'inactive').map((tm) => (
                 <option key={tm.id} value={tm.id}>{tm.name}</option>
               ))}
             </select>

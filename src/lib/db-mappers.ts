@@ -1,3 +1,4 @@
+import { templateSummary, goalkeeperTotal } from './evaluation-template';
 import type {
   Staff, Team, Player, Parent, Subscription, Attendance,
   Match, Training, Transaction, Tournament, PlayerEvaluation,
@@ -15,6 +16,7 @@ interface StaffRow {
   tactical_style: string | null; notes: string | null; user_id: string | null;
 }
 interface TeamRow {
+  category_kind?: Team['categoryKind']; status?: Team['status'];
   goalkeeper_coach_id?: string | null;
   id: string; name: string; age_group: string; coach_id: string | null;
   training_days: string[]; training_time: string; pitch_number: string;
@@ -58,6 +60,10 @@ interface TournamentRow {
   start_date: string; end_date: string; teams_count: number; logo_emoji: string;
 }
 interface EvaluationRow {
+  template_version?: number; height_cm?: number | null; weight_kg?: number | null;
+  nutrition_plan?: string | null; evaluator_name?: string | null; general_rating?: string | null;
+  evaluator_signature?: string | null; coach_signature?: string | null; total_score?: number | null;
+  evaluation_type?: PlayerEvaluation['evaluationType']; team_name?: string | null;
   id: string; player_id: string; team_id: string | null; coach_id: string | null;
   evaluation_date: string; period_type: string;
   technical_score: number | null; tactical_score: number | null;
@@ -101,6 +107,7 @@ export const mapStaff = (r: StaffRow): Staff => ({
 });
 
 export const mapTeam = (r: TeamRow): Team => ({
+  categoryKind: r.category_kind || 'team', status: r.status || 'active',
   id: r.id, name: r.name, ageGroup: r.age_group, coachId: r.coach_id ?? '', goalkeeperCoachId: r.goalkeeper_coach_id ?? undefined,
   trainingDays: r.training_days ?? [], trainingTime: r.training_time, pitchNumber: r.pitch_number,
 });
@@ -156,13 +163,21 @@ export const mapTournament = (r: TournamentRow): Tournament => ({
   logoEmoji: r.logo_emoji,
 });
 
-export const mapEvaluation = (r: EvaluationRow): PlayerEvaluation => ({
+export const mapEvaluation = (r: EvaluationRow): PlayerEvaluation => {
+  const summary = r.template_version === 2 ? templateSummary(r.evaluation_type || 'outfield', r.detailed_scores || {}) : null;
+  const summaryValues = summary ? Object.values(summary) : [];
+  const total = r.evaluation_type === 'goalkeeper' ? goalkeeperTotal(r.detailed_scores || {}) : null;
+  return ({
+  templateVersion: r.template_version || 1, heightCm: r.height_cm == null ? null : Number(r.height_cm), weightKg: r.weight_kg == null ? null : Number(r.weight_kg),
+  nutritionPlan: r.nutrition_plan || '', evaluatorName: r.evaluator_name || '', generalRating: r.general_rating || '',
+  evaluatorSignature: r.evaluator_signature || '', coachSignature: r.coach_signature || '', totalScore: r.total_score == null ? total : Number(r.total_score),
+  evaluationType: r.evaluation_type || 'outfield', teamName: r.team_name || '',
   id: r.id, playerId: r.player_id, teamId: r.team_id ?? '',
   coachId: r.coach_id ?? '', evaluationDate: r.evaluation_date,
   periodType: r.period_type as PlayerEvaluation['periodType'],
-  technicalScore: r.technical_score, tacticalScore: r.tactical_score,
-  physicalScore: r.physical_score, mentalScore: r.mental_score,
-  disciplineScore: r.discipline_score, overallScore: r.overall_score,
+  technicalScore: summary?.technical ?? r.technical_score, tacticalScore: summary?.tactical ?? r.tactical_score,
+  physicalScore: summary?.physical ?? r.physical_score, mentalScore: summary?.mental ?? r.mental_score,
+  disciplineScore: summary?.discipline ?? r.discipline_score, overallScore: summary ? (r.evaluation_type === 'goalkeeper' ? (total == null ? null : total / 10) : (summaryValues.every(v => v != null) ? summaryValues.reduce<number>((sum,v) => sum + v!, 0) / 5 : null)) : (r.overall_score == null ? null : Number(r.overall_score)),
   strengths: r.strengths ?? '', developmentAreas: r.development_areas ?? '',
   coachNotes: r.coach_notes ?? '', coachRecommendation: r.coach_recommendation ?? '',
   detailedScores: r.detailed_scores ?? {}, developmentPriorities: r.development_priorities ?? [],
@@ -171,6 +186,7 @@ export const mapEvaluation = (r: EvaluationRow): PlayerEvaluation => ({
   status: r.status as PlayerEvaluation['status'],
   publishedAt: r.published_at, createdAt: r.created_at, updatedAt: r.updated_at,
 });
+};
 
 export const mapSettings = (r: SettingsRow): Settings => ({
   id: r.id, version: r.row_version, subscriptionFeeSemiAnnual: Number(r.subscription_fee_semi_annual ?? 0), name: r.name, logoUrl: r.logo_url, phone: r.phone, email: r.email,
@@ -205,6 +221,7 @@ export const staffToRow = (s: Staff): StaffRow => ({
 });
 
 export const teamToRow = (t: Team): TeamRow => ({
+  category_kind: t.categoryKind || 'team', status: t.status || 'active',
   id: t.id, name: t.name, age_group: t.ageGroup, coach_id: t.coachId || null, goalkeeper_coach_id: t.goalkeeperCoachId || null,
   training_days: t.trainingDays, training_time: t.trainingTime, pitch_number: t.pitchNumber,
 });

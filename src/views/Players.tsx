@@ -1,3 +1,4 @@
+import { canAssignCategory } from '@/lib/goalkeepers';
 import { useState, useMemo, useEffect, useDeferredValue, type FormEvent } from 'react';
 import {
   Users, Plus, Search, Phone, Mail, Edit2, Trash2, Eye,
@@ -280,7 +281,7 @@ function PlayerForm({ player, parents, teams, players, activeRole, onSave, onClo
     bloodType: player?.bloodType || BLOOD_TYPES[0],
     jerseyNumber: player?.jerseyNumber || 1,
     position: player?.position || POSITIONS[0],
-    teamId: player ? player.teamId : teams[0]?.id || '',
+    teamId: player ? player.teamId : teams.find(tm => canAssignCategory(tm))?.id || '',
     parentName: player?.parentName || '',
     parentPhone: player?.parentPhone || '',
     parentEmail: player?.parentEmail || '',
@@ -349,7 +350,7 @@ function PlayerForm({ player, parents, teams, players, activeRole, onSave, onClo
           </FormField>
           <FormField label={isAr ? 'فئة الفريق' : 'Team'} error={errors.teamId}>
             <select value={form.teamId} onChange={(e) => { setForm({ ...form, teamId: e.target.value }); setErrors((p) => ({ ...p, teamId: '' })); }} className={`${inputCls} ${errors.teamId ? 'border-red-400 ring-1 ring-red-400' : ''}`} required disabled={!canEditSensitive}>
-              {teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
+              {teams.filter(tm => canAssignCategory(tm, player?.teamId)).map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
             </select>
             {!canEditSensitive && <p className="text-[10px] text-amber-500 mt-1">{isAr ? 'يُتاح تعديل الفريق للمدير فقط' : 'Team editing is restricted to managers'}</p>}
           </FormField>

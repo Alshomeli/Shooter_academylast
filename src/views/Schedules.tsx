@@ -1,3 +1,4 @@
+import { categoryPlayers } from '@/lib/goalkeepers';
 import { useState, type FormEvent } from 'react';
 import {
   CalendarDays, Dumbbell, Trophy, Plus, Edit2, Trash2, Clock, MapPin,
@@ -80,7 +81,7 @@ export function Schedules({
   const [deleteTrainingId, setDeleteTrainingId] = useState<string | null>(null);
 
   const teamName = (teamId: string) => teams.find((tm) => tm.id === teamId)?.name || (isAr ? 'فريق غير معروف' : 'Unknown team');
-  const teamPlayersCount = (teamId: string) => players.filter((p) => p.teamId === teamId).length;
+  const teamPlayersCount = (teamId: string) => { const team = teams.find(t => t.id === teamId); return team ? categoryPlayers(team, players).length : 0; };
 
   /* ---------- KPI calculations ---------- */
   const totalMatches = matches.length;
@@ -529,7 +530,7 @@ function MatchForm({
   const isAr = lang === 'ar';
   const [form, setForm] = useState({
     version: match?.version,
-    teamId: match?.teamId || teams[0]?.id || '',
+    teamId: match?.teamId || teams.find(tm => tm.status !== 'inactive' && tm.categoryKind !== 'goalkeeper')?.id || '',
     opponent: match?.opponent || '',
     matchDate: match?.matchDate ? toLocalDatetime(match.matchDate) : '',
     location: match?.location || '',
@@ -584,7 +585,7 @@ function MatchForm({
               required
             >
               {teams.length === 0 && <option value="">{isAr ? 'لا توجد فرق' : 'No teams'}</option>}
-              {teams.map((tm) => (
+              {teams.filter(tm => (tm.status !== 'inactive' && tm.categoryKind !== 'goalkeeper') || tm.id === match?.teamId).map((tm) => (
                 <option key={tm.id} value={tm.id}>
                   {tm.name} — {tm.ageGroup}
                 </option>
@@ -717,7 +718,7 @@ function TrainingForm({
   const isAr = lang === 'ar';
   const [form, setForm] = useState({
     version: training?.version,
-    teamId: training?.teamId || teams[0]?.id || '',
+    teamId: training?.teamId || teams.find(tm => tm.status !== 'inactive')?.id || '',
     title: training?.title || '',
     sessionDate: training?.sessionDate || '',
     durationMinutes: training?.durationMinutes ?? 60,
@@ -762,7 +763,7 @@ function TrainingForm({
               required
             >
               {teams.length === 0 && <option value="">{isAr ? 'لا توجد فرق' : 'No teams'}</option>}
-              {teams.map((tm) => (
+              {teams.filter(tm => tm.status !== 'inactive' || tm.id === training?.teamId).map((tm) => (
                 <option key={tm.id} value={tm.id}>
                   {tm.name} — {tm.ageGroup}
                 </option>

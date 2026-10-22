@@ -1,3 +1,4 @@
+import { EvaluationCard } from '@/components/EvaluationCard';
 import { TelegramLinkCard } from '@/components/TelegramLinkCard';
 import { supabase } from '@/lib/supabase';
 import { getSubscriptionReminders } from '@/lib/reminders';
@@ -367,7 +368,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           </div>
 
           <div id="parent-evaluations" className="arena-card bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3"><h3 className="font-black">{tr(lang).playerEvaluations}</h3>{playerEvaluations.length===0 && <p className="text-sm text-slate-400">{text('لا توجد تقييمات منشورة بعد.','No published evaluations yet.')}</p>}
-            {playerEvaluations.slice(0,5).map((ev)=><div key={ev.id} className="border-t dark:border-slate-700 pt-3"><div className="flex justify-between"><span className="text-xs text-slate-500">{ev.evaluationDate}</span>{ev.overallScore!=null&&<strong className="text-brand-600">{ev.overallScore.toFixed(1)}/5</strong>}</div>{ev.strengths&&<p className="text-sm mt-1">{ev.strengths}</p>}{ev.coachRecommendation&&<p className="text-xs text-blue-600 mt-1">{ev.coachRecommendation}</p>}</div>)}
+            {playerEvaluations.slice(0,5).map(ev => <EvaluationCard key={ev.id} ev={ev} player={selectedPlayer || undefined} lang={lang} />)}
           </div>
         </section>}
       </div>}

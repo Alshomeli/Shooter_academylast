@@ -1,3 +1,4 @@
+import type { EvaluationDraft } from '@/lib/evaluation-template';
 import { resolveOnboardingMode } from '@/lib/onboarding-mode';
 import { supabase } from '@/lib/supabase';
 import { collectionChanges, type Row } from '@/lib/collection-diff';
@@ -427,19 +428,8 @@ export const db = {
     if (error) throw error;
     return (data || []).map(r => mapEvaluation(r as never));
   },
-  async savePlayerEvaluation(ev: { id?: string; playerId: string; evaluationDate: string; periodType: string; technicalScore: number | null; tacticalScore: number | null; physicalScore: number | null; mentalScore: number | null; disciplineScore: number | null; strengths: string; developmentAreas: string; coachNotes: string; coachRecommendation: string; detailedScores: Record<string, number | null>; developmentPriorities: string[]; trainingAction: string; reassessmentDate: string | null; finalRecommendation: string }): Promise<string> {
-    const { data, error } = await supabase.rpc('save_player_evaluation_v2', {
-      p_evaluation_id: ev.id ?? null, p_player_id: ev.playerId,
-      p_evaluation_date: ev.evaluationDate, p_period_type: ev.periodType,
-      p_technical_score: ev.technicalScore, p_tactical_score: ev.tacticalScore,
-      p_physical_score: ev.physicalScore, p_mental_score: ev.mentalScore,
-      p_discipline_score: ev.disciplineScore, p_strengths: ev.strengths || null,
-      p_development_areas: ev.developmentAreas || null,
-      p_coach_notes: ev.coachNotes || null, p_coach_recommendation: ev.coachRecommendation || null,
-      p_detailed_scores: ev.detailedScores || {}, p_development_priorities: ev.developmentPriorities || [],
-      p_training_action: ev.trainingAction || null, p_reassessment_date: ev.reassessmentDate || null,
-      p_final_recommendation: ev.finalRecommendation || null,
-    });
+  async savePlayerEvaluation(ev: EvaluationDraft): Promise<string> {
+    const { data, error } = await supabase.rpc('save_player_evaluation_v3', { p_form: ev });
     if (error) throw error;
     return data as string;
   },
