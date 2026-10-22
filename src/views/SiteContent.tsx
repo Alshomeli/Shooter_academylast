@@ -47,6 +47,8 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
       const {supabase}=await import('@/lib/supabase');
       const review=pendingReviews.find(item=>item.id===id);
       if(!review) return;
+      if(approve && (!selected || selected.kind!=='contact')) throw new Error('افتح قسم التواصل ولاعب الشهر أولًا');
+      if(approve && parentReviews().length>=12) throw new Error('بلغت الحد الأقصى لعرض التقييمات');
       const {error}=await supabase.rpc('manager_approve_parent_review',{p_review_id:id,p_approve:approve});
       if(error) throw error;
       if(approve){
