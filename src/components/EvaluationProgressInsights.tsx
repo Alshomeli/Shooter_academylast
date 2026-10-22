@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { TrendingUp, TrendingDown, Minus, Ruler, Weight } from 'lucide-react';
 import type { PlayerEvaluation, Lang } from '@/types';
+import { evaluationCriteria } from '@/lib/evaluation-template';
 
 interface Props { evaluations: PlayerEvaluation[]; lang: Lang; compact?: boolean }
 type Metric = { titleAr: string; titleEn: string; unit: string; current: number | null; previous: number | null; neutral?: boolean };
@@ -28,6 +29,17 @@ export function EvaluationProgressInsights({ evaluations, lang, compact = false 
       ];
       const attention = rows.length > 1 && current.overallScore != null && previous.overallScore != null && current.overallScore < previous.overallScore - 0.05;
       const weightChanged = rows.length > 1 && valid(current.weightKg) !== null && valid(previous.weightKg) !== null && Math.abs(Number(current.weightKg) - Number(previous.weightKg)) >= 0.1;
+      const criterionChanges = previous
+        ? evaluationCriteria(type === 'goalkeeper' ? 'goalkeeper' : 'outfield')
+          .map(criterion => {
+            const now = valid(current.detailedScores?.[criterion.key]);
+            const before = valid(previous.detailedScores?.[criterion.key]);
+            return now === null || before === null ? null : { label: ar ? criterion.ar : criterion.en, delta: now - before };
+          })
+          .filter((item): item is { label: string; delta: number } => item !== null && Math.abs(item.delta) >= 0.05)
+          .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+          .slice(0, 3)
+        : [];
       const scoreChange = current.overallScore != null && previous?.overallScore != null ? current.overallScore - previous.overallScore : null;
       const summary = scoreChange == null
         ? (ar ? 'لا توجد بيانات كافية لمقارنة الأداء حتى الآن.' : 'Not enough data yet to compare performance.')
@@ -58,6 +70,11 @@ export function EvaluationProgressInsights({ evaluations, lang, compact = false 
         {(attention || weightChanged) && <div role="status" className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
           {attention && <span className="rounded-lg bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200 px-3 py-2">{ar ? 'تنبيه: انخفاض في التقييم العام، يُنصح بالمراجعة' : 'Attention: overall score declined; review recommended'}</span>}
           {weightChanged && <span className="rounded-lg bg-sky-100 text-sky-900 dark:bg-sky-900/30 dark:text-sky-200 px-3 py-2">{ar ? 'تغيّر في الوزن منذ القياس السابق (ليس حكمًا صحيًا)' : 'Weight changed since last measurement (not a health judgement)'}</span>}
+        </div>}
+        {criterionChanges.length > 0 && <div className="mt-3 flex flex-wrap gap-2" aria-label={ar ? 'أبرز تغيّرات المهارات' : 'Key skill changes'}>
+          {criterionChanges.map(item => <span key={item.label} className={`rounded-lg px-3 py-2 text-xs font-bold ${item.delta > 0 ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200' : 'bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200'}`}>
+            {item.label}: {item.delta > 0 ? '+' : ''}{item.delta.toFixed(1)}
+          </span>)}
         </div>}
         <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 p-3" aria-live="polite">
           <p className="text-xs font-black text-slate-900 dark:text-white">{ar ? 'تحليل تلقائي للتقييم' : 'Automated evaluation insight'}</p>
