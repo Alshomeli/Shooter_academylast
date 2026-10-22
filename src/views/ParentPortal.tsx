@@ -58,7 +58,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
     void readPublicContent().then(items => {
       if (!alive) return;
       const contact = items.find(item => item.kind === 'contact')?.payload;
-      if (!contact?.featured_name?.trim() || !contact.featured_image) return;
+      if (!contact?.featured_name?.trim() || !contact.featured_image || contact.featured_enabled==='false') { setMonthlyStar(null); setMonthlyStarOpen(false); return; }
       const video = items.find(item => item.kind === 'video' && item.id === contact.featured_video_id)?.payload.video || '';
       setMonthlyStar({
         playerId: contact.featured_player_id || '',
