@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Save, Eye, Upload, History, Globe, Sparkles } from 'lucide-react';
+import { Plus, Save, Eye, Upload, History, Globe, Sparkles, Film } from 'lucide-react';
 import { PhotoVideoStudio } from '@/components/PhotoVideoStudio';
 import { askManagementAI } from '@/lib/ai-assistant';
 import type { Lang, Role, Staff } from '@/types';
@@ -113,7 +113,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     <div className="grid grid-cols-2 gap-3"><div className={box}>{ar?'منشور':'Published'} <b>{published.length}</b></div><div className={box}>{ar?'غير منشور':'Unpublished'} <b>{items.filter(i=>!published.some(p=>p.id===i.id)).length}</b></div></div>
     {error&&<div role="alert" className="rounded-lg bg-red-100 p-3 text-red-900">{error}<button className="ms-3 underline" onClick={()=>void reload()}>{ar?'إعادة التحميل':'Reload'}</button></div>}
     {message&&<p role="status" className="rounded-lg bg-green-100 p-3 text-green-900">{message}</p>}
-    <nav className="flex flex-wrap gap-2" aria-label="أقسام المحتوى">{kinds.map(k=><button key={k.kind} disabled={busy} onClick={()=>{setKind(k.kind);setSelected(null);setPreview(null);setAiProposal('');setShowHistory(false);}} className={`${button} ${kind!==k.kind?'!bg-slate-600':''}`}>{ar?k.ar:k.en}</button>)}</nav>
+    <nav className="flex flex-wrap gap-2" aria-label="أقسام المحتوى">{kinds.map(k=><button key={k.kind} disabled={busy} onClick={()=>{setKind(k.kind);setSelected(null);setPreview(null);setAiProposal('');setShowHistory(false);}} className={`${button} ${kind!==k.kind?'!bg-slate-600':''}`}>{ar?k.ar:k.en}</button>)}<button type="button" disabled={busy} className={`${button} !bg-slate-800 dark:!bg-slate-700`} onClick={()=>{setKind('video');setSelected({id:crypto.randomUUID(),kind:'video',payload:{},sort_order:items.length,version:1});setIsNew(true);setPreview(null);setAiProposal('');setShowHistory(false);}}><Film size={16}/>{ar?'المكونات / أدوات إنشاء الفيديو':'Components / Video creation tools'}</button></nav>
     <div className="grid gap-5 lg:grid-cols-[minmax(230px,1fr)_2fr]">
       <div className={`${box} space-y-3`}><button className={`${button} w-full`} disabled={busy||loading||kind==='contact'&&items.some(i=>i.kind==='contact')} onClick={()=>{setSelected({id:crypto.randomUUID(),kind,payload:{},sort_order:items.length,version:1});setIsNew(true);setPreview(null);setShowHistory(false);}}><Plus size={16}/>{ar?'إضافة محتوى':'Add content'}</button>
         {loading?<p role="status">{ar?'جارٍ التحميل…':'Loading…'}</p>:items.filter(i=>i.kind===kind).map(i=><button className={`${input} text-start ${selected?.id===i.id?'!border-red-600':''}`} disabled={busy} key={i.id} onClick={()=>{setSelected({...i,payload:{...i.payload}});setIsNew(false);setPreview(null);setShowHistory(false);}}><b className="block truncate">{i.payload.title||'روابط التواصل'}</b><span className="text-xs">{published.some(p=>p.id===i.id)?'منشور':'مسودة / مخفي'} · {i.sort_order}</span></button>)}
@@ -227,7 +227,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
           {kind==='coach'&&<>{field('role','التخصص / الدور')}{field('role_en','Coach Role (English) — optional')}</>}
           {field('alt','وصف الصورة للقارئ')}
           {field('alt_en','Image Alt Text (English) — optional')}
-          {kind==='video'?<><PhotoVideoStudio onMp4={async file => { await run(async()=>{ const path=await uploadContentFile(file,true);setPreview(null);setSelected(s=>s?{...s,payload:{...s.payload,video_path:path,video:''}}:s);setMessage('تم إنشاء الفيديو ورفعه. احفظ المسودة ثم عاينها قبل النشر.'); }); }}/>{upload('video','رفع الفيديو',true)}{upload('poster','صورة غلاف الفيديو')}</>:upload('image','رفع الصورة')}
+          {kind==='video'?<><div id="video-components" className="scroll-mt-24"><PhotoVideoStudio lang={lang} onMp4={async file => { await run(async()=>{ const path=await uploadContentFile(file,true);setPreview(null);setSelected(s=>s?{...s,payload:{...s.payload,video_path:path,video:''}}:s);setMessage('تم إنشاء الفيديو ورفعه. احفظ المسودة ثم عاينها قبل النشر.'); }); }}/></div>{upload('video','رفع الفيديو',true)}{upload('poster','صورة غلاف الفيديو')}</>:upload('image','رفع الصورة')}
         </>}
         <label className="block space-y-1"><span className="text-sm font-bold">ترتيب الظهور (الأصغر أولًا)</span><input className={input} type="number" min={0} max={10000} value={selected.sort_order} disabled={busy} onChange={e=>{setPreview(null);setSelected({...selected,sort_order:Math.max(0,Math.min(10000,Number(e.target.value)||0))});}}/></label>
         <p className="text-xs text-slate-500 dark:text-slate-400">الملفات المرفوعة خاصة حتى نشر المحتوى. تغيير المحتوى لا يغيّر النسخة المنشورة تلقائيًا. اضغط «معاينة» بعد أي تغيير لتفعيل زر النشر.</p>
