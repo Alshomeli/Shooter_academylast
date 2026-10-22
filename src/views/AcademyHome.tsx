@@ -251,15 +251,6 @@ export default function AcademyHome() {
         <AcademyGallery photos={publicGallery} lang={lang}/>
         {publicVideos.length ? <div className="ah-video-grid">{publicVideos.map(v => <figure key={v.src}><video controls playsInline preload="none" poster={v.poster} aria-label={v.title}><source src={v.src}/>{tr("متصفحك لا يدعم الفيديو.")} <a href={v.src}>{tr("افتح الفيديو")}</a></video><figcaption><h3>{v.title}</h3><p>{v.caption}</p></figcaption></figure>)}</div> : <div className="ah-media-feature"><div><span className="ah-play"><Play size={26}/></span><h3>{tr("صور التدريبات ومقاطع الأكاديمية")}</h3><p>{tr("تابع لحظات الملعب والمحتوى المنشور على حساباتنا الرسمية.")}</p></div><div className="ah-actions"><a className="ah-button" href={links.tiktok} target="_blank" rel="noopener noreferrer">{tr("شاهد على TikTok")} <ArrowUpLeft size={18}/></a><a className="ah-outline" href={links.instagram} target="_blank" rel="noopener noreferrer">{tr("الصور على Instagram")}</a></div></div>}
       </section>
-      {contact?.employee_name?.trim() && <section className="ah-section ah-employee-honor" aria-labelledby="ah-employee-title">
-        <div className="ah-employee-card">
-          {contact.employee_image && <img src={contact.employee_image} alt={tr(contact.employee_name, contact.employee_name_en)} loading="lazy"/>}
-          <div><p className="ah-eyebrow">{tr(contact.employee_heading || 'موظف الشهر', contact.employee_heading_en || 'Employee of the Month')}</p>
-            <h2 id="ah-employee-title">{tr(contact.employee_name, contact.employee_name_en)}</h2>
-            {contact.employee_body && <p>{tr(contact.employee_body, contact.employee_body_en)}</p>}
-          </div>
-        </div>
-      </section>}
       <section className="ah-section" id="news"><div className="ah-section-head"><div><p className="ah-eyebrow">{tr("05 / أخبار شوتر")}</p><h2>{tr("ابقَ قريبًا من")} <em>{tr("الفريق.")}</em></h2></div></div>{publicNews.length ? <div className="ah-news-grid">{publicNews.map((n, index) => <article className="ah-news" key={n.id}>{n.image && <img src={n.image} alt={n.imageAlt} loading="lazy"/>}<h3>{n.title}</h3>{n.date && <time dateTime={n.date}>{n.date}</time>}<p>{n.summary}</p><button type="button" className="ah-news-open" onClick={() => {setNewsIndex(index);newsDialog.current?.showModal();}}>{tr("تفاصيل الخبر والصور والفيديو")} <ArrowUpLeft size={16}/></button></article>)}</div> : <div className="ah-news-strip"><p>{tr("آخر أخبار الأكاديمية والتدريبات والمنافسات، عبر حساباتنا الرسمية.")}</p><a className="ah-text-link" href={links.facebook} target="_blank" rel="noopener noreferrer">{tr("أخبارنا على Facebook")} <ArrowUpLeft size={18}/></a></div>}</section>
       <dialog className="ah-news-dialog" ref={newsDialog} aria-label={tr("تفاصيل خبر أكاديمية شوتر")} onClick={e => {if(e.target === e.currentTarget) newsDialog.current?.close();}}>
         <button type="button" className="ah-photo-close" onClick={() => newsDialog.current?.close()} aria-label={tr("إغلاق تفاصيل الخبر")}><X/></button>
