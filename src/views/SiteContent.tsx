@@ -120,7 +120,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
             {field('programs_intro','وصف قسم البرامج')}
             {field('programs_intro_en','Programs description (English)')}
             {currentPrograms().map((p,i)=><div key={i} className="space-y-2 rounded-xl border border-slate-300 p-3">
-              <div className="flex justify-between gap-2"><b>برنامج {i+1}</b><button type="button" disabled={busy} className="text-red-700 underline" onClick={()=>updatePrograms(currentPrograms().filter((_,j)=>j!==i))}>حذف البطاقة</button></div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><b>برنامج {i+1} — ترتيبه ثابت حتى تغيّره يدويًا</b><div className="flex flex-wrap gap-3"><button type="button" disabled={busy||i===0} className="underline disabled:opacity-40" onClick={()=>{const rows=currentPrograms();[rows[i-1],rows[i]]=[rows[i],rows[i-1]];updatePrograms(rows);}}>↑ لأعلى</button><button type="button" disabled={busy||i===currentPrograms().length-1} className="underline disabled:opacity-40" onClick={()=>{const rows=currentPrograms();[rows[i+1],rows[i]]=[rows[i],rows[i+1]];updatePrograms(rows);}}>↓ لأسفل</button><button type="button" disabled={busy} className="text-red-700 underline" onClick={()=>updatePrograms(currentPrograms().filter((_,j)=>j!==i))}>حذف البطاقة</button></div></div>
               {programField(p,i,'title','اسم البرنامج')}
               {programField(p,i,'title_en','Program name (English)')}
               {programField(p,i,'body','الوصف')}
@@ -132,7 +132,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
               {p.image_path&&<p className="text-xs">صورة مرفوعة في التخزين: {p.image_path}</p>}
             </div>)}
             <button className={button} type="button" disabled={busy||currentPrograms().length>=12} onClick={()=>updatePrograms([...currentPrograms(),{title:'برنامج جديد',body:'',image:''}])}><Plus size={16}/>إضافة برنامج جديد</button>
-            <p className="text-xs text-slate-600 dark:text-slate-300">حذف البطاقة يزيلها من الصفحة بعد النشر فقط، ولا يمسح الصور من التخزين أو النسخ السابقة. حد أقصى 12 برنامجاً.</p>
+            <p className="text-xs text-slate-600 dark:text-slate-300">استبدال صورة البرنامج لا يغير موقع البطاقة أو ترتيبها؛ استخدم أسهم النقل فقط إذا أردت تغيير ترتيب البرامج. حذف البطاقة يزيلها من الصفحة بعد النشر فقط، ولا يمسح الصور من التخزين أو النسخ السابقة. حد أقصى 12 برنامجاً.</p>
           </section>
           <h3 className="font-black text-lg">روابط التواصل</h3>
           {contacts.map(c=>field(c,c,'url'))}
