@@ -49,13 +49,15 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
       if(!review) return;
       if(approve && (!selected || selected.kind!=='contact')) throw new Error('افتح قسم التواصل ولاعب الشهر أولًا');
       if(approve && parentReviews().length>=12) throw new Error('بلغت الحد الأقصى لعرض التقييمات');
+      if(approve && selected){
+        // Persist the content draft first, so an approved review cannot be lost on refresh.
+        const updated={...selected,payload:{...selected.payload,parent_reviews_v1:JSON.stringify([...parentReviews(),{name:review.display_name,quote:review.quote,rating:review.rating,consent:true}])}};
+        const saved=await saveContent(updated,isNew);
+        setSelected(saved);setIsNew(false);setPreview(null);
+      }
       const {error}=await supabase.rpc('manager_approve_parent_review',{p_review_id:id,p_approve:approve});
       if(error) throw error;
-      if(approve){
-        if(!selected||selected.kind!=='contact') throw new Error('افتح قسم التواصل أولًا');
-        updateParentReviews([...parentReviews(),{name:review.display_name,quote:review.quote,rating:review.rating,consent:true}]);
-        setMessage(ar?'تمت الموافقة ونقل الرأي إلى مسودة الصفحة. احفظ وعاين ثم انشر.':'Approved and added to page draft. Save, preview and publish.');
-      }
+      if(approve) setMessage(ar?'تم حفظ الرأي في المسودة واعتماده. عاين ثم انشر لإظهاره على الموقع.':'Review approved and saved in the draft. Preview and publish to show it publicly.');
       setPendingReviews(items=>items.filter(item=>item.id!==id));
     });
   };
