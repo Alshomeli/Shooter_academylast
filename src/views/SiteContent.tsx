@@ -103,7 +103,21 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
       </div>
       {selected?<div className={`${box} space-y-4`} key={selected.id}>
         {kind==='contact'?<>
-          <section className="space-y-3 rounded-xl border border-red-300 p-4">
+          <nav aria-label={ar?'أقسام الصفحة الرئيسية':'Homepage sections'} className="rounded-xl border border-slate-300 p-3 dark:border-slate-700">
+            <h3 className="mb-2 font-black">{ar?'أقسام الصفحة الرئيسية — بنفس ترتيب العرض':'Homepage sections — display order'}</h3>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                ['01','عن الأكاديمية','About the academy','home-section-about'],
+                ['02','البرامج التدريبية','Training programs','home-section-programs'],
+                ['03','التدريب والتوجيه','Training and guidance','home-section-guidance'],
+                ['04','من قلب الملعب','From the field','home-section-field'],
+                ['05','أخبار شوتر','Shooter news','home-section-news'],
+                ['06','نلتقي في الملعب','Meet on the field','home-section-contact'],
+              ].map(([number,labelAr,labelEn,target])=><a key={number} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold hover:border-red-600 dark:border-slate-700" href={target==='home-section-news'?'#site-news-editor':target==='home-section-field'?'#site-gallery-editor':'#'+target} onClick={()=>{if(target==='home-section-news'||target==='home-section-field'){setKind(target==='home-section-news'?'news':'gallery');setSelected(null);setPreview(null);}}}>{number} / {ar?labelAr:labelEn}</a>)}
+            </div>
+            <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{ar?'الأقسام ذات المحتوى المستقل تفتح محررها من القائمة. تغيير الصور لا يعيد ترتيب البطاقات.':'Sections with separate content open their editor. Replacing images never reorders cards.'}</p>
+          </nav>
+          <section id="home-section-about" className="scroll-mt-24 space-y-3 rounded-xl border border-red-300 p-4">
             <h3 className="font-black text-lg">01 / عن الأكاديمية — إدارة النصوص</h3>
             <p className="text-xs">يمكنك تغيير أو إفراغ النصوص ثم حفظ المسودة ونشرها. النص الإنجليزي اختياري.</p>
             {field('about_title','عنوان القسم 01')}
@@ -113,7 +127,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
             {field('about_extra','الفقرة الإضافية')}
             {field('about_extra_en','Additional paragraph (English)')}
           </section>
-          <section className="space-y-3 rounded-xl border border-red-300 p-4">
+          <section id="home-section-programs" className="scroll-mt-24 space-y-3 rounded-xl border border-red-300 p-4">
             <h3 className="font-black text-lg">02 / برامجنا التدريبية — إدارة البطاقات</h3>
             {field('programs_title','عنوان قسم البرامج')}
             {field('programs_title_en','Programs title (English)')}
@@ -134,7 +148,8 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
             <button className={button} type="button" disabled={busy||currentPrograms().length>=12} onClick={()=>updatePrograms([...currentPrograms(),{title:'برنامج جديد',body:'',image:''}])}><Plus size={16}/>إضافة برنامج جديد</button>
             <p className="text-xs text-slate-600 dark:text-slate-300">استبدال صورة البرنامج لا يغير موقع البطاقة أو ترتيبها؛ استخدم أسهم النقل فقط إذا أردت تغيير ترتيب البرامج. حذف البطاقة يزيلها من الصفحة بعد النشر فقط، ولا يمسح الصور من التخزين أو النسخ السابقة. حد أقصى 12 برنامجاً.</p>
           </section>
-          <h3 className="font-black text-lg">روابط التواصل</h3>
+          <section id="home-section-guidance" className="scroll-mt-24 rounded-xl border border-slate-300 p-3 dark:border-slate-700"><h3 className="font-black">03 / التدريب والتوجيه</h3><p className="text-sm">هذا القسم لا يملك حقول تحرير مستقلة بعد؛ سيظل محتواه الحالي كما هو حتى إضافة دعم آمن له.</p></section>
+          <h3 id="home-section-contact" className="scroll-mt-24 font-black text-lg">06 / نلتقي في الملعب — روابط التواصل</h3>
           {contacts.map(c=>field(c,c,'url'))}
           <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-3">
             <h3 className="font-black text-lg">لاعب الشهر — بطاقة التكريم</h3>
