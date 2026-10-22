@@ -75,6 +75,24 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     }catch(e){setError(e instanceof Error?e.message:String(e));}
     finally{setAiBusy(false);}
   };
+  const generateFeaturedDraft=async()=> {
+    if(!selected || selected.kind!=='contact') return;
+    const person=selected.payload.featured_name?.trim();
+    const facts=selected.payload.featured_body?.trim();
+    if(!person || !facts) {setError(ar?'أدخل اسم اللاعب وسبب تكريمه أولًا.':'Enter the player name and verified recognition details first.');return;}
+    setAiBusy(true);setError('');setAiProposal('');
+    try {
+      const prompt=[
+        'Draft a concise, warm public football academy Player of the Month recognition in '+(ar?'Arabic':'English')+'.',
+        'Use ONLY the confirmed details supplied; never invent names, performances, prizes, statistics or quotations.',
+        'Return a short recognition heading, a 2-3 sentence popup caption, a short news-ready paragraph and a natural search-friendly title. No keyword stuffing.',
+        'Player: '+person, 'Verified reasons: '+facts,
+      ].join('\\n');
+      const result=await askManagementAI('communication',prompt,lang);
+      setAiProposal(result.reply);
+    }catch(e){setError(e instanceof Error?e.message:String(e));}
+    finally{setAiBusy(false);}
+  };
   const defaultPrograms = [
     {title:'تطوير المهارات',body:'التحكم بالكرة، التمرير، والمراوغة. أساس قوي يمنح اللاعب ثقة أكبر في كل لمسة.',image:programImages[0]},
     {title:'اللياقة البدنية',body:'تنمية القوة والتحمل والمرونة، لبناء جاهزية بدنية تدعم أداء اللاعب في الملعب.',image:programImages[1]},
@@ -95,7 +113,7 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
     <div className="grid grid-cols-2 gap-3"><div className={box}>{ar?'منشور':'Published'} <b>{published.length}</b></div><div className={box}>{ar?'غير منشور':'Unpublished'} <b>{items.filter(i=>!published.some(p=>p.id===i.id)).length}</b></div></div>
     {error&&<div role="alert" className="rounded-lg bg-red-100 p-3 text-red-900">{error}<button className="ms-3 underline" onClick={()=>void reload()}>{ar?'إعادة التحميل':'Reload'}</button></div>}
     {message&&<p role="status" className="rounded-lg bg-green-100 p-3 text-green-900">{message}</p>}
-    <nav className="flex flex-wrap gap-2" aria-label="أقسام المحتوى">{kinds.map(k=><button key={k.kind} disabled={busy} onClick={()=>{setKind(k.kind);setSelected(null);setPreview(null);setShowHistory(false);}} className={`${button} ${kind!==k.kind?'!bg-slate-600':''}`}>{ar?k.ar:k.en}</button>)}</nav>
+    <nav className="flex flex-wrap gap-2" aria-label="أقسام المحتوى">{kinds.map(k=><button key={k.kind} disabled={busy} onClick={()=>{setKind(k.kind);setSelected(null);setPreview(null);setAiProposal('');setShowHistory(false);}} className={`${button} ${kind!==k.kind?'!bg-slate-600':''}`}>{ar?k.ar:k.en}</button>)}</nav>
     <div className="grid gap-5 lg:grid-cols-[minmax(230px,1fr)_2fr]">
       <div className={`${box} space-y-3`}><button className={`${button} w-full`} disabled={busy||loading||kind==='contact'&&items.some(i=>i.kind==='contact')} onClick={()=>{setSelected({id:crypto.randomUUID(),kind,payload:{},sort_order:items.length,version:1});setIsNew(true);setPreview(null);setShowHistory(false);}}><Plus size={16}/>{ar?'إضافة محتوى':'Add content'}</button>
         {loading?<p role="status">{ar?'جارٍ التحميل…':'Loading…'}</p>:items.filter(i=>i.kind===kind).map(i=><button className={`${input} text-start ${selected?.id===i.id?'!border-red-600':''}`} disabled={busy} key={i.id} onClick={()=>{setSelected({...i,payload:{...i.payload}});setIsNew(false);setPreview(null);setShowHistory(false);}}><b className="block truncate">{i.payload.title||'روابط التواصل'}</b><span className="text-xs">{published.some(p=>p.id===i.id)?'منشور':'مسودة / مخفي'} · {i.sort_order}</span></button>)}
@@ -160,6 +178,11 @@ export function SiteContent({activeRole,lang,staff}:{activeRole:Role;lang:Lang;s
             {field('featured_heading_en','Recognition Title (English) — optional')}
             <label className="block space-y-1"><span className="text-sm font-bold">نبذة وسبب التميز</span><textarea className={input} rows={3} maxLength={1800} disabled={busy} value={selected.payload.featured_body||''} onChange={e=>setField('featured_body',e.target.value)}/></label>
             <label className="block space-y-1"><span className="text-sm font-bold">Recognition Reason (English) — optional</span><textarea className={input} rows={3} maxLength={1800} disabled={busy} value={selected.payload.featured_body_en||''} onChange={e=>setField('featured_body_en',e.target.value)}/></label>
+            <div className="space-y-2 rounded-lg border border-slate-300 p-3 dark:border-slate-700">
+              <p className="text-sm font-bold">{ar?'مساعد ذكي لصياغة تكريم لاعب الشهر':'AI Player of the Month writing assistant'}</p>
+              <button type="button" className={button} disabled={busy||aiBusy||!selected.payload.featured_name?.trim()||!selected.payload.featured_body?.trim()} onClick={()=>void generateFeaturedDraft()}><Sparkles size={16}/>{aiBusy?(ar?'جارٍ الاقتراح…':'Generating…'):(ar?'صياغة تكريم احترافي':'Suggest recognition text')}</button>
+              {aiProposal&&<><textarea className={input} rows={6} aria-label={ar?'النص المقترح للمراجعة':'Review proposed text'} maxLength={6000} value={aiProposal} onChange={e=>setAiProposal(e.target.value)}/><p className="text-xs">{ar?'اقتراح للمراجعة فقط، لا يُحفظ أو يُنشر تلقائيًا. انسخ النص المناسب إلى الحقول بعد التحقق من الوقائع.':'Review only. Nothing is saved or published automatically; copy verified text into the appropriate fields.'}</p><button type="button" className={button} onClick={()=>{setField('featured_body',aiProposal);setAiProposal('');}}>{ar?'نقل النص إلى نبذة اللاعب':'Use as player description'}</button></>}
+            </div>
             {upload('featured_image','صورة اللاعب (PNG / WebP بخلفية شفافة مفضلة)')}
             <div className="grid gap-3 sm:grid-cols-3">
               {([['featured_left','الموقع الأفقي',-20,30,1],['featured_width','عرض اللاعب',28,70,50],['featured_height','ارتفاع اللاعب',50,100,94]] as const).map(([key,label,min,max,fallback])=><label key={key} className="block space-y-2 text-sm"><span className="font-bold">{label}: {selected.payload[key] || fallback}%</span><input className="w-full accent-red-700" type="range" min={min} max={max} step={1} value={selected.payload[key] || fallback} disabled={busy} onChange={e=>setField(key,e.target.value)}/></label>)}
