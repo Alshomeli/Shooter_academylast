@@ -308,6 +308,10 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           {sections.map(item=><button key={item.id} aria-current={activeSection===item.id?'page':undefined} onClick={()=>navigate(item.id)} className={activeSection===item.id?'active':''}><item.icon className="h-4 w-4"/>{ar?item.ar:item.en}</button>)}
         </nav>
       </header>
+      <section aria-label={text('أرسل رأيك في الأكاديمية','Review the academy')} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-300 bg-red-50 p-4 text-slate-900 dark:border-red-800 dark:bg-red-950/30 dark:text-slate-100">
+        <div><h2 className="font-black">{text('قيّم أكاديمية شوتر','Rate Shooter Academy')}</h2><p className="text-sm">{text('شارك رأيك عن الأكاديمية، وليس تقييم أداء اللاعبين.','Share feedback about the academy, not player performance.')}</p></div>
+        <button type="button" className="rounded-xl bg-red-700 px-4 py-2.5 font-bold text-white" onClick={()=>navigate('parent-reviews')}>{text('اكتب رأيك الآن','Write your review')}</button>
+      </section>
       <div className="arena-hero"><img className="arena-hero-image" src={ar ? '/images/Screenshot_٢٠٢٦١٠١٨_٠٤٠٣٠٢_Chrome.jpg' : '/images/Screenshot_٢٠٢٦١٠١٨_٠٤٠٢٤٣_Chrome.jpg'} alt={text('شغف اليوم. أبطال الغد. هنا تبدأ رحلتك الكروية.', "Today's passion. Tomorrow's champions. Your football journey starts here.")} /></div>
       <nav aria-label={text('التواصل مع الأكاديمية وموقعها', 'Academy social links and location')} className="arena-social-bar">
         <a href="https://www.instagram.com/shooter.academy.bh/" target="_blank" rel="noopener noreferrer" className="arena-social-link" aria-label={text('إنستغرام الأكاديمية', 'Academy Instagram')}>
