@@ -15,6 +15,7 @@ import type {
 } from '@/types';
 import { Login } from '@/components/Login';
 import { Sidebar } from '@/components/Sidebar';
+import { ContextualShooterAI } from '@/components/ContextualShooterAI';
 
 
 /* ── Lazy-loaded views for code splitting ── */
@@ -808,6 +809,7 @@ export default function App() {
           <div className="max-w-7xl mx-auto animate-fadeIn">
             <ErrorBoundary lang={lang}>
               <Suspense fallback={<ViewLoader />}>
+                <ContextualShooterAI page={safeCurrentTab} role={activeRole} lang={lang} />
                 {renderView()}
               </Suspense>
             </ErrorBoundary>
