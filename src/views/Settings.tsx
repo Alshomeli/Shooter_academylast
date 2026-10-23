@@ -109,9 +109,9 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
           {/* Logo + Name (full row) */}
           <div className="md:col-span-2 flex items-end gap-3">
             <div className="shrink-0">
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+              <span className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 {isAr ? 'الشعار' : 'Logo'}
-              </label>
+              </span>
               <div className="w-24 h-24 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
                 <img
                   src={form.logoUrl && isImageLogo(form.logoUrl) ? form.logoUrl : DEFAULT_ACADEMY_LOGO}
@@ -121,10 +121,11 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
               </div>
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+              <label htmlFor="settings-name" className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 {isAr ? 'اسم الأكاديمية' : 'Academy name'}
               </label>
               <input
+                id="settings-name"
                 value={form.name}
                 onChange={(e) => set('name', e.target.value)}
                 className={inputCls}
@@ -133,10 +134,11 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
               />
             </div>
             <div className="w-40 shrink-0">
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+              <label htmlFor="settings-logo-url" className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 {isAr ? 'الشعار' : 'Logo'}
               </label>
               <input
+                id="settings-logo-url"
                 value={form.logoUrl}
                 onChange={(e) => set('logoUrl', e.target.value)}
                 className={inputCls}
@@ -148,8 +150,9 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
             </div>
           </div>
 
-          <Field icon={<Phone className="h-3.5 w-3.5" />} label={t.phone}>
+          <Field id="settings-phone" icon={<Phone className="h-3.5 w-3.5" />} label={t.phone}>
             <input
+              id="settings-phone"
               value={form.phone}
               onChange={(e) => set('phone', e.target.value)}
               className={inputCls}
@@ -158,8 +161,9 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
             />
           </Field>
 
-          <Field icon={<Mail className="h-3.5 w-3.5" />} label={t.email}>
+          <Field id="settings-email" icon={<Mail className="h-3.5 w-3.5" />} label={t.email}>
             <input
+              id="settings-email"
               type="email"
               value={form.email}
               onChange={(e) => set('email', e.target.value)}
@@ -170,8 +174,9 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
           </Field>
 
           <div className="md:col-span-2">
-            <Field icon={<MapPin className="h-3.5 w-3.5" />} label={t.address}>
+            <Field id="settings-address" icon={<MapPin className="h-3.5 w-3.5" />} label={t.address}>
               <input
+                id="settings-address"
                 value={form.address}
                 onChange={(e) => set('address', e.target.value)}
                 className={inputCls}
@@ -191,24 +196,28 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
           <FeeField
+            id="settings-fee-monthly"
             label={t.monthly}
             value={form.subscriptionFeeMonthly}
             onChange={(v) => set('subscriptionFeeMonthly', v)}
             currency={t.currency}
           />
           <FeeField
+            id="settings-fee-quarterly"
             label={t.quarterly}
             value={form.subscriptionFeeQuarterly}
             onChange={(v) => set('subscriptionFeeQuarterly', v)}
             currency={t.currency}
           />
           <FeeField
+            id="settings-fee-semi-annual"
             label={t.semiAnnual}
             value={form.subscriptionFeeSemiAnnual ?? 0}
             onChange={(v) => set('subscriptionFeeSemiAnnual', v)}
             currency={t.currency}
           />
           <FeeField
+            id="settings-fee-yearly"
             label={t.yearly}
             value={form.subscriptionFeeYearly}
             onChange={(v) => set('subscriptionFeeYearly', v)}
@@ -228,17 +237,17 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
           subtitle={isAr ? 'البيانات التي ستظهر لولي الأمر عند دفع الاشتراك' : 'Transfer details shown to parents when paying subscriptions'}
         />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <Field label={isAr ? 'رقم IBAN' : 'IBAN'}>
-            <input value={form.benefitIban ?? ''} onChange={(e)=>set('benefitIban',e.target.value.replace(/\s+/g,'').toUpperCase())} className={inputCls} dir="ltr" placeholder="BH..." />
+          <Field id="settings-benefit-iban" label={isAr ? 'رقم IBAN' : 'IBAN'}>
+            <input id="settings-benefit-iban" value={form.benefitIban ?? ''} onChange={(e)=>set('benefitIban',e.target.value.replace(/\s+/g,'').toUpperCase())} className={inputCls} dir="ltr" placeholder="BH..." />
           </Field>
-          <Field label={isAr ? 'اسم صاحب الحساب' : 'Account name'}>
-            <input value={form.benefitAccountName ?? ''} onChange={(e)=>set('benefitAccountName',e.target.value)} className={inputCls} />
+          <Field id="settings-benefit-account-name" label={isAr ? 'اسم صاحب الحساب' : 'Account name'}>
+            <input id="settings-benefit-account-name" value={form.benefitAccountName ?? ''} onChange={(e)=>set('benefitAccountName',e.target.value)} className={inputCls} />
           </Field>
-          <Field label={isAr ? 'تعليمات الدفع بالعربية' : 'Arabic payment instructions'}>
-            <textarea value={form.paymentInstructionsAr ?? ''} onChange={(e)=>set('paymentInstructionsAr',e.target.value)} className={inputCls} rows={3} />
+          <Field id="settings-payment-instructions-ar" label={isAr ? 'تعليمات الدفع بالعربية' : 'Arabic payment instructions'}>
+            <textarea id="settings-payment-instructions-ar" value={form.paymentInstructionsAr ?? ''} onChange={(e)=>set('paymentInstructionsAr',e.target.value)} className={inputCls} rows={3} />
           </Field>
-          <Field label={isAr ? 'تعليمات الدفع بالإنجليزية' : 'English payment instructions'}>
-            <textarea value={form.paymentInstructionsEn ?? ''} onChange={(e)=>set('paymentInstructionsEn',e.target.value)} className={inputCls} rows={3} dir="ltr" />
+          <Field id="settings-payment-instructions-en" label={isAr ? 'تعليمات الدفع بالإنجليزية' : 'English payment instructions'}>
+            <textarea id="settings-payment-instructions-en" value={form.paymentInstructionsEn ?? ''} onChange={(e)=>set('paymentInstructionsEn',e.target.value)} className={inputCls} rows={3} dir="ltr" />
           </Field>
         </div>
 
@@ -305,17 +314,19 @@ function SectionHeader({
 }
 
 function Field({
+  id,
   icon,
   label,
   children,
 }: {
+  id: string;
   icon?: React.ReactNode;
   label: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+      <label htmlFor={id} className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
         {icon && <span className="text-slate-400">{icon}</span>}
         {label}
       </label>
@@ -325,11 +336,13 @@ function Field({
 }
 
 function FeeField({
+  id,
   label,
   value,
   onChange,
   currency,
 }: {
+  id: string;
   label: string;
   value: number;
   onChange: (v: number) => void;
@@ -337,11 +350,12 @@ function FeeField({
 }) {
   return (
     <div>
-      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+      <label htmlFor={id} className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
         {label}
       </label>
       <div className="relative">
         <input
+          id={id}
           type="number"
           min={0}
           step={0.5}

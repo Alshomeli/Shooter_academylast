@@ -82,10 +82,11 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
-function ViewLoader() {
+function ViewLoader({ lang }: { lang: Lang }) {
   return (
-    <div className="flex items-center justify-center min-h-[300px]">
-      <Loader2 className="h-7 w-7 text-brand-600 animate-spin" />
+    <div role="status" className="flex flex-col gap-3 items-center justify-center min-h-[300px]" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <Loader2 aria-hidden="true" className="h-7 w-7 text-brand-600 animate-spin" />
+      <p className="text-sm font-bold text-slate-500 dark:text-slate-400">{tr(lang).loading}</p>
     </div>
   );
 }
@@ -239,8 +240,10 @@ export default function App() {
   dataRef.current = data;
   const loadSequence = useRef(0);
   const loadInFlight = useRef<Promise<void> | null>(null);
+  const loadInFlightUserId = useRef<string | undefined>(undefined);
   const refreshQueued = useRef(false);
   const userRef = useRef(currentUser?.authUserId);
+  const loadAllDataRef = useRef<() => Promise<void>>(async () => undefined);
   userRef.current = currentUser?.authUserId;
 
   useEffect(() => {
@@ -278,15 +281,15 @@ export default function App() {
   }, []);
 
   const loadAllData = useCallback(async () => {
-    if (!currentUser) return;
-    if (loadInFlight.current) {
+    if (!currentUser || currentUser.authUserId !== userRef.current) return;
+    const userId = currentUser.authUserId;
+    if (loadInFlight.current && loadInFlightUserId.current === userId) {
       refreshQueued.current = true;
       return loadInFlight.current;
     }
     const request = ++loadSequence.current;
-    const userId = currentUser.authUserId;
     const stillCurrent = () => request === loadSequence.current && userRef.current === userId;
-    const run = (async () => {
+    const run = Promise.resolve().then(async () => {
     try {
       if (!dataRef.current.settings && !currentUser?.registrationOnly) setLoading(true);
       setLoadError(null);
@@ -318,15 +321,37 @@ export default function App() {
       if (stillCurrent()) setLoadError(err instanceof Error ? err.message : JSON.stringify(err));
     } finally {
       if (stillCurrent()) setLoading(false);
-      loadInFlight.current = null;
-      if (refreshQueued.current && userRef.current === userId) {
+      // A different identity may have started another request while this one
+      // was pending. Never let the old promise clear or schedule the new one.
+      const ownsFlight = loadInFlight.current === run;
+      if (ownsFlight) {
+        loadInFlight.current = null;
+        loadInFlightUserId.current = undefined;
+      }
+      if (ownsFlight && refreshQueued.current && userRef.current === userId) {
         refreshQueued.current = false;
-        window.setTimeout(() => { void loadAllData(); }, 0);
+        window.setTimeout(() => { void loadAllDataRef.current(); }, 0);
       }
     }
-    })();
+    });
     loadInFlight.current = run;
+    loadInFlightUserId.current = userId;
     return run;
+  }, [currentUser]);
+  loadAllDataRef.current = loadAllData;
+
+  // A session switch invalidates every result belonging to the previous
+  // account and prevents its old snapshot from flashing in the new account.
+  const previousUserId = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const nextUserId = currentUser?.authUserId;
+    if (previousUserId.current === nextUserId) return;
+    previousUserId.current = nextUserId;
+    loadSequence.current += 1;
+    refreshQueued.current = false;
+    setData(EMPTY_DATA);
+    setLoadError(null);
+    setLoading(Boolean(currentUser));
   }, [currentUser]);
 
   const handleStaffApproved = useCallback(async () => {
@@ -665,7 +690,7 @@ export default function App() {
 
   if (currentUser.role === 'parent') {
     return <ErrorBoundary lang={lang}>
-      <Suspense fallback={<ViewLoader />}>
+      <Suspense fallback={<ViewLoader lang={lang} />}>
         <ParentPortal key={currentUser.authUserId} openRegistration={currentTab === 'registration'} user={currentUser} players={data.players} subscriptions={data.subscriptions}
           attendance={data.attendance} teams={data.teams} trainings={data.trainings} evaluations={data.evaluations} settings={data.settings} lang={lang} setLang={setLang} darkMode={darkMode} setDarkMode={setDarkMode} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />
       </Suspense>
@@ -807,8 +832,9 @@ export default function App() {
         {/* Main content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
           <div className="max-w-7xl mx-auto animate-fadeIn">
-            <ErrorBoundary lang={lang}>
-              <Suspense fallback={<ViewLoader />}>
+            <ErrorBoundary key={`${currentUser.authUserId}:${activeRole}:${safeCurrentTab}`} lang={lang}>
+              {/* A new section must not retain the previous section while its chunk loads. */}
+              <Suspense key={`${activeRole}:${safeCurrentTab}`} fallback={<ViewLoader lang={lang} />}>
                 <ContextualShooterAI page={safeCurrentTab} role={activeRole} lang={lang} />
                 {renderView()}
               </Suspense>

@@ -1,5 +1,6 @@
 import { prefs } from '@/lib/preferences';
 import { AcademyGallery } from '@/components/AcademyGallery';
+import { DeferredAcademyMap } from '@/components/DeferredAcademyMap';
 import { ArrowUpLeft, ArrowDown, Instagram, Facebook, MapPin, Phone, Mail, Play, Target, Users, Trophy, Menu, X, Sun, Moon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { academyContact as defaultLinks, programImages, publicCoaches as defaultCoaches, publicNews as defaultNews, publicVideos as defaultVideos, publicGallery as defaultGallery } from '@/data/public-academy';
@@ -241,7 +242,12 @@ export default function AcademyHome() {
       </dialog>
       <section className="ah-map-section" aria-label={tr("موقع الأكاديمية على الخريطة")}>
         <div className="ah-map-intro"><div><p className="ah-eyebrow">{tr("موقع الأكاديمية")}</p><h2>{tr("زورونا في البحرين")}</h2><p>{tr("شارع 28، حالة النعيم، البحرين")}</p></div><a className="ah-button" href={links.maps} target="_blank" rel="noopener noreferrer"><MapPin size={19}/> {tr("الاتجاهات إلى الأكاديمية")}</a></div>
-        <iframe title={tr("خريطة موقع أكاديمية شوتر في حالة النعيم، البحرين")} loading="lazy" referrerPolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=Shooter%20Academy%2C%20Halat%20Naim%2C%20Bahrain&output=embed"/>
+        <DeferredAcademyMap
+          title={tr("خريطة موقع أكاديمية شوتر في حالة النعيم، البحرين")}
+          fallbackHref={links.maps}
+          fallbackLabel={lang === 'ar' ? 'فتح الموقع في خرائط Google' : 'Open location in Google Maps'}
+          loadingLabel={lang === 'ar' ? 'سيتم تحميل الخريطة عند الاقتراب منها' : 'The map will load as you approach it'}
+        />
         <p className="ah-map-note">{tr("للوصول إلى الموقع المحدد للأكاديمية، استخدم زر الاتجاهات المرتبط بالخريطة المعتمدة.")}</p>
       </section>
       {(() => {

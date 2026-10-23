@@ -1,6 +1,8 @@
 import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { isPublicHome } from './lib/public-entry';
+import { RootErrorBoundary } from './components/RootErrorBoundary';
+import { prefs } from './lib/preferences';
 import './index.css';
 
 const App = lazy(() => import('./App.tsx'));
@@ -42,11 +44,16 @@ if (legal) {
   );
 }
 
+// Resolve the initial locale without eagerly loading the public translation dictionary.
+const requestedLang = new URLSearchParams(window.location.search).get('lang');
+const initialLang = requestedLang === 'ar' || requestedLang === 'en' ? requestedLang : prefs.getLang();
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Suspense fallback={<p role="status" className="p-8 text-center">جارٍ التحميل…</p>}>
-      {legal ? <LegalPage page={legalPath === '/privacy' ? 'privacy' : 'terms'}/> : oauthConsent ? <OAuthConsent /> : home ? <AcademyHome /> : <App />}
-    </Suspense>
+    <RootErrorBoundary lang={initialLang}>
+      <Suspense fallback={<p role="status" dir={initialLang === 'ar' ? 'rtl' : 'ltr'} lang={initialLang} className="p-8 text-center">{initialLang === 'ar' ? 'جارٍ التحميل…' : 'Loading…'}</p>}>
+        {legal ? <LegalPage page={legalPath === '/privacy' ? 'privacy' : 'terms'}/> : oauthConsent ? <OAuthConsent /> : home ? <AcademyHome /> : <App />}
+      </Suspense>
+    </RootErrorBoundary>
   </StrictMode>
 );
-
