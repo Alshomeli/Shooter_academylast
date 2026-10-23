@@ -139,9 +139,13 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
   const validateChildren = (): Record<string, string> => {
     const e: Record<string, string> = {};
     if (!children.length) e._children = t.regChildRequired;
+    const seenCpr = new Set<string>();
     children.forEach((c, i) => {
       if (c.fullName.trim().length < 2) e[`child_${i}_name`] = t.regFieldRequired;
-      if (!c.nationalId.trim()) e[`child_${i}_cpr`] = t.regFieldRequired;
+      const cpr = c.nationalId.trim().toLowerCase();
+      if (!cpr) e[`child_${i}_cpr`] = t.regFieldRequired;
+      else if (seenCpr.has(cpr)) e[`child_${i}_cpr`] = isAr ? 'هذا الرقم الشخصي مكرر ضمن الأبناء.' : 'This child CPR is duplicated in the application.';
+      else seenCpr.add(cpr);
       if (!c.birthDate || c.birthDate > new Date().toISOString().slice(0, 10)) e[`child_${i}_birth`] = t.regFieldRequired;
     });
     return e;
