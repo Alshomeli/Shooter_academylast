@@ -147,8 +147,8 @@ export function LegalPage({ page }: { page: PolicyPage }) {
         </nav>
         <p className="text-xs text-slate-500 dark:text-slate-400">
           {english
-            ? 'This is a preliminary operating draft and requires academy management approval and legal review before it can be treated as a final policy.'
-            : 'هذه صياغة تشغيلية أولية تحتاج اعتماد إدارة الأكاديمية ومراجعة قانونية قبل اعتبارها سياسة نهائية.'}
+            ? 'The Academy’s management has approved this wording for operational use. Completion of the organization details and legal review are still pending before final approval.'
+            : 'اعتمدت إدارة الأكاديمية هذه الصياغة تشغيليًا، وتنتظر استكمال بيانات الجهة ومراجعة قانونية قبل اعتمادها نهائيًا.'}
         </p>
       </div>
     </article>
