@@ -6,6 +6,7 @@ import { db, prefs, signOut, isRegistering } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { tr } from '@/lib/i18n';
+import { getInitialTab, getPostLoginTab, getTabUrl } from '@/lib/navigation';
 import { LegalPage } from '@/views/LegalPage';
 import type {
   CurrentUser, Lang, Role, ViewId,
@@ -212,15 +213,13 @@ function OAuthConsent({ lang }: { lang: Lang }) {
 export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [activeRole, setActiveRole] = useState<Role>('manager');
-  const [currentTab, setCurrentTab] = useState<ViewId>(() => {
-    const path = window.location.pathname.replace(/\/+$/, '') || '/';
-    if (path === '/parent') return 'registration';
-    if (path === '/coach') return 'staff-registration';
-    const params = new URLSearchParams(window.location.search);
-    const view = params.get('view') || window.location.hash.replace('#', '');
-    if (view === 'registration' || view === 'staff-registration' || view === 'registration-admin') return view as ViewId;
-    return 'dashboard';
-  });
+  const [currentTab, setCurrentTabState] = useState<ViewId>(() =>
+    getInitialTab(window.location.pathname, window.location.search, window.location.hash)
+  );
+  const setCurrentTab = useCallback((tab: ViewId) => {
+    setCurrentTabState(tab);
+    window.history.replaceState(window.history.state, '', getTabUrl(tab, window.location.href));
+  }, []);
   const entryPath = window.location.pathname.replace(/\/+$/, '') || '/';
   const parentDirectEntry = entryPath === '/parent';
   const coachDirectEntry = entryPath === '/coach';
@@ -278,7 +277,7 @@ export default function App() {
       }, 0);
     });
     return () => { generation++; authData.subscription.unsubscribe(); };
-  }, []);
+  }, [setCurrentTab]);
 
   const loadAllData = useCallback(async () => {
     if (!currentUser || currentUser.authUserId !== userRef.current) return;
@@ -361,7 +360,7 @@ export default function App() {
     setActiveRole(member.role);
     setCurrentTab('dashboard');
     await loadAllData();
-  }, [loadAllData]);
+  }, [loadAllData, setCurrentTab]);
 
   useEffect(() => {
     if (currentUser) loadAllData();
@@ -449,10 +448,8 @@ export default function App() {
   const handleLogin = (user: CurrentUser) => {
     setCurrentUser(user);
     setActiveRole(user.role);
-    const view = new URLSearchParams(window.location.search).get('view');
-    setCurrentTab(user.registrationOnly && user.registrationMode === 'staff'
-      ? 'staff-registration'
-      : (user.role === 'parent' && !user.registrationOnly ? 'dashboard' : (view === 'registration' || view === 'staff-registration' ? view : 'dashboard')));
+    const params = new URLSearchParams(window.location.search);
+    setCurrentTab(getPostLoginTab(user, params.get('view'), params.get('tab'), ALLOWED_VIEWS_BY_ROLE));
   };
 
   const handleLogout = async () => {
@@ -552,7 +549,7 @@ export default function App() {
     if (!ALLOWED_VIEWS_BY_ROLE[currentUser.role as Exclude<Role, 'parent'>]?.includes(currentTab)) {
       setCurrentTab('dashboard');
     }
-  }, [currentUser, currentTab]);
+  }, [currentUser, currentTab, setCurrentTab]);
 
   // Match the database coach scope, including assistants of team/GK coaches.
   const sessionTeams = useMemo(() => {
