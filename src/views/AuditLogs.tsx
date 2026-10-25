@@ -3,7 +3,7 @@ import { Shield, Search, Filter, Clock, FileText, LogIn, Download } from 'lucide
 import type { AuditLog, Lang, Role } from '@/types';
 import { PageHeader, EmptyState, Badge } from '@/components/ui';
 import { tr } from '@/lib/i18n';
-import { auditActionLabel, auditActionMatchesSearch, formatAuditDetails } from '@/lib/audit-display';
+import { auditActionLabel, auditActionMatchesSearch, auditRoleLabel, formatAuditDetails } from '@/lib/audit-display';
 
 interface AuditLogsProps {
   auditLogs: AuditLog[];
@@ -146,7 +146,7 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
             className="bg-white dark:bg-slate-900 text-sm py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white cursor-pointer"
           >
             <option value="all">{isAr ? 'جميع الأدوار' : 'All Roles'}</option>
-            {roles.map((role) => <option key={role} value={role}>{role}</option>)}
+            {roles.map((role) => <option key={role} value={role}>{auditRoleLabel(role, lang)}</option>)}
           </select>
         </div>
       </div>
@@ -186,7 +186,7 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
                           <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{log.userName}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap"><Badge color="slate">{log.userRole}</Badge></td>
+                      <td className="px-4 py-3 whitespace-nowrap"><Badge color="slate">{auditRoleLabel(log.userRole, lang)}</Badge></td>
                       <td className="px-4 py-3 whitespace-nowrap"><Badge color={actionColor(log.action)}>{auditActionLabel(log.action, lang)}</Badge></td>
                       <td className="px-4 py-3 max-w-xs">
                         <pre dir="ltr" style={{ unicodeBidi: 'plaintext' }} title={details} className="max-h-28 overflow-auto whitespace-pre-wrap break-words font-sans text-xs text-slate-500 dark:text-slate-400">{details || '—'}</pre>

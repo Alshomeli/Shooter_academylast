@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { documentUploadCopy, uploadErrorCopy } from '../src/lib/upload-copy.ts';
-import { auditActionLabel, auditActionMatchesSearch, formatAuditDetails } from '../src/lib/audit-display.ts';
+import { auditActionLabel, auditActionMatchesSearch, auditRoleLabel, formatAuditDetails } from '../src/lib/audit-display.ts';
 
 const auditLogsSource = readFileSync(new URL('../src/views/AuditLogs.tsx', import.meta.url), 'utf8');
 const documentUploadSource = readFileSync(new URL('../src/components/DocumentUpload.tsx', import.meta.url), 'utf8');
@@ -40,6 +40,24 @@ test('known technical audit actions receive useful Arabic and English labels', (
   assert.equal(auditActionLabel('player_updated', 'ar'), 'تعديل بيانات لاعب');
   assert.equal(auditActionLabel('registration_approved', 'en'), 'Registration approved');
   assert.equal(auditActionLabel('unknown_action', 'en'), 'unknown_action');
+});
+
+test('post-payment subscription support action is accurately labeled and searchable in both languages', () => {
+  assert.equal(auditActionLabel('subscription_support_granted', 'ar'), 'تسجيل دعم مرتجع بعد الدفع');
+  assert.equal(auditActionLabel('subscription_support_granted', 'en'), 'Post-payment support refund recorded');
+  assert.equal(auditActionMatchesSearch('subscription_support_granted', 'دعم مرتجع بعد الدفع', 'ar'), true);
+  assert.equal(auditActionMatchesSearch('subscription_support_granted', 'support refund recorded', 'en'), true);
+  assert.equal(auditActionMatchesSearch('subscription_support_granted', 'subscription_support_granted', 'ar'), true);
+});
+
+test('only the manager role is localized while the stored filter value remains unchanged', () => {
+  assert.equal(auditRoleLabel('manager', 'ar'), 'مدير النظام');
+  assert.equal(auditRoleLabel('manager', 'en'), 'System Manager');
+  assert.equal(auditRoleLabel('coach', 'ar'), 'coach');
+  assert.equal(auditRoleLabel('accountant', 'en'), 'accountant');
+  assert.match(auditLogsSource, /<option key=\{role\} value=\{role\}>\{auditRoleLabel\(role, lang\)\}<\/option>/);
+  assert.match(auditLogsSource, /log\.userRole !== roleFilter/);
+  assert.match(auditLogsSource, /auditRoleLabel\(log\.userRole, lang\)/);
 });
 
 test('audit action search matches the displayed localized label and technical action', () => {
