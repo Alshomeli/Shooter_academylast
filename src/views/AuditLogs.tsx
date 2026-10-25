@@ -3,6 +3,7 @@ import { Shield, Search, Filter, Clock, FileText, LogIn, Download } from 'lucide
 import type { AuditLog, Lang, Role } from '@/types';
 import { PageHeader, EmptyState, Badge } from '@/components/ui';
 import { tr } from '@/lib/i18n';
+import { auditActionLabel, auditActionMatchesSearch, formatAuditDetails } from '@/lib/audit-display';
 
 interface AuditLogsProps {
   auditLogs: AuditLog[];
@@ -10,16 +11,13 @@ interface AuditLogsProps {
   activeRole: Role;
   lang: Lang;
 }
-
 type TabId = 'activity' | 'logins';
-
 const ACTION_COLORS: Record<string, 'green' | 'blue' | 'amber' | 'red' | 'gray'> = {
   create: 'green', add: 'green', insert: 'green',
   update: 'blue', edit: 'blue', modify: 'blue',
   delete: 'red', remove: 'red',
   login: 'green', logout: 'amber',
 };
-
 function actionColor(action: string): 'green' | 'blue' | 'amber' | 'red' | 'gray' {
   const lower = action.toLowerCase();
   for (const [key, color] of Object.entries(ACTION_COLORS)) {
@@ -27,52 +25,54 @@ function actionColor(action: string): 'green' | 'blue' | 'amber' | 'red' | 'gray
   }
   return 'gray';
 }
-
-function exportCsv(logs: AuditLog[], filename: string) {
-  const header = 'Timestamp,User,Role,Action,Details';
-  const rows = logs.map((l) =>
-    [l.timestamp, l.userName, l.userRole, l.action, `"${(l.details || '').replace(/"/g, '""')}"`].join(',')
-  );
+function csvCell(value: string): string {
+  const safeValue = /^[=+\-@]/.test(value) ? `'${value}` : value;
+  return `"${safeValue.replace(/"/g, '""')}"`;
+}
+function exportCsv(logs: AuditLog[], filename: string, lang: Lang) {
+  const header = ['Timestamp', 'User', 'Role', 'Action', 'Details'].map(csvCell).join(',');
+  const rows = logs.map((log) => [
+    log.timestamp,
+    log.userName,
+    log.userRole,
+    auditActionLabel(log.action, lang),
+    formatAuditDetails(log.details, lang),
+  ].map(csvCell).join(','));
   const blob = new Blob([header + '\n' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
   URL.revokeObjectURL(url);
 }
-
 export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [tab, setTab] = useState<TabId>('activity');
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-
   const logs = tab === 'activity' ? auditLogs : loginLogs;
-
   const roles = useMemo(() => {
-    const set = new Set(logs.map((l) => l.userRole).filter(Boolean));
+    const set = new Set(logs.map((log) => log.userRole).filter(Boolean));
     return Array.from(set).sort();
   }, [logs]);
-
   const filtered = useMemo(() => {
     return logs
-      .filter((l) => {
+      .filter((log) => {
         if (search) {
-          const q = search.toLowerCase();
+          const query = search.toLowerCase();
           if (
-            !l.userName.toLowerCase().includes(q) &&
-            !l.action.toLowerCase().includes(q) &&
-            !(l.details || '').toLowerCase().includes(q)
+            !log.userName.toLowerCase().includes(query) &&
+            !auditActionMatchesSearch(log.action, query, lang) &&
+            !(log.details || '').toLowerCase().includes(query)
           ) return false;
         }
-        if (roleFilter !== 'all' && l.userRole !== roleFilter) return false;
+        if (roleFilter !== 'all' && log.userRole !== roleFilter) return false;
         return true;
       })
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [logs, search, roleFilter]);
-
+  }, [logs, search, roleFilter, lang]);
   if (activeRole !== 'manager') {
     return (
       <div className="text-center py-20" dir={isAr ? 'rtl' : 'ltr'}>
@@ -83,67 +83,57 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
       </div>
     );
   }
-
-  const formatDate = (d: string) => {
+  const formatDate = (date: string) => {
     try {
-      return new Date(d).toLocaleString(isAr ? 'ar-SA' : 'en-US', {
+      return new Date(date).toLocaleString(isAr ? 'ar-SA' : 'en-US', {
         year: 'numeric', month: 'short', day: 'numeric',
         hour: '2-digit', minute: '2-digit',
       });
     } catch {
-      return d;
+      return date;
     }
   };
-
   const tabs: { id: TabId; label: string; icon: typeof FileText }[] = [
     { id: 'activity', label: t.activityLog, icon: FileText },
     { id: 'logins', label: t.loginLog, icon: LogIn },
   ];
-
   return (
     <div className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
-      <PageHeader
-        title={t.auditLogs}
-        subtitle={`${filtered.length} ${isAr ? 'سجل' : 'records'}`}
-      >
+      <PageHeader title={t.auditLogs} subtitle={`${filtered.length} ${isAr ? 'سجل' : 'records'}`}>
         <button
-          onClick={() => exportCsv(filtered, `${tab}-logs-${Date.now()}.csv`)}
+          onClick={() => exportCsv(filtered, `${tab}-logs-${Date.now()}.csv`, lang)}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold transition cursor-pointer"
         >
           <Download className="h-4 w-4" />
           {isAr ? 'تصدير CSV' : t.exportCsv}
         </button>
       </PageHeader>
-
-      {/* Tabs */}
       <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800/50 rounded-xl w-fit">
-        {tabs.map((tb) => {
-          const Icon = tb.icon;
+        {tabs.map((tabItem) => {
+          const Icon = tabItem.icon;
           return (
             <button
-              key={tb.id}
-              onClick={() => setTab(tb.id)}
+              key={tabItem.id}
+              onClick={() => setTab(tabItem.id)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-                tab === tb.id
+                tab === tabItem.id
                   ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-400 shadow-sm'
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
               <Icon className="h-3.5 w-3.5" />
-              {tb.label}
+              {tabItem.label}
             </button>
           );
         })}
       </div>
-
-      {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none rtl:right-3 ltr:left-3" />
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
             placeholder={t.searchLogs}
             className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-3 rtl:pr-10 rtl:pl-3 ltr:pl-10 ltr:pr-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
           />
@@ -152,18 +142,14 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
           <Filter className="h-4 w-4 text-slate-400" />
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(event) => setRoleFilter(event.target.value)}
             className="bg-white dark:bg-slate-900 text-sm py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white cursor-pointer"
           >
             <option value="all">{isAr ? 'جميع الأدوار' : 'All Roles'}</option>
-            {roles.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
+            {roles.map((role) => <option key={role} value={role}>{role}</option>)}
           </select>
         </div>
       </div>
-
-      {/* Log entries */}
       {filtered.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-8 w-8" />}
@@ -176,53 +162,38 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/50">
-                  <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {isAr ? 'الوقت' : 'Timestamp'}
-                  </th>
-                  <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {t.userName}
-                  </th>
-                  <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {t.userRole}
-                  </th>
-                  <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {t.action}
-                  </th>
-                  <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {t.details}
-                  </th>
+                  <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{isAr ? 'الوقت' : 'Timestamp'}</th>
+                  <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t.userName}</th>
+                  <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t.userRole}</th>
+                  <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t.action}</th>
+                  <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t.details}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filtered.slice(0, 200).map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                        <Clock className="h-3 w-3 shrink-0" />
-                        <span className="tabular-nums">{formatDate(log.timestamp)}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white text-[10px] font-black shrink-0">
-                          {log.userName.charAt(0)}
+                {filtered.slice(0, 200).map((log) => {
+                  const details = formatAuditDetails(log.details, lang);
+                  return (
+                    <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                          <Clock className="h-3 w-3 shrink-0" />
+                          <span className="tabular-nums">{formatDate(log.timestamp)}</span>
                         </div>
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{log.userName}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <Badge color="slate">{log.userRole}</Badge>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <Badge color={actionColor(log.action)}>{log.action}</Badge>
-                    </td>
-                    <td className="px-4 py-3 max-w-xs">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate" title={log.details}>
-                        {log.details || '—'}
-                      </p>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white text-[10px] font-black shrink-0">{log.userName.charAt(0)}</div>
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{log.userName}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap"><Badge color="slate">{log.userRole}</Badge></td>
+                      <td className="px-4 py-3 whitespace-nowrap"><Badge color={actionColor(log.action)}>{auditActionLabel(log.action, lang)}</Badge></td>
+                      <td className="px-4 py-3 max-w-xs">
+                        <pre dir="ltr" style={{ unicodeBidi: 'plaintext' }} title={details} className="max-h-28 overflow-auto whitespace-pre-wrap break-words font-sans text-xs text-slate-500 dark:text-slate-400">{details || '—'}</pre>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

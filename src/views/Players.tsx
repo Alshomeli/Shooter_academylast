@@ -461,10 +461,10 @@ function PlayerDetail({ player, team, evaluations, lang, photoUrl }: { photoUrl?
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
-            <DocumentUpload playerId={player.id} category="photo" label={isAr ? 'صور اللاعب' : 'Player photos'} />
+            <DocumentUpload playerId={player.id} category="photo" lang={lang} label={isAr ? 'صور اللاعب' : 'Player photos'} />
           </div>
           <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
-            <DocumentUpload playerId={player.id} category="document" label={isAr ? 'مستندات PDF / PNG' : 'PDF / PNG documents'} />
+            <DocumentUpload playerId={player.id} category="document" lang={lang} label={isAr ? 'مستندات PDF / PNG' : 'PDF / PNG documents'} />
           </div>
         </div>
       </div>
