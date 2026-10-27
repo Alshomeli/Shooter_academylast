@@ -18,9 +18,10 @@ export function getDateRange(preset: DateRangePreset, today = academyToday()): [
   }
 }
 
-export type LifecycleStatus = 'active' | 'expiring' | 'expired' | 'future' | 'exempt';
+export type LifecycleStatus = 'active' | 'expiring' | 'expired' | 'future' | 'exempt' | 'cancelled';
 export function getLifecycleStatus(sub: { startDate: string; endDate: string; status?: string }, today = academyToday()): LifecycleStatus {
-  if (sub.status === 'exempt' || !sub.startDate || !sub.endDate) return 'exempt';
+  if (sub.status === 'cancelled') return 'cancelled';
+  if (!sub.startDate || !sub.endDate) return 'exempt';
   if (sub.startDate > today) return 'future';
   if (sub.endDate < today) return 'expired';
   const daysLeft = Math.round((Date.parse(sub.endDate + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / 86400000);

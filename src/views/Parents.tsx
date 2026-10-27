@@ -559,7 +559,7 @@ function ParentDetail({
                     </Badge>
                     {sub && (
                       <Badge color={sub.status === 'paid' ? 'blue' : 'amber'}>
-                        {sub.status === 'paid' ? t.paid : t.unpaid}
+                        {sub.status === 'cancelled' ? (lang === 'ar' ? 'ملغى' : 'Cancelled') : sub.status === 'exempt' ? t.exempt : sub.status === 'paid' ? t.paid : t.unpaid}
                       </Badge>
                     )}
                   </div>
