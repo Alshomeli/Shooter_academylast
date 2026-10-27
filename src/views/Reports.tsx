@@ -147,7 +147,7 @@ export function Reports({
     const expenseTotal = filteredTransactions.filter((tx) => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0);
     const netProfit = revenueTotal - expenseTotal;
     const paidSubs = filteredSubscriptions.filter((s) => s.status === 'paid').length;
-    const totalSubs = filteredSubscriptions.filter(s => s.status !== 'exempt').length;
+    const totalSubs = filteredSubscriptions.filter(s => s.status !== 'exempt' && s.status !== 'cancelled').length;
     const collectionRate = totalSubs > 0 ? Math.round((paidSubs / totalSubs) * 100) : 0;
 
     const byMonthRev: Record<string, number> = {};
@@ -340,7 +340,7 @@ export function Reports({
             ? 'ملاحظة: مبالغ الإيرادات والمصروفات تعتمد على الحركات المالية المسجلة فقط، بينما نسبة التحصيل تعتمد على حالة الاشتراكات. لا يتم إنشاء حركات مالية رجعية للبيانات التاريخية تلقائيًا.'
             : 'Note: revenue and expense totals use recorded financial transactions, while collection rate uses subscription status. Historical payments are not backfilled automatically.'}
         </div>
-        <p className="mb-4 text-sm dark:text-slate-200">{isAr ? 'الدعم المرتجع (ضمن المصروفات)' : 'Support refunds (included in expenses)'}: {filteredTransactions.filter(tx => tx.category === 'subscription_support').reduce((sum, tx) => sum + tx.amount, 0).toFixed(3)} BHD · {isAr ? 'المعفون (بلا حركة مالية)' : 'Exempt (no cash movement)'}: {filteredSubscriptions.filter(s => s.status === 'exempt').length}</p>
+        <p className="mb-4 text-sm dark:text-slate-200">{isAr ? 'الرسوم المُعادة للإعفاء أو الانسحاب (ضمن المصروفات)' : 'Exemption / withdrawal refunds (included in expenses)'}: {filteredTransactions.filter(tx => tx.category === 'subscription_support').reduce((sum, tx) => sum + tx.amount, 0).toFixed(3)} BHD · {isAr ? 'المعفون (بلا حركة مالية)' : 'Exempt (no cash movement)'}: {filteredSubscriptions.filter(s => s.status === 'exempt').length}</p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard icon={<TrendingUp className="h-5 w-5" />} label={t.totalRevenue} value={`${financial.revenueTotal.toLocaleString()} ${t.currency}`} color="emerald" />
           <StatCard icon={<Wallet className="h-5 w-5" />} label={t.totalExpenses} value={`${financial.expenseTotal.toLocaleString()} ${t.currency}`} color="red" />

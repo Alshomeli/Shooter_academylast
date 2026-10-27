@@ -80,6 +80,7 @@ export interface Parent {
 }
 
 export interface Subscription {
+  exemptionReason?: string;
   version?: number;
   id: string;
   playerId: string;
@@ -87,7 +88,7 @@ export interface Subscription {
   amount: number;
   startDate: string;
   endDate: string;
-  status: 'paid' | 'unpaid' | 'exempt';
+  status: 'paid' | 'unpaid' | 'exempt' | 'cancelled';
   paymentMethod?: string;
   paidAt?: string;
 }

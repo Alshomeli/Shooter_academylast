@@ -34,6 +34,7 @@ interface ParentRow {
   status: string; notes: string; joined_date: string;
 }
 interface SubscriptionRow {
+  exemption_reason?: string | null;
   id: string; player_id: string; plan_type: string; amount: number;
   start_date: string; end_date: string; status: string;
   payment_method: string | null; paid_at: string | null;
@@ -128,6 +129,7 @@ export const mapParent = (r: ParentRow): Parent => ({
 });
 
 export const mapSubscription = (r: SubscriptionRow): Subscription => ({
+  exemptionReason: r.exemption_reason ?? undefined,
   id: r.id, playerId: r.player_id, planType: (r.plan_type === 'yearly' ? 'annual' : r.plan_type) as Subscription['planType'],
   amount: Number(r.amount), startDate: r.start_date, endDate: r.end_date,
   status: r.status as Subscription['status'], paymentMethod: r.payment_method ?? undefined,
@@ -241,10 +243,11 @@ export const parentToRow = (p: Parent): ParentRow => ({
 });
 
 export const subscriptionToRow = (s: Subscription): SubscriptionRow => ({
+  ...(s.exemptionReason !== undefined ? { exemption_reason: s.exemptionReason } : {}),
   id: s.id, player_id: s.playerId, plan_type: s.planType, amount: s.amount,
   start_date: s.startDate, end_date: s.endDate, status: s.status,
-  payment_method: s.status === 'paid' ? s.paymentMethod ?? null : null,
-  paid_at: s.status === 'paid' ? s.paidAt ?? null : null,
+  payment_method: (s.status === 'paid' || s.status === 'cancelled') ? s.paymentMethod ?? null : null,
+  paid_at: (s.status === 'paid' || s.status === 'cancelled') ? s.paidAt ?? null : null,
 });
 
 export const attendanceToRow = (a: Attendance): AttendanceRow => ({

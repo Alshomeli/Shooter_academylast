@@ -92,9 +92,9 @@ export const t = {
     transactionsTab: 'المعاملات المالية',
     remindersTab: 'التذكيرات والتحليلات',
     addSubscription: 'إضافة اشتراك',
-    addExemptSubscription: 'إضافة اشتراك معفي',
+    addExemptSubscription: 'إضافة اشتراك معفى',
     activateSubscription: 'تفعيل الاشتراك',
-    exemptHint: 'لاعب معفي من الرسوم — بدون مدة أو مبلغ حتى يتم تفعيله',
+    exemptHint: 'إعفاء كامل من الرسوم للفترة المحددة — يستمر اللاعب دون حركة مالية',
     addTransaction: 'إضافة معاملة',
     searchPlayer: 'ابحث باسم اللاعب...',
     noMatchingSubs: 'لا توجد اشتراكات مطابقة',
@@ -634,7 +634,7 @@ export const t = {
     addSubscription: 'Add Subscription',
     addExemptSubscription: 'Add Exempt Subscription',
     activateSubscription: 'Activate Subscription',
-    exemptHint: 'Player exempt from fees — no duration or amount until activated',
+    exemptHint: 'Full fee exemption for the specified period — player continues with no cash transaction',
     addTransaction: 'Add Transaction',
     searchPlayer: 'Search by player name...',
     noMatchingSubs: 'No matching subscriptions',
@@ -1122,7 +1122,7 @@ export function planLabel(plan: string, lang: Lang): string {
 export function categoryLabel(category: string, lang: Lang): string {
   const t = tr(lang);
   const map: Record<string, string> = {
-    subscription_support: lang === 'ar' ? 'دعم مرتجع بعد الدفع' : 'Post-payment support refund',
+    subscription_support: lang === 'ar' ? 'رسوم مُعادة — إعفاء أو انسحاب' : 'Fee refunds — exemption or withdrawal',
     subscription: t.catSubscription, salary: t.catSalary,
     equipment: t.catEquipment, rent: t.catRent, other: t.catOther,
   };

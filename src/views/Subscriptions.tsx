@@ -1,3 +1,4 @@
+import { SubscriptionCancellation } from '@/components/SubscriptionCancellation';
 import { PreplatformCoverage } from '@/components/PreplatformCoverage';
 import { SubscriptionSupport } from '@/components/SubscriptionSupport';
 import { academyToday, getLifecycleStatus, type LifecycleStatus } from '@/lib/report-dates';
@@ -69,11 +70,12 @@ const CATEGORY_COLORS: Record<string, 'emerald' | 'blue' | 'amber' | 'slate'> = 
 
 const todayISO = () => academyToday();
 
-const LIFECYCLE_BADGE: Record<LifecycleStatus, { color: 'emerald' | 'amber' | 'red' | 'blue' | 'slate'; key: 'subActive' | 'subExpiring' | 'subExpired' | 'subFuture' | 'exempt' }> = {
+const LIFECYCLE_BADGE: Record<LifecycleStatus, { color: 'emerald' | 'amber' | 'red' | 'blue' | 'slate'; key: 'subActive' | 'subExpiring' | 'subExpired' | 'subFuture' | 'exempt' | 'cancelled' }> = {
   active:   { color: 'emerald', key: 'subActive' },
   expiring: { color: 'amber',   key: 'subExpiring' },
   expired:  { color: 'red',     key: 'subExpired' },
   future:   { color: 'blue',    key: 'subFuture' },
+  cancelled: { color: 'slate', key: 'cancelled' },
   exempt:   { color: 'slate',   key: 'exempt' },
 };
 
@@ -111,6 +113,7 @@ export function Subscriptions({
   const [deleteTransId, setDeleteTransId] = useState<string | null>(null);
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
   const [coveragePlayer, setCoveragePlayer] = useState('');
+  const [cancelSub, setCancelSub] = useState<Subscription | null>(null);
   const [supportSub, setSupportSub] = useState<Subscription | null>(null);
   const [receiptSub, setReceiptSub] = useState<Subscription | null>(null);
   const [paymentProofs, setPaymentProofs] = useState<PaymentProof[]>([]);
@@ -183,7 +186,8 @@ export function Subscriptions({
     { value: 'paid', label: t.paid },
     { value: 'unpaid', label: t.unpaid },
     { value: 'exempt', label: t.exempt },
-  ], [t]);
+    { value: 'cancelled', label: isAr ? 'ملغى' : 'Cancelled' },
+  ], [t, isAr]);
 
   /* ---- KPIs ---- */
   const totalRevenue = useMemo(
@@ -291,7 +295,7 @@ export function Subscriptions({
         )}
       </PageHeader>
 
-      {canSeeFinance && <p className="text-sm text-slate-600 dark:text-slate-300">{isAr ? 'الدعم المرتجع بعد الدفع' : 'Post-payment support refunded'}: {transactions.filter(tx => tx.category === 'subscription_support').reduce((sum, tx) => sum + tx.amount, 0).toFixed(3)} BHD · {isAr ? 'الإعفاءات لا تُسجّل كحركات مالية' : 'Exemptions create no financial transactions'}</p>}
+      {canSeeFinance && <p className="text-sm text-slate-600 dark:text-slate-300">{isAr ? 'الرسوم المُعادة بسبب الإعفاء أو الانسحاب' : 'Fees refunded for exemption or withdrawal'}: {transactions.filter(tx => tx.category === 'subscription_support').reduce((sum, tx) => sum + tx.amount, 0).toFixed(3)} BHD · {isAr ? 'الإعفاءات لا تُسجّل كحركات مالية' : 'Exemptions create no financial transactions'}</p>}
       {isManager && <details className="rounded-xl border p-3 dark:border-slate-700"><summary className="cursor-pointer font-bold">{isAr ? 'اعتماد اشتراك مدفوع قبل المنصة' : 'Approve pre-platform paid subscription'}</summary><select aria-label={isAr ? 'اللاعب' : 'Player'} value={coveragePlayer} onChange={e=>setCoveragePlayer(e.target.value)} className={inputCls}><option value="">{isAr ? 'اختر اللاعب' : 'Select player'}</option>{players.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>{coveragePlayer && <PreplatformCoverage key={coveragePlayer} playerId={coveragePlayer} lang={lang} onSaved={onRefresh}/>}</details>}
       {/* ---------------- KPIs ---------------- */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -307,7 +311,7 @@ export function Subscriptions({
           label={t.totalExpenses}
           value={`${totalExpenses.toLocaleString()} ${t.currency}`}
           color="red"
-          sublabel={isAr ? 'تشمل الدعم المرتجع بعد الدفع' : 'Includes post-payment support refunds'}
+          sublabel={isAr ? 'تشمل الرسوم المُعادة بسبب الإعفاء أو الانسحاب' : 'Includes all recorded refunds'}
         />}
         {canSeeFinance && <StatCard
           icon={<Wallet className="h-5 w-5" />}
@@ -415,6 +419,7 @@ export function Subscriptions({
               {filteredSubs.map((sub) => {
                 const player = playerOf(sub.playerId);
                 const isPaid = sub.status === 'paid';
+                const isCancelled = sub.status === 'cancelled';
                 const isExempt = sub.status === 'exempt';
                 return (
                   <div
@@ -458,7 +463,7 @@ export function Subscriptions({
 
                       {/* Dates */}
                       <div className="hidden md:flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 min-w-48">
-                        {isExempt ? (
+                        {isExempt && !sub.startDate ? (
                           <span className="text-slate-400">—</span>
                         ) : (
                           <>
@@ -477,7 +482,7 @@ export function Subscriptions({
 
                       {/* Status */}
                       <div className="min-w-24 flex flex-wrap gap-1.5">
-                        {isExempt ? (
+                        {isCancelled ? <Badge color="slate">{isAr ? 'ملغى' : 'Cancelled'}</Badge> : isExempt ? (
                           <Badge color="slate">
                             <CheckCircle className="h-3 w-3" /> {t.exempt}
                           </Badge>
@@ -494,7 +499,7 @@ export function Subscriptions({
                             )}
                           </Badge>
                         )}
-                        {(() => { const lc = getLifecycleStatus(sub); const cfg = LIFECYCLE_BADGE[lc]; return <Badge color={cfg.color}>{t[cfg.key]}</Badge>; })()}
+                        {(() => { const lc = getLifecycleStatus(sub); const cfg = LIFECYCLE_BADGE[lc]; return <Badge color={cfg.color}>{cfg.key === 'cancelled' ? (isAr ? 'ملغى' : 'Cancelled') : t[cfg.key]}</Badge>; })()}
                       </div>
 
                       {/* Payment method */}
@@ -503,7 +508,7 @@ export function Subscriptions({
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-1.5 ms-auto">
+                      <div className="flex flex-wrap items-center gap-1.5 ms-auto">
                         {isExempt && isManager && (
                           <button
                             onClick={() => setActivateSub(sub)}
@@ -512,13 +517,14 @@ export function Subscriptions({
                             <CheckCircle className="h-3.5 w-3.5" /> {t.activateSubscription}
                           </button>
                         )}
-                        {isPaid && isManager && <button onClick={() => setSupportSub(sub)} className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">{isAr ? 'منح دعم' : 'Grant support'}</button>}
-                        {isPaid && (
+                        {isManager && !isExempt && <button onClick={() => setCancelSub(sub)} className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-red-50 text-red-700">{isCancelled ? (isAr ? 'تفاصيل الإلغاء والاسترداد' : 'Cancellation / refund') : (isAr ? 'إلغاء الاشتراك' : 'Cancel subscription')}</button>}
+                        {isPaid && isManager && <button onClick={() => setSupportSub(sub)} className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">{isAr ? 'رد رسوم بسبب الإعفاء' : 'Exemption refund'}</button>}
+                        {(isPaid || (isCancelled && sub.paidAt)) && (
                           <button onClick={() => setReceiptSub(sub)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50">
                             <Receipt className="h-3.5 w-3.5" /> {isAr ? 'إيصال' : 'Receipt'}
                           </button>
                         )}
-                        {!isPaid && !isExempt && canPay && sub.startDate <= academyToday() && (
+                        {!isCancelled && !isPaid && !isExempt && canPay && sub.startDate <= academyToday() && (
                           <button
                             onClick={() => { setPaymentTarget(sub); setPaymentError(''); setPaymentMethod('cash'); }}
                             disabled={markingPaidId === sub.id}
@@ -537,7 +543,7 @@ export function Subscriptions({
                             {isAr ? 'تجديد الاشتراك' : 'Renew subscription'}
                           </button>
                         )}
-                        {isManager && !isPaid && (
+                        {isManager && !isPaid && !isCancelled && (
                           <>
                             {!isExempt && (
                               <button
@@ -733,6 +739,7 @@ export function Subscriptions({
           <button className="bg-brand-600 text-white rounded-lg py-2 px-4 disabled:opacity-50" disabled={!!markingPaidId} onClick={() => void handleMarkPaid()}>{markingPaidId ? t.processing : t.confirm}</button>
         </div>
       </Modal>
+      {cancelSub && <SubscriptionCancellation key={cancelSub.id} subscription={cancelSub} lang={lang} onClose={() => setCancelSub(null)} onSaved={onRefresh} />}
       {supportSub && <SubscriptionSupport subscription={supportSub} lang={lang} onClose={() => setSupportSub(null)} onSaved={onRefresh} />}
       {receiptSub && <PaymentReceipt subscription={receiptSub} transactions={transactions} players={players} parents={parents} settings={settings} lang={lang} officialReceiptNumber={paymentProofs.find(proof => proof.status === 'approved' && proof.subscriptionId === receiptSub.id)?.receiptNumber} onClose={() => setReceiptSub(null)} />}
 
@@ -852,6 +859,7 @@ function SubscriptionForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [exemptionReason, setExemptionReason] = useState(subscription?.exemptionReason || '');
 
   const handlePlanChange = (planType: Subscription['planType']) => {
     setForm((f) => ({
@@ -874,8 +882,9 @@ function SubscriptionForm({
     e.preventDefault();
     const e2: Record<string, string> = {};
     if (!form.playerId) e2.playerId = t.selectPlayerError;
-    if (!exemptMode) {
-      if (!form.amount || form.amount <= 0) e2.amount = t.amountError;
+    if (exemptMode && exemptionReason.trim().length < 3) e2.exemptionReason = lang === 'ar' ? 'أدخل سبب الإعفاء' : 'Enter an exemption reason';
+    {
+      if (!exemptMode && (!form.amount || form.amount <= 0)) e2.amount = t.amountError;
       if (!form.startDate) e2.startDate = t.startDateRequired;
       if (!form.endDate) e2.endDate = t.endDateRequired;
       if (form.startDate && form.endDate && form.startDate > form.endDate) e2.endDate = t.endDateAfterStart;
@@ -893,8 +902,9 @@ function SubscriptionForm({
         playerId: form.playerId,
         planType: exemptMode ? ('monthly' as Subscription['planType']) : form.planType,
         amount: exemptMode ? 0 : (Number(form.amount) || 0),
-        startDate: exemptMode ? '' : form.startDate,
-        endDate: exemptMode ? '' : form.endDate,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        ...(exemptMode ? { exemptionReason: exemptionReason.trim() } : {}),
         status: exemptMode ? 'exempt' : form.status,
       },
       subscription?.id,
@@ -930,6 +940,7 @@ function SubscriptionForm({
           </div>
         )}
 
+        {exemptMode && <FormField label={lang === 'ar' ? 'سبب الإعفاء الكامل' : 'Full exemption reason'} error={errors.exemptionReason}><textarea className={inputCls} maxLength={1000} required value={exemptionReason} onChange={e => setExemptionReason(e.target.value)} /></FormField>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label={t.player} error={errors.playerId}>
             <select
@@ -986,7 +997,7 @@ function SubscriptionForm({
             </FormField>
           )}
 
-          {!exemptMode && (
+          {(
             <FormField label={t.startDate} error={errors.startDate}>
               <input
                 type="date"
@@ -997,7 +1008,7 @@ function SubscriptionForm({
             </FormField>
           )}
 
-          {!exemptMode && (
+          {(
             <FormField label={t.endDate} error={errors.endDate}>
               <input
                 type="date"
@@ -1206,14 +1217,14 @@ function RemindersAnalyticsTab({
   const stats = reminderStats(subscriptions, players, parents);
   const reminders = getSubscriptionReminders(subscriptions, players, parents);
 
-  const totalSubs = subscriptions.filter((s) => s.status !== 'exempt').length;
+  const totalSubs = subscriptions.filter((s) => s.status !== 'exempt' && s.status !== 'cancelled').length;
   const paidSubs = subscriptions.filter((s) => s.status === 'paid').length;
   const collectionRate = totalSubs > 0 ? Math.round((paidSubs / totalSubs) * 100) : 0;
 
   // Bar chart data: paid vs unpaid per plan type
   const planTypes: Subscription['planType'][] = ['monthly', 'quarterly', 'semi_annual', 'annual'];
   const chartData = planTypes.map((plan) => {
-    const planSubs = subscriptions.filter((s) => s.planType === plan && s.status !== 'exempt');
+    const planSubs = subscriptions.filter((s) => s.planType === plan && s.status !== 'exempt' && s.status !== 'cancelled');
     const paid = planSubs.filter((s) => s.status === 'paid').length;
     const unpaid = planSubs.filter((s) => s.status === 'unpaid').length;
     return { plan, paid, unpaid, total: planSubs.length };

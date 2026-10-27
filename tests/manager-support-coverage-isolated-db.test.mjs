@@ -6,7 +6,7 @@ const manager='11111111-1111-4111-8111-111111111111';
 const accountant='22222222-2222-4222-8222-222222222222';
 const request='33333333-3333-4333-8333-333333333333';
 const sqlFile=path=>readFile(new URL('../'+path,import.meta.url),'utf8');
-async function setup(){
+export async function setup(){
  const db=new PGlite();
  await db.exec(`create role anon; create role authenticated;create schema auth;create schema internal;
  grant usage on schema auth,internal to authenticated;
