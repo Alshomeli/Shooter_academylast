@@ -13,6 +13,7 @@ export function SubscriptionSupport({ subscription, lang, onClose, onSaved }: {
  const [paidAmount,setPaidAmount]=useState(0);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState('');
+ const [loadFailed,setLoadFailed]=useState(false);
  const [amount,setAmount]=useState('');
  const [reason,setReason]=useState('');
  const [method,setMethod]=useState('cash');
@@ -34,7 +35,8 @@ export function SubscriptionSupport({ subscription, lang, onClose, onSaved }: {
     if(!active)return;
     setRows(history.data||[]);
     setPaidAmount((payments.data||[]).reduce((sum,r)=>sum+Number(r.amount),0));
-   } catch(e) { if(active)setError(errorMessage(e,ar)); }
+    setLoadFailed(false);
+   } catch(e) { if(active){setError(errorMessage(e,ar));setLoadFailed(true);} }
    finally { if(active)setLoading(false); }
   }
   void load();
@@ -43,7 +45,7 @@ export function SubscriptionSupport({ subscription, lang, onClose, onSaved }: {
  const granted=rows.reduce((sum,r)=>sum+Number(r.amount),0);
  const remaining=Math.max(0,Math.round((paidAmount-granted)*1000)/1000);
  const save=async()=>{
-  if(busy||saved||loading||error)return;
+  if(busy||saved||loading||loadFailed)return;
   const value=Number(amount);
   if(!confirmed||!amount.trim()||!Number.isFinite(value)||value<=0||value>remaining||Math.abs(value*1000-Math.round(value*1000))>0.000001||reason.trim().length<3){
    setError(ar?'أدخل مبلغًا صحيحًا وسبب الإعفاء وأكد تسليم المبلغ.':'Enter a valid amount and reason, and confirm the refund was delivered.');return;
@@ -66,7 +68,7 @@ export function SubscriptionSupport({ subscription, lang, onClose, onSaved }: {
     <option value="cash">{ar?'نقدًا':'Cash'}</option><option value="transfer">{ar?'تحويل بنكي':'Bank transfer'}</option><option value="benefit">{ar?'بنفت':'Benefit'}</option><option value="card">{ar?'بطاقة':'Card'}</option>
    </select></label>
    <label className="flex gap-2"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)} disabled={busy||saved}/>{ar?'أؤكد إرجاع المبلغ فعليًا للاعب أو ولي الأمر':'I confirm the amount was actually returned to the player or parent'}</label>
-   <button onClick={()=>void save()} disabled={busy||saved||loading||!!error||!confirmed||remaining<=0} className="rounded-xl bg-brand-600 px-4 py-2 font-bold text-white disabled:opacity-50">{busy?(ar?'جارٍ الحفظ':'Saving'):(ar?'تسجيل رد الرسوم بسبب الإعفاء':'Record exemption refund')}</button>
+   <button onClick={()=>void save()} disabled={busy||saved||loading||loadFailed||!confirmed||remaining<=0} className="rounded-xl bg-brand-600 px-4 py-2 font-bold text-white disabled:opacity-50">{busy?(ar?'جارٍ الحفظ':'Saving'):(ar?'تسجيل رد الرسوم بسبب الإعفاء':'Record exemption refund')}</button>
    {rows.length>0&&<div className="space-y-2 border-t pt-3 dark:border-slate-700"><h3 className="font-bold">{ar?'سجل المبالغ المُعادة':'Refund history'}</h3>{rows.map(r=><p key={r.id}>{Number(r.amount).toFixed(3)} BHD · {r.purpose === 'withdrawal' ? (ar ? 'انسحاب' : 'Withdrawal') : (ar ? 'إعفاء' : 'Exemption')} · {r.reason} · {new Date(r.created_at).toLocaleDateString(ar?'ar-BH':'en-BH')}</p>)}</div>}
   </div>
  </Modal>;
