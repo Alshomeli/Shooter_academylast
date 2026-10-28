@@ -605,7 +605,7 @@ function AppDetail({
             )}
             {(app.status === 'pending' || app.status === 'under_review') && (
               <ActionBtn onClick={() => onAction('needs_info')} loading={actionLoading} color="amber" icon={<AlertTriangle className="h-3.5 w-3.5" />}>
-                {t.regRequestInfo}
+                {isAr ? 'طلب استكمال بيانات التسجيل' : 'Request missing registration details'}
               </ActionBtn>
             )}
             {(app.status === 'pending' || app.status === 'under_review') && (
