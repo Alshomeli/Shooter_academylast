@@ -497,7 +497,7 @@ function AppDetail({
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-end gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-slate-900">
+              <div id={`registration-fee-${child.id}`} className="flex flex-wrap items-end gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-slate-900">
                 <label className="text-xs font-bold">
                   {isAr ? 'الرسوم الشهرية المعتمدة (د.ب)' : 'Approved monthly fee (BHD)'}
                   <input type="number" min="0" max="25" step="0.001" className="mt-1 block w-28 rounded border bg-white p-2 text-sm" value={monthlyFees[child.id] ?? BASE_MONTHLY_FEE_BHD} onChange={e => setMonthlyFees(previous => ({ ...previous, [child.id]: Number(e.target.value) }))} />
@@ -584,10 +584,10 @@ function AppDetail({
         </div>
       )}
 
-      {/* Action buttons */}
-      {(app.status === 'pending' || app.status === 'under_review' || app.status === 'needs_info') && (
+      {/* Registration decision and separate payment-request action. */}
+      {(app.status === 'pending' || app.status === 'under_review' || app.status === 'needs_info' || app.status === 'approved') && (
         <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <div>
+          {app.status !== 'approved' && <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.regReviewNotes}</label>
             <textarea
               value={reviewNotes}
@@ -596,7 +596,7 @@ function AppDetail({
               rows={2}
               placeholder={isAr ? 'أضف ملاحظات المراجعة (اختياري)...' : 'Add review notes (optional)...'}
             />
-          </div>
+          </div>}
           <div className="flex flex-wrap gap-2">
             {app.status === 'pending' && (
               <ActionBtn onClick={() => onAction('under_review')} loading={actionLoading} color="blue" icon={<Eye className="h-3.5 w-3.5" />}>
@@ -613,9 +613,26 @@ function AppDetail({
                 {t.regApprove}
               </ActionBtn>
             )}
-            <ActionBtn onClick={() => onAction('rejected')} loading={actionLoading} color="red" icon={<XCircle className="h-3.5 w-3.5" />}>
+            {app.status !== 'approved' && <ActionBtn onClick={() => onAction('rejected')} loading={actionLoading} color="red" icon={<XCircle className="h-3.5 w-3.5" />}>
               {t.regReject}
-            </ActionBtn>
+            </ActionBtn>}
+            <button type="button" disabled={savingFee !== null || actionLoading}
+              onClick={() => {
+                if (app.status !== 'approved') {
+                  setFeeError(isAr ? 'يجب الموافقة على تسجيل اللاعب أولاً، ثم إصدار طلب دفع الاشتراك.' : 'Approve registration before issuing a subscription payment request.');
+                  return;
+                }
+                const approvedChildren = app.children.filter(child => !!child.playerId);
+                if (approvedChildren.length === 1 && (monthlyFees[approvedChildren[0].id] ?? BASE_MONTHLY_FEE_BHD) > 0) {
+                  void issueFee(approvedChildren[0].id);
+                } else {
+                  document.getElementById('registration-fee-' + approvedChildren[0]?.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  setFeeNotice(isAr ? 'حدّد المبلغ لكل لاعب ثم اضغط إصدار طلب الدفع بجانب اسمه. المبلغ صفر هو إعفاء وليس طلب دفع.' : 'Select each player fee and issue their request individually. Zero means exemption, not a payment request.');
+                }
+              }}
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+              {isAr ? 'طلب دفع الاشتراك' : 'Request subscription payment'}
+            </button>
           </div>
         </div>
       )}
