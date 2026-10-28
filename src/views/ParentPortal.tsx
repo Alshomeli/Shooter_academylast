@@ -231,7 +231,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const renewalNotices = getSubscriptionReminders(subscriptions.filter(s => players.some(p => p.id === s.playerId)), players, []).filter(r => r.subscription.status === 'paid' && r.daysUntilExpiry <= 3);
   const approvedPayments = playerSubscriptions.filter(s=>s.status==='paid' || (s.status==='cancelled' && s.paidAt));
   const entryPayment = subscriptions.find(sub =>
-    sub.status === 'unpaid' && sub.startDate <= bahrainToday()
+    sub.status === 'unpaid'
     && players.some(player => player.id === sub.playerId)
     && !familyClaimedIds.includes(sub.id)
     && !paymentProofs.some(proof => proof.subscriptionId === sub.id
@@ -256,11 +256,16 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const statusLabel = (status: RegistrationApplication['status']) => ({ draft: text('مسودة', 'Draft'), pending: text('بانتظار المراجعة', 'Pending review'), under_review: text('قيد المراجعة', 'Under review'), needs_info: text('يحتاج استكمال', 'More information needed'), approved: text('مقبول', 'Approved'), rejected: text('مرفوض', 'Rejected') })[status];
   const refresh = async () => { await load(); await onRefresh(); };
   const submitProof = async () => {
-    if (!payingSubscription || !selectedPlayer || !paymentFile) return;
+    if (!payingSubscription || !paymentFile) return;
+    const paymentPlayer = players.find(player => player.id === payingSubscription.playerId);
+    if (!paymentPlayer || payingSubscription.status !== 'unpaid') {
+      setError(text('تعذر التحقق من اللاعب والاشتراك المطلوب.', 'Unable to verify the player and subscription.'));
+      return;
+    }
     try {
       setPaymentBusy(true); setError('');
       if (resubmittingProof) await db.resubmitPaymentProof(resubmittingProof, transferDate, paymentFile, paymentNote);
-      else await db.submitPaymentProof(payingSubscription, selectedPlayer.id, transferDate, paymentFile, paymentNote);
+      else await db.submitPaymentProof(payingSubscription, paymentPlayer.id, transferDate, paymentFile, paymentNote);
       setPayingSubscription(null); setResubmittingProof(null); setPaymentFile(null); setPaymentNote('');
       await refresh();
     } catch (e) { setError(errorMessage(e, ar)); }
@@ -418,7 +423,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
                 <div><p className="font-bold text-sm">{planLabel(sub.planType,lang)} · {sub.amount} {text('د.ب','BHD')}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p>{proof?.status==='needs_info'&&proof.reviewNote&&<p className="mt-1 text-xs font-bold text-amber-700">{text('ملاحظة الإدارة: ','Academy note: ')}{proof.reviewNote}</p>}{latestRejected?.reviewNote&&<p className="mt-1 text-xs font-bold text-red-700">{text('سبب عدم الاعتماد: ','Rejection reason: ')}{latestRejected.reviewNote}</p>}</div>
                 <div className="flex items-center gap-2"><Badge color={sub.status==='paid'?'green':'amber'}>{sub.status==='cancelled'?text('ملغى','Cancelled'):sub.status==='exempt'?text('معفى','Exempt'):sub.status==='paid'?text('مدفوع','Paid'):text('غير مدفوع','Unpaid')}</Badge>
                 {proof && <Badge color={proof.status==='approved'?'green':'amber'}>{proofStatus(proof.status)}</Badge>}{proof?.status==='needs_info'&&<button onClick={()=>{setResubmittingProof(proof);setPayingSubscription(sub);setPaymentNote('')}} className="px-3 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold">{text('استكمال الإثبات','Resubmit proof')}</button>}
-                {sub.status==='unpaid' && sub.startDate<=bahrainToday() && !proof && !familyClaimedIds.includes(sub.id) && <button onClick={()=>{setResubmittingProof(null);setPayingSubscription(sub)}} className="px-3 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold">{text('دفع الاشتراك','Pay subscription')}</button>}</div>
+                {sub.status==='unpaid' && !proof && !familyClaimedIds.includes(sub.id) && <button onClick={()=>{setResubmittingProof(null);setPayingSubscription(sub)}} className="px-3 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold">{text('دفع الاشتراك','Pay subscription')}</button>}</div>
               </div>;
             })}
           </div>
@@ -483,8 +488,9 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
       </Modal>
       <Modal open={!!payingSubscription} closeDisabled={paymentBusy} onClose={() => { if(!paymentBusy){setPayingSubscription(null);setResubmittingProof(null);} }} title={text('إثبات دفع الاشتراك','Subscription payment proof')}>
         {payingSubscription && <div className="space-y-4">
+          <div className="rounded-xl border dark:border-slate-700 p-4 space-y-1"><p className="font-bold">{academyName}</p><p className="text-sm">{text('اللاعب', 'Player')}: {players.find(p => p.id === payingSubscription.playerId)?.name || text('غير معروف', 'Unknown')}</p>{settings?.phone && <p className="text-xs" dir="ltr">{settings.phone}</p>}{settings?.address && <p className="text-xs">{settings.address}</p>}</div>
           <div className="rounded-xl bg-brand-50 dark:bg-brand-950/20 p-4"><p className="text-sm text-slate-500">{text('المبلغ المطلوب','Amount due')}</p><p className="text-2xl font-black">{payingSubscription.amount} {text('د.ب','BHD')}</p></div>
-          {benefitIban ? <div className="rounded-xl border dark:border-slate-700 p-4"><p className="text-xs text-slate-500">{text('IBAN للتحويل عبر Benefit','IBAN for Benefit transfer')}</p><div className="flex items-center justify-between gap-3 mt-1"><code className="font-bold break-all" dir="ltr">{benefitIban}</code><button onClick={()=>navigator.clipboard.writeText(benefitIban || '')} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800"><Clipboard className="h-4 w-4"/></button></div>{benefitAccountName&&<p className="text-xs mt-2">{benefitAccountName}</p>}</div> : <div className="rounded-xl bg-amber-50 text-amber-800 p-4 text-sm font-bold">{text('لم تضف الإدارة رقم IBAN للدفع بعد.','The academy has not configured the payment IBAN yet.')}</div>}
+          {benefitIban ? <div className="rounded-xl border dark:border-slate-700 p-4"><p className="text-xs text-slate-500">{text('IBAN للتحويل عبر Benefit','IBAN for Benefit transfer')}</p><div className="flex items-center justify-between gap-3 mt-1"><code className="font-bold break-all" dir="ltr">{benefitIban}</code><button type="button" title={text('نسخ رقم بنفت', 'Copy Benefit number')} aria-label={text('نسخ رقم بنفت', 'Copy Benefit number')} onClick={()=>void navigator.clipboard.writeText(benefitIban)} className="flex items-center gap-2 p-2 rounded-lg bg-slate-100 dark:bg-slate-800"><Clipboard className="h-4 w-4"/><span className="text-xs font-bold">{text('نسخ', 'Copy')}</span></button></div>{benefitAccountName&&<p className="text-xs mt-2">{benefitAccountName}</p>}</div> : <div className="rounded-xl bg-amber-50 text-amber-800 p-4 text-sm font-bold">{text('لم تضف الإدارة رقم IBAN للدفع بعد.','The academy has not configured the payment IBAN yet.')}</div>}
           <p className="text-sm text-slate-600 dark:text-slate-300">{paymentInstructions}</p>
           <label className="block text-sm font-bold">{text('تاريخ التحويل','Transfer date')}<input type="date" value={transferDate} onChange={e=>setTransferDate(e.target.value)} className="mt-1 w-full rounded-lg border dark:border-slate-700 bg-transparent p-2"/></label>
           <label className="block text-sm font-bold">{text('صورة/إيصال التحويل','Transfer screenshot / receipt')}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e=>setPaymentFile(e.target.files?.[0]||null)} className="mt-1 block w-full text-sm"/></label>
