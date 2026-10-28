@@ -418,6 +418,31 @@ function AppDetail({
     finally { setSavingFee(null); }
   };
 
+  const approveAndIssue = async () => {
+    if (savingFee || actionLoading) return;
+    setFeeError(''); setFeeNotice(''); setSavingFee('all');
+    try {
+      const decisions: Record<string, {amount: number; reason: string | null}> = {};
+      for (const child of app.children) {
+        const amount = monthlyFees[child.id] ?? BASE_MONTHLY_FEE_BHD;
+        if (!Number.isFinite(amount) || amount < 0 || amount > 25 || Math.round(amount * 1000) !== amount * 1000)
+          throw new Error(isAr ? 'راجع مبلغ كل لاعب (0 إلى 25 د.ب).' : 'Check each player fee (BHD 0 to 25).');
+        const reason = (exemptionReasons[child.id] || '').trim();
+        if (amount === 0 && reason.length < 3)
+          throw new Error(isAr ? 'سبب الإعفاء مطلوب لكل لاعب معفى.' : 'Exemption reason is required for each exempt player.');
+        decisions[child.id] = { amount, reason: amount === 0 ? reason : null };
+      }
+      const { error } = await supabase.rpc('approve_registration_with_subscriptions', {
+        p_application_id: app.id,
+        p_decisions: decisions,
+      });
+      if (error) throw error;
+      setFeeNotice(isAr ? 'تم اعتماد التسجيل وإصدار اشتراك لكل لاعب، بما فيهم المعفون.' : 'Registration approved and subscriptions issued for all children, including exemptions.');
+      await onRefresh();
+    } catch (error) { setFeeError(error instanceof Error ? error.message : String(error)); }
+    finally { setSavingFee(null); }
+  };
+
   const regTypeLabel = app.registrationType === 'initial_onboarding' ? t.regTypeOnboardingShort : t.regTypeNewShort;
   const cfg = STATUS_CONFIGS[app.status];
 
@@ -505,7 +530,7 @@ function AppDetail({
                 <button type="button" disabled={savingFee !== null} onClick={() => void saveFee(child.id)} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
                   {savingFee === child.id ? (isAr ? 'جارٍ الحفظ…' : 'Saving…') : (isAr ? 'حفظ رسوم اللاعب' : 'Save player fee')}
                 </button>
-                {app.status === 'approved' && child.playerId && <div className="flex flex-col gap-2"><label className="text-xs font-bold">{isAr ? 'سبب الإعفاء (عند اختيار صفر)' : 'Exemption reason (when amount is zero)'}<input type="text" maxLength={1000} value={exemptionReasons[child.id] || ''} onChange={e => setExemptionReasons(v => ({ ...v, [child.id]: e.target.value }))} className="mt-1 block w-full rounded border bg-white p-2 text-sm" /></label><button type="button" disabled={savingFee !== null} onClick={() => void issueFee(child.id)} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{isAr ? 'اعتماد القرار وإصدار طلب الدفع أو الإعفاء' : 'Issue payment request or exemption'}</button></div>}
+                <div className="flex flex-col gap-2"><label className="text-xs font-bold">{isAr ? 'سبب الإعفاء (مطلوب للمبلغ صفر)' : 'Exemption reason (required for zero amount)'}<input type="text" maxLength={1000} value={exemptionReasons[child.id] || ''} onChange={e => setExemptionReasons(v => ({ ...v, [child.id]: e.target.value }))} className="mt-1 block w-full rounded border bg-white p-2 text-sm" /></label>{app.status === 'approved' && child.playerId && <button type="button" disabled={savingFee !== null} onClick={() => void issueFee(child.id)} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{isAr ? 'إصدار الاشتراك (للطلبات المعتمدة سابقاً)' : 'Issue subscription for previously approved registration'}</button>}</div>
                 <p className="text-xs text-amber-900">{isAr ? 'احفظ الرسوم لكل لاعب، ثم أصدر طلب الدفع بعد قبول التسجيل. المبلغ صفر يتطلب سبب إعفاء.' : 'Save each player fee, then issue the payment request after approval. Zero requires an exemption reason.'}</p>
               </div>
               {app.status === 'approved' && child.playerId && <PreplatformCoverage playerId={child.playerId} lang={lang} onSaved={onRefresh} />}
@@ -609,9 +634,9 @@ function AppDetail({
               </ActionBtn>
             )}
             {(app.status === 'pending' || app.status === 'under_review') && (
-              <ActionBtn onClick={() => onAction('approved')} loading={actionLoading} color="emerald" icon={<CheckCircle2 className="h-3.5 w-3.5" />}>
-                {t.regApprove}
-              </ActionBtn>
+              <button type="button" disabled={savingFee !== null || actionLoading} onClick={() => void approveAndIssue()} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+                {savingFee === 'all' ? (isAr ? 'جارٍ اعتماد جميع الاشتراكات…' : 'Approving subscriptions…') : (isAr ? 'اعتماد التسجيل والاشتراكات' : 'Approve registration and subscriptions')}
+              </button>
             )}
             {app.status !== 'approved' && <ActionBtn onClick={() => onAction('rejected')} loading={actionLoading} color="red" icon={<XCircle className="h-3.5 w-3.5" />}>
               {t.regReject}
