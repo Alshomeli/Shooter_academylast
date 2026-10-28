@@ -19,7 +19,7 @@ begin
  perform 1 from public.players where id=v_child.approved_player_id for update;
  select * into v_existing from public.subscriptions
  where player_id=v_child.approved_player_id and status<>'cancelled'
-   and start_date<=v_today and end_date>v_today for update;
+   and start_date<(v_today+interval '1 month')::date and end_date>v_today for update;
  if found then
    if v_existing.start_date=v_today and v_existing.end_date=(v_today+interval '1 month')::date
      and v_existing.amount=v_fee and v_existing.status=(case when v_fee=0 then 'exempt' else 'unpaid' end)
