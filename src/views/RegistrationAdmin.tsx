@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabase';
 import { PreplatformCoverage } from '@/components/PreplatformCoverage';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
@@ -381,6 +382,7 @@ function AppDetail({
   const [feeError, setFeeError] = useState('');
   const [savingFee, setSavingFee] = useState<string | null>(null);
   const [feeNotice, setFeeNotice] = useState('');
+  const [exemptionReasons, setExemptionReasons] = useState<Record<string, string>>({});
   useEffect(() => {
     let alive = true;
     setFeeError(''); setFeeNotice('');
@@ -394,6 +396,24 @@ function AppDetail({
     try {
       await saveManagerChildFee(childId, monthlyFees[childId] ?? BASE_MONTHLY_FEE_BHD);
       setFeeNotice(isAr ? 'تم حفظ الرسوم لهذا اللاعب.' : 'Player monthly fee saved.');
+    } catch (error) { setFeeError(error instanceof Error ? error.message : String(error)); }
+    finally { setSavingFee(null); }
+  };
+
+  const issueFee = async (childId: string) => {
+    if (savingFee) return;
+    setFeeError(''); setFeeNotice(''); setSavingFee(childId);
+    try {
+      const fee = monthlyFees[childId];
+      if (fee === undefined) throw new Error(isAr ? 'احفظ قرار الرسوم لهذا اللاعب أولاً.' : 'Save this player fee decision first.');
+      await saveManagerChildFee(childId, fee);
+      const { error } = await supabase.rpc('issue_registration_subscription', {
+        p_child_id: childId,
+        p_exemption_reason: fee === 0 ? (exemptionReasons[childId] || '').trim() : null,
+      });
+      if (error) throw error;
+      setFeeNotice(fee === 0 ? (isAr ? 'تم إصدار الإعفاء وتفعيل اللاعب.' : 'Exemption issued and player activated.') : (isAr ? 'تم إصدار طلب الدفع وإشعار ولي الأمر.' : 'Payment request issued and parent notified.'));
+      await onRefresh();
     } catch (error) { setFeeError(error instanceof Error ? error.message : String(error)); }
     finally { setSavingFee(null); }
   };
@@ -485,7 +505,8 @@ function AppDetail({
                 <button type="button" disabled={savingFee !== null} onClick={() => void saveFee(child.id)} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
                   {savingFee === child.id ? (isAr ? 'جارٍ الحفظ…' : 'Saving…') : (isAr ? 'حفظ رسوم اللاعب' : 'Save player fee')}
                 </button>
-                <p className="text-xs text-amber-900">{isAr ? 'الرسوم الأصلية 25 د.ب، والخصم يحدده المدير. ربط التجديدات بالفوترة قيد التطوير.' : 'Base fee BHD 25. Manager sets any discount. Renewal billing integration pending.'}</p>
+                {app.status === 'approved' && child.playerId && <div className="flex flex-col gap-2"><label className="text-xs font-bold">{isAr ? 'سبب الإعفاء (عند اختيار صفر)' : 'Exemption reason (when amount is zero)'}<input type="text" maxLength={1000} value={exemptionReasons[child.id] || ''} onChange={e => setExemptionReasons(v => ({ ...v, [child.id]: e.target.value }))} className="mt-1 block w-full rounded border bg-white p-2 text-sm" /></label><button type="button" disabled={savingFee !== null} onClick={() => void issueFee(child.id)} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{isAr ? 'اعتماد القرار وإصدار طلب الدفع أو الإعفاء' : 'Issue payment request or exemption'}</button></div>}
+                <p className="text-xs text-amber-900">{isAr ? 'احفظ الرسوم لكل لاعب، ثم أصدر طلب الدفع بعد قبول التسجيل. المبلغ صفر يتطلب سبب إعفاء.' : 'Save each player fee, then issue the payment request after approval. Zero requires an exemption reason.'}</p>
               </div>
               {app.status === 'approved' && child.playerId && <PreplatformCoverage playerId={child.playerId} lang={lang} onSaved={onRefresh} />}
               {/* Child documents */}
