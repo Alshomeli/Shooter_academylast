@@ -623,7 +623,7 @@ function AppDetail({
                   return;
                 }
                 const approvedChildren = app.children.filter(child => !!child.playerId);
-                if (approvedChildren.length === 1 && (monthlyFees[approvedChildren[0].id] ?? BASE_MONTHLY_FEE_BHD) > 0) {
+                if (approvedChildren.length === 1 && monthlyFees[approvedChildren[0].id] !== undefined && monthlyFees[approvedChildren[0].id] > 0) {
                   void issueFee(approvedChildren[0].id);
                 } else {
                   document.getElementById('registration-fee-' + approvedChildren[0]?.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
