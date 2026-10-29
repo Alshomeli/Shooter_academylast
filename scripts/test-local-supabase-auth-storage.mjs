@@ -20,6 +20,8 @@ const adminKey=settings.SERVICE_ROLE_KEY || settings.SECRET_KEY;
 assert.ok(anon && adminKey,'Local-only Supabase keys missing');
 const admin=createClient(url,adminKey,{auth:{persistSession:false,autoRefreshToken:false}});
 const token=crypto.randomUUID().slice(0,8);
+const periodStart=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bahrain',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const periodEnd=new Date(Date.parse(periodStart+'T00:00:00Z')+30*86400000).toISOString().slice(0,10);
 const password='Local-' + crypto.randomUUID() + '!9';
 async function user(n){
  const email=`family-local-${n}-${token}@example.invalid`;
@@ -59,7 +61,7 @@ assert.ok(parentApproval.error,'A parent without manager role must not approve p
 assert.match(parentApproval.error.message,/Manager authorization required|permission denied|not authorized/i);
 const nonOwnerSubmission=await b.client.rpc('submit_family_payment_receipt',{
  p_subscription_ids:['not-a-subscription','not-another-subscription'],
- p_proof_path:path,p_transfer_date:'2026-10-18'});
+ p_proof_path:path,p_transfer_date:periodStart});
 assert.ok(nonOwnerSubmission.error,'Parent cannot attach another parent\'s receipt or invalid subscriptions');
 const {data:unauthorizedReceipt,error:adminReadError}=await admin
  .from('family_payment_receipts').select('id').eq('proof_path',path);
@@ -83,15 +85,15 @@ await insert('staff',{id:coachId,name:'Local Coach',email:'family-coach-'+token+
  role:'coach',status:'active',joined_date:'2026-01-01',user_id:coach.id});
 await insert('teams',{id:birthTeamId,name:'Local 2014/2015',age_group:'U11',status:'active',category_kind:'team',coach_id:coachId});
 await insert('players',playerIds.map((id,i)=>({
- id,name:'Local Child '+i,birth_date:'2015-01-01',joined_date:'2026-10-01',parent_id:parentId,team_id:null,status:'inactive',jersey_number:21+i
+ id,name:'Local Child '+i,birth_date:'2015-01-01',joined_date:'2026-10-01',parent_id:parentId,team_id:null,status:'inactive',jersey_number:0
 })));
 await insert('subscriptions',subIds.map((id,i)=>({
- id,player_id:playerIds[i],start_date:'2026-10-01',end_date:'2026-10-31',status:'unpaid',amount:i===0?25:20
+ id,player_id:playerIds[i],start_date:periodStart,end_date:periodEnd,status:'unpaid',amount:i===0?25:20
 })));
 await insert('staff',{id:'family-manager-'+token,name:'Local Manager',email:'family-manager-'+token+'@example.invalid',
  role:'manager',status:'active',joined_date:'2026-01-01',user_id:manager.id});
 const submitted=await a.client.rpc('submit_family_payment_receipt',{
- p_subscription_ids:subIds,p_proof_path:path,p_transfer_date:'2026-10-18'
+ p_subscription_ids:subIds,p_proof_path:path,p_transfer_date:periodStart
 });
 assert.equal(submitted.error,null,'Parent with two own unpaid subscriptions should submit one receipt');
 assert.ok(submitted.data,'Family receipt ID required');
@@ -115,10 +117,10 @@ const replacement=await a.client.storage.from('payment-proofs').upload(replaceme
  contentType:'application/pdf',upsert:false});
 assert.equal(replacement.error,null);
 const foreignResubmit=await b.client.rpc('resubmit_family_payment_receipt',{
- p_receipt_id:submitted.data,p_proof_path:replacementPath,p_transfer_date:'2026-10-18'});
+ p_receipt_id:submitted.data,p_proof_path:replacementPath,p_transfer_date:periodStart});
 assert.ok(foreignResubmit.error,'Other parent must not correct this family receipt');
 const resubmit=await a.client.rpc('resubmit_family_payment_receipt',{
- p_receipt_id:submitted.data,p_proof_path:replacementPath,p_transfer_date:'2026-10-18'});
+ p_receipt_id:submitted.data,p_proof_path:replacementPath,p_transfer_date:periodStart});
 assert.equal(resubmit.error,null,'Original parent should resubmit a corrected proof');
 const {data:history,error:historyError}=await admin.from('family_receipt_review_events')
  .select('action,prior_proof_path,new_proof_path').eq('receipt_id',submitted.data);
@@ -193,12 +195,12 @@ assert.equal(strangerRefund.data.length,0,'Other parent must not see refund rece
 const sole=await user('sole-parent');
 const soleParentId='sole-parent-'+token, solePlayerId='sole-player-'+token, soleSubId='sole-sub-'+token;
 await insert('parents',{id:soleParentId,name:'Sole Parent',user_id:sole.id,joined_date:'2026-10-01'});
-await insert('players',{id:solePlayerId,name:'Sole Child',birth_date:'2015-01-01',joined_date:'2026-10-01',parent_id:soleParentId,status:'inactive',jersey_number:30});
-await insert('subscriptions',{id:soleSubId,player_id:solePlayerId,start_date:'2026-10-01',end_date:'2026-10-31',status:'unpaid',amount:25});
+await insert('players',{id:solePlayerId,name:'Sole Child',birth_date:'2015-01-01',joined_date:'2026-10-01',parent_id:soleParentId,team_id:null,status:'inactive',jersey_number:0});
+await insert('subscriptions',{id:soleSubId,player_id:solePlayerId,start_date:periodStart,end_date:periodEnd,status:'unpaid',amount:25});
 const solePath=`${sole.id}/${soleSubId}/${crypto.randomUUID()}.pdf`;
 const soleUpload=await sole.client.storage.from('payment-proofs').upload(solePath,payload,{contentType:'application/pdf'});
 assert.equal(soleUpload.error,null);
-const proofInsert=await sole.client.from('payment_proofs').insert({subscription_id:soleSubId,player_id:solePlayerId,parent_user_id:sole.id,amount:25,transfer_date:'2026-10-18',proof_path:solePath});
+const proofInsert=await sole.client.from('payment_proofs').insert({subscription_id:soleSubId,player_id:solePlayerId,parent_user_id:sole.id,amount:25,transfer_date:periodStart,proof_path:solePath});
 assert.equal(proofInsert.error,null);
 const soleProof=await manager.client.from('payment_proofs').select('id').eq('subscription_id',soleSubId).single();
 assert.equal(soleProof.error,null);
