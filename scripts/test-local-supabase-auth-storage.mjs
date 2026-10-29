@@ -77,7 +77,11 @@ async function insert(table,records){
 }
 await insert('parents',{id:parentId,name:'Local Parent',user_id:a.id,joined_date:'2026-10-01'});
 const birthTeamId='family-age-'+token;
-await insert('teams',{id:birthTeamId,name:'Local 2014/2015',age_group:'U11',status:'active',category_kind:'team'});
+const coach=await user('coach');
+const coachId='family-coach-'+token;
+await insert('staff',{id:coachId,name:'Local Coach',email:'family-coach-'+token+'@example.invalid',
+ role:'coach',status:'active',joined_date:'2026-01-01',user_id:coach.id});
+await insert('teams',{id:birthTeamId,name:'Local 2014/2015',age_group:'U11',status:'active',category_kind:'team',coach_id:coachId});
 await insert('players',playerIds.map((id,i)=>({
  id,name:'Local Child '+i,birth_date:'2015-01-01',joined_date:'2026-10-01',parent_id:parentId,team_id:null,status:'inactive',jersey_number:21+i
 })));
