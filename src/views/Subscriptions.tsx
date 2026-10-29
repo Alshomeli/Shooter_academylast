@@ -16,6 +16,7 @@ import { approveFamilyReceiptAfterBankVerification, reviewFamilyReceipt } from '
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard, FormField, FormError, SaveButton, inputCls } from '@/components/ui';
 import { RemindersPanel } from '@/components/RemindersPanel';
 import { PaymentReceipt } from '@/components/PaymentReceipt';
+import { RefundReceipt } from '@/components/RefundReceipt';
 import { reminderStats, getSubscriptionReminders } from '@/lib/reminders';
 import { tr, planLabel, categoryLabel, paymentMethodLabel } from '@/lib/i18n';
 
@@ -116,6 +117,7 @@ export function Subscriptions({
   const [cancelSub, setCancelSub] = useState<Subscription | null>(null);
   const [supportSub, setSupportSub] = useState<Subscription | null>(null);
   const [receiptSub, setReceiptSub] = useState<Subscription | null>(null);
+  const [refundReceiptSub, setRefundReceiptSub] = useState<Subscription | null>(null);
   const [paymentProofs, setPaymentProofs] = useState<PaymentProof[]>([]);
   const [familyQueue, setFamilyQueue] = useState<FamilyReceiptQueueItem[]>([]);
   const [familyVerifyAmounts, setFamilyVerifyAmounts] = useState<Record<string,string>>({});
@@ -519,7 +521,8 @@ export function Subscriptions({
                         )}
                         {isManager && !isExempt && <button onClick={() => setCancelSub(sub)} className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-red-50 text-red-700">{isCancelled ? (isAr ? 'تفاصيل الإلغاء والاسترداد' : 'Cancellation / refund') : (isAr ? 'إلغاء الاشتراك' : 'Cancel subscription')}</button>}
                         {isPaid && isManager && <button onClick={() => setSupportSub(sub)} className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">{isAr ? 'رد رسوم بسبب الإعفاء' : 'Exemption refund'}</button>}
-                        {(isPaid || (isCancelled && sub.paidAt)) && (
+                        {isCancelled && sub.paidAt && <button onClick={() => setRefundReceiptSub(sub)} className="flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700"><Receipt className="h-3.5 w-3.5" />{isAr ? 'فاتورة الاسترداد' : 'Refund receipt'}</button>}
+                        {isPaid && (
                           <button onClick={() => setReceiptSub(sub)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50">
                             <Receipt className="h-3.5 w-3.5" /> {isAr ? 'إيصال' : 'Receipt'}
                           </button>
@@ -739,9 +742,10 @@ export function Subscriptions({
           <button className="bg-brand-600 text-white rounded-lg py-2 px-4 disabled:opacity-50" disabled={!!markingPaidId} onClick={() => void handleMarkPaid()}>{markingPaidId ? t.processing : t.confirm}</button>
         </div>
       </Modal>
-      {cancelSub && <SubscriptionCancellation key={cancelSub.id} subscription={cancelSub} lang={lang} onClose={() => setCancelSub(null)} onSaved={onRefresh} />}
+      {cancelSub && <SubscriptionCancellation key={cancelSub.id} subscription={cancelSub} lang={lang} onClose={() => setCancelSub(null)} onSaved={async () => { await onRefresh(); if (cancelSub.status === 'cancelled') setRefundReceiptSub(cancelSub); }} />}
       {supportSub && <SubscriptionSupport subscription={supportSub} lang={lang} onClose={() => setSupportSub(null)} onSaved={onRefresh} />}
       {receiptSub && <PaymentReceipt subscription={receiptSub} transactions={transactions} players={players} parents={parents} settings={settings} lang={lang} officialReceiptNumber={paymentProofs.find(proof => proof.status === 'approved' && proof.subscriptionId === receiptSub.id)?.receiptNumber} onClose={() => setReceiptSub(null)} />}
+      {refundReceiptSub && <RefundReceipt subscription={refundReceiptSub} playerName={players.find(p => p.id === refundReceiptSub.playerId)?.name || '—'} recipientName={parents.find(p => p.id === players.find(player => player.id === refundReceiptSub.playerId)?.parentId)?.name} settings={settings} lang={lang} onClose={() => setRefundReceiptSub(null)} />}
 
       {/* ---------------- Modals ---------------- */}
       {(showAddSub || editSub || renewSub) && (
