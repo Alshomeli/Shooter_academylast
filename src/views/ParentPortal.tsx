@@ -1,3 +1,4 @@
+import { RefundReceipt } from '@/components/RefundReceipt';
 import { EvaluationCard } from '@/components/EvaluationCard';
 import { EvaluationProgressInsights } from '@/components/EvaluationProgressInsights';
 import { TelegramLinkCard } from '@/components/TelegramLinkCard';
@@ -46,6 +47,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
   const text = (a: string, e: string) => ar ? a : e;
   const [apps, setApps] = useState<RegistrationApplication[]>([]);
   const [error, setError] = useState('');
+  const [refundReceiptSub, setRefundReceiptSub] = useState<Subscription | null>(null);
   const [uploadCategory, setUploadCategory] = useState<'photo' | 'document' | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
@@ -347,6 +349,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
           </div>
         </div>
       </section>}
+      {refundReceiptSub && <RefundReceipt subscription={refundReceiptSub} playerName={players.find(p=>p.id===refundReceiptSub.playerId)?.name || '—'} recipientName={user.name} settings={settings} lang={lang} onClose={()=>setRefundReceiptSub(null)} />}
       <Modal open={monthlyStarOpen && !!monthlyStar} onClose={()=>setMonthlyStarOpen(false)} title={monthlyStar?.heading || text('لاعب الشهر','Player of the Month')}>
         {monthlyStar&&<div className="space-y-3 text-center"><img src={monthlyStar.image} alt={monthlyStar.name} className="mx-auto max-h-72 w-full object-contain"/><h3 className="text-xl font-black">{monthlyStar.name}</h3><p className="whitespace-pre-wrap">{monthlyStar.body}</p>{monthlyStar.video&&<video controls playsInline preload="metadata" className="w-full rounded-xl" src={monthlyStar.video} aria-label={text('فيديو تكريم لاعب الشهر','Player of the Month recognition video')}/>}</div>}
       </Modal>
@@ -422,7 +425,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
               return <div key={sub.id} className="border-t dark:border-slate-700 pt-3 flex flex-wrap items-center justify-between gap-3">
                 <div><p className="font-bold text-sm">{planLabel(sub.planType,lang)} · {sub.amount} {text('د.ب','BHD')}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p>{proof?.status==='needs_info'&&proof.reviewNote&&<p className="mt-1 text-xs font-bold text-amber-700">{text('ملاحظة الإدارة: ','Academy note: ')}{proof.reviewNote}</p>}{latestRejected?.reviewNote&&<p className="mt-1 text-xs font-bold text-red-700">{text('سبب عدم الاعتماد: ','Rejection reason: ')}{latestRejected.reviewNote}</p>}</div>
                 <div className="flex items-center gap-2"><Badge color={sub.status==='paid'?'green':'amber'}>{sub.status==='cancelled'?text('ملغى','Cancelled'):sub.status==='exempt'?text('معفى','Exempt'):sub.status==='paid'?text('مدفوع','Paid'):text('غير مدفوع','Unpaid')}</Badge>
-                {proof && <Badge color={proof.status==='approved'?'green':'amber'}>{proofStatus(proof.status)}</Badge>}{proof?.status==='needs_info'&&<button onClick={()=>{setResubmittingProof(proof);setPayingSubscription(sub);setPaymentNote('')}} className="px-3 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold">{text('استكمال الإثبات','Resubmit proof')}</button>}
+                {sub.status==='cancelled' && sub.paidAt && <button onClick={()=>setRefundReceiptSub(sub)} className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">{text('فاتورة الاسترداد','Refund receipt')}</button>}{proof && sub.status!=='cancelled' && <Badge color={proof.status==='approved'?'green':'amber'}>{proofStatus(proof.status)}</Badge>}{proof?.status==='needs_info'&&<button onClick={()=>{setResubmittingProof(proof);setPayingSubscription(sub);setPaymentNote('')}} className="px-3 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold">{text('استكمال الإثبات','Resubmit proof')}</button>}
                 {sub.status==='unpaid' && !proof && !familyClaimedIds.includes(sub.id) && <button onClick={()=>{setResubmittingProof(null);setPayingSubscription(sub)}} className="px-3 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold">{text('دفع الاشتراك','Pay subscription')}</button>}</div>
               </div>;
             })}
@@ -430,7 +433,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, teams, 
 
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-sm">
             <div className="flex items-center gap-2"><WalletCards className="h-5 w-5 text-brand-600"/><div><h3 className="font-black">{text('سجل المدفوعات السابقة','Payment history')}</h3><p className="text-xs text-slate-500">{text('الاشتراكات التي اعتمدت كمدفوعة','Subscriptions approved as paid')}</p></div></div>
-            {approvedPayments.length===0?<p className="text-sm text-slate-500 py-1">{text('لا توجد مدفوعات معتمدة حتى الآن.','No approved payments yet.')}</p>:approvedPayments.map(sub=><div key={sub.id} className="border-t dark:border-slate-700 pt-3 flex items-center justify-between gap-3"><div><p className="font-bold text-sm">{planLabel(sub.planType,lang)}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p></div><div className="text-end"><p className="font-black text-brand-600">{sub.amount} {text('د.ب','BHD')}</p><Badge color="green">{text('مدفوع','Paid')}</Badge>{(()=>{const approved=paymentProofs.find(p=>p.subscriptionId===sub.id&&p.status==='approved'&&p.receiptNumber);return approved?<button onClick={()=>printReceipt(approved,sub)} className="mt-2 flex items-center gap-1 text-xs font-bold text-blue-600"><Printer className="h-3.5 w-3.5"/>{text('الإيصال','Receipt')} SA-{String(approved.receiptNumber).padStart(6,'0')}</button>:null})()}</div></div>)}
+            {approvedPayments.length===0?<p className="text-sm text-slate-500 py-1">{text('لا توجد مدفوعات معتمدة حتى الآن.','No approved payments yet.')}</p>:approvedPayments.map(sub=><div key={sub.id} className="border-t dark:border-slate-700 pt-3 flex items-center justify-between gap-3"><div><p className="font-bold text-sm">{planLabel(sub.planType,lang)}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p></div><div className="text-end"><p className="font-black text-brand-600">{sub.amount} {text('د.ب','BHD')}</p><Badge color={sub.status==='cancelled'?'amber':'green'}>{sub.status==='cancelled'?text('ملغى — الاسترداد','Cancelled — refund'):text('مدفوع','Paid')}</Badge>{sub.status==='cancelled'?<button onClick={()=>setRefundReceiptSub(sub)} className="mt-2 flex items-center gap-1 text-xs font-bold text-blue-600">{text('فاتورة الاسترداد','Refund receipt')}</button>:(()=>{const approved=paymentProofs.find(p=>p.subscriptionId===sub.id&&p.status==='approved'&&p.receiptNumber);return approved?<button onClick={()=>printReceipt(approved,sub)} className="mt-2 flex items-center gap-1 text-xs font-bold text-blue-600"><Printer className="h-3.5 w-3.5"/>{text('الإيصال','Receipt')} SA-{String(approved.receiptNumber).padStart(6,'0')}</button>:null})()}</div></div>)}
           </div>
 
           <div id="parent-documents" className="arena-card bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3">

@@ -76,6 +76,8 @@ async function insert(table,records){
  if(error)throw new Error(table+': '+error.message);
 }
 await insert('parents',{id:parentId,name:'Local Parent',user_id:a.id,joined_date:'2026-10-01'});
+const birthTeamId='family-age-'+token;
+await insert('teams',{id:birthTeamId,name:'Local 2014/2015',age_group:'U11',status:'active',category_kind:'team'});
 await insert('players',playerIds.map((id,i)=>({
  id,name:'Local Child '+i,birth_date:'2015-01-01',joined_date:'2026-10-01',parent_id:parentId,team_id:null,status:'inactive',jersey_number:21+i
 })));
@@ -94,6 +96,9 @@ const {data:pending,error:pendingError}=await admin.from('family_payment_receipt
 assert.equal(pendingError,null);
 assert.equal(pending.status,'pending','Submission must never automatically approve');
 assert.equal(Number(pending.expected_amount),45);
+const managerNotice=await manager.client.from('notifications').select('id').eq('title','إثبات دفع أشقاء بانتظار المراجعة');
+assert.equal(managerNotice.error,null);
+assert.ok(managerNotice.data.length>0,'Family proof submission must notify the manager');
 const review=await manager.client.rpc('review_family_payment_receipt',{
  p_receipt_id:submitted.data,p_decision:'needs_info',p_note:'Please upload a readable receipt'
 });
@@ -141,6 +146,9 @@ const {data:approved,error:approvedError}=await admin.from('family_payment_recei
  .select('status').eq('id',submitted.data).single();
 assert.equal(approvedError,null);
 assert.equal(approved.status,'approved');
+const activated=await admin.from('players').select('id,status,team_id').in('id',playerIds);
+assert.equal(activated.error,null);
+assert.ok(activated.data.every(p=>p.status==='active' && p.team_id===birthTeamId),'Approved siblings must activate in their birth-year category');
 console.log('PASS local family payment: parent submission, pending gate, manager amount validation, atomic approval, two ledger entries, retry denied');
 const ownDelete=await a.client.storage.from('payment-proofs').remove([replacementPath]);
 // A referenced approved receipt must retain its audit evidence.
@@ -149,3 +157,56 @@ const protectedObject=await admin.storage.from('payment-proofs').download(replac
 assert.equal(protectedObject.error,null,'Approved evidence must still exist after parent deletion attempt');
 console.log('PASS approved receipt proof retained despite parent delete request');
 console.log('PASS local Supabase Auth/Storage: separate parents, private bucket, upload scope, cross-parent denial and cleanup');
+
+// Real Auth/PostgREST: actual refund receipt + one-child versus sibling account lifecycle.
+async function rpcAs(client,name,args){
+ const result=await client.rpc(name,args);
+ if(result.error)throw new Error(name+': '+result.error.message);
+ return result.data;
+}
+async function withdraw(subscriptionId,amount){
+ await rpcAs(manager.client,'cancel_subscription',{p_request_id:crypto.randomUUID(),p_subscription_id:subscriptionId,p_refund_due:amount,p_reason:'Synthetic withdrawal'});
+ const requestId=crypto.randomUUID();
+ const args={p_request_id:requestId,p_subscription_id:subscriptionId,p_amount:amount,p_reason:'Synthetic withdrawal',p_method:'benefit'};
+ await rpcAs(manager.client,'record_withdrawal_refund',args);
+ await rpcAs(manager.client,'record_withdrawal_refund',args);
+ const receipt=await manager.client.from('subscription_support').select('id,refund_receipt_number,amount,original_payment_id').eq('id',requestId).single();
+ assert.equal(receipt.error,null);
+ assert.ok(Number(receipt.data.refund_receipt_number)>0);
+ assert.equal(Number(receipt.data.amount),amount);
+ return requestId;
+}
+const familyRefundId=await withdraw(subIds[0],25);
+const familyParent=await admin.from('parents').select('status').eq('id',parentId).single();
+assert.equal(familyParent.error,null);
+assert.equal(familyParent.data.status,'active','Parent with siblings must retain access');
+const familyRefund=await a.client.from('subscription_support').select('id').eq('id',familyRefundId);
+assert.equal(familyRefund.error,null);
+assert.equal(familyRefund.data.length,1,'Parent must see own refund receipt');
+const strangerRefund=await b.client.from('subscription_support').select('id').eq('id',familyRefundId);
+assert.equal(strangerRefund.error,null);
+assert.equal(strangerRefund.data.length,0,'Other parent must not see refund receipt');
+const sole=await user('sole-parent');
+const soleParentId='sole-parent-'+token, solePlayerId='sole-player-'+token, soleSubId='sole-sub-'+token;
+await insert('parents',{id:soleParentId,name:'Sole Parent',user_id:sole.id,joined_date:'2026-10-01'});
+await insert('players',{id:solePlayerId,name:'Sole Child',birth_date:'2015-01-01',joined_date:'2026-10-01',parent_id:soleParentId,status:'inactive',jersey_number:30});
+await insert('subscriptions',{id:soleSubId,player_id:solePlayerId,start_date:'2026-10-01',end_date:'2026-10-31',status:'unpaid',amount:25});
+const solePath=`${sole.id}/${soleSubId}/${crypto.randomUUID()}.pdf`;
+const soleUpload=await sole.client.storage.from('payment-proofs').upload(solePath,payload,{contentType:'application/pdf'});
+assert.equal(soleUpload.error,null);
+const proofInsert=await sole.client.from('payment_proofs').insert({subscription_id:soleSubId,player_id:solePlayerId,parent_user_id:sole.id,amount:25,transfer_date:'2026-10-18',proof_path:solePath});
+assert.equal(proofInsert.error,null);
+const soleProof=await manager.client.from('payment_proofs').select('id').eq('subscription_id',soleSubId).single();
+assert.equal(soleProof.error,null);
+await rpcAs(manager.client,'approve_payment_proof',{p_proof_id:soleProof.data.id});
+const soleActive=await admin.from('players').select('status,team_id').eq('id',solePlayerId).single();
+assert.equal(soleActive.error,null);
+assert.equal(soleActive.data.status,'active');assert.equal(soleActive.data.team_id,birthTeamId);
+const soleRefundId=await withdraw(soleSubId,25);
+const soleStatus=await admin.from('parents').select('status').eq('id',soleParentId).single();
+assert.equal(soleStatus.error,null);assert.equal(soleStatus.data.status,'inactive');
+const soleReceipt=await sole.client.from('subscription_support').select('id').eq('id',soleRefundId);
+assert.equal(soleReceipt.error,null);assert.equal(soleReceipt.data.length,1);
+const originalSolePayment=await admin.from('transactions').select('id,amount').eq('subscription_id',soleSubId).eq('type','revenue');
+assert.equal(originalSolePayment.error,null);assert.equal(originalSolePayment.data.length,1);assert.equal(Number(originalSolePayment.data[0].amount),25);
+console.log('PASS real payment activation and refunds: birth category, sibling preservation, sole-parent suspension, numbered immutable receipts, retry and cross-parent denial');

@@ -5,6 +5,7 @@ on:
       - feature/family-receipt-intake-no-merge-20261018
       - fix/family-payment-production-trigger-compat-20261018
       - fix/launch-readiness-20261029
+      - feat/payment-activation-refund-receipts-20261029
   workflow_dispatch:
 
 permissions:
