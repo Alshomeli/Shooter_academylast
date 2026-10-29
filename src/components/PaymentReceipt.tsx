@@ -23,7 +23,7 @@ export function PaymentReceipt({ subscription, transactions, players, parents, s
     ? `SA-${String(officialReceiptNumber).padStart(6, '0')}`
     : rawReference.replace(/^txn-/, '').slice(0, 12).toUpperCase();
   const date = tx?.transactionDate || subscription.paidAt?.slice(0, 10) || '-';
-  const payer = parent?.name || player?.parentName || player?.name || '-';
+  const payer = subscription.parentNameSnapshot || tx?.parentNameSnapshot || parent?.name || player?.parentName || player?.name || '-';
   const method = subscription.paymentMethod || 'cash';
   const methodChecks = [
     { key: 'cash', labelAr: 'نقداً', labelEn: 'Cash', checked: method === 'cash' },
@@ -49,7 +49,7 @@ export function PaymentReceipt({ subscription, transactions, players, parents, s
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 py-3 text-sm">
             <Field label={ar ? 'استلمنا من' : 'Received from'} value={payer} />
-            <Field label={ar ? 'عن اللاعب' : 'For player'} value={player?.name || '-'} />
+            <Field label={ar ? 'عن اللاعب' : 'For player'} value={subscription.playerNameSnapshot || tx?.playerNameSnapshot || player?.name || subscription.playerId} />
             <Field label={ar ? 'المبلغ' : 'Amount'} value={subscription.amount.toFixed(3) + ' BHD'} />
             <Field label={ar ? 'طريقة الدفع' : 'Payment method'} value={paymentMethodLabel(subscription.paymentMethod || 'cash', lang)} />
           </div>

@@ -56,6 +56,19 @@ async function fetchAll<T>(table: string, mapper: (r: Record<string, unknown>) =
   return (data || []).map(r => ({ ...mapper(r), version: Number(r.row_version) }));
 }
 
+async function withFinancialIdentity<T extends { id: string }>(kind: 'subscription' | 'transaction', records: T[]) {
+  if (!records.length) return records;
+  const batches = Array.from({ length: Math.ceil(records.length / 100) }, (_, index) => records.slice(index * 100, (index + 1) * 100));
+  const results = await Promise.all(batches.map(batch => supabase.from('financial_record_identity')
+    .select('record_id,player_name,parent_name').eq('record_kind', kind).in('record_id', batch.map(record => record.id))));
+  for (const result of results) if (result.error) throw result.error;
+  const identities = new Map(results.flatMap(result => result.data || []).map(row => [row.record_id, row]));
+  return records.map(record => {
+    const identity = identities.get(record.id);
+    return { ...record, playerNameSnapshot: identity?.player_name || undefined, parentNameSnapshot: identity?.parent_name || undefined };
+  });
+}
+
 const TABLE_PUBLIC_COLUMNS: Record<string, string> = {
   staff: 'row_version,id,name,email,phone,role,coach_kind,supervising_coach_id,specialization,status,joined_date,avatar_url,licenses,experience_years,rating,tactical_style,notes,user_id,created_at',
   parents: 'row_version,user_id,id,name,nationality,phone,whatsapp_phone,email,address,occupation,workplace,avatar_url,status,notes,joined_date,created_at',
@@ -399,7 +412,7 @@ export const db = {
   async saveParent(p: Parent): Promise<Parent> { return upsertRow('parents', parentToRow(p) as unknown as Record<string, unknown>, mapParent as never); },
   async deleteParent(id: string): Promise<void> { return deleteRow('parents', id); },
 
-  async getSubscriptions(): Promise<Subscription[]> { return fetchAll('subscriptions', mapSubscription as never); },
+  async getSubscriptions(): Promise<Subscription[]> { return withFinancialIdentity('subscription', await fetchAll<Subscription>('subscriptions', mapSubscription as never)); },
   async saveSubscription(s: Subscription): Promise<Subscription> { return upsertRow('subscriptions', subscriptionToRow(s) as unknown as Record<string, unknown>, mapSubscription as never); },
   async deleteSubscription(id: string): Promise<void> { return deleteRow('subscriptions', id); },
 
@@ -415,7 +428,7 @@ export const db = {
   async saveTraining(t: Training): Promise<Training> { return upsertRow('trainings', trainingToRow(t) as unknown as Record<string, unknown>, mapTraining as never); },
   async deleteTraining(id: string): Promise<void> { return deleteRow('trainings', id); },
 
-  async getTransactions(): Promise<Transaction[]> { return fetchAll('transactions', mapTransaction as never); },
+  async getTransactions(): Promise<Transaction[]> { return withFinancialIdentity('transaction', await fetchAll<Transaction>('transactions', mapTransaction as never)); },
   async saveTransaction(t: Transaction): Promise<Transaction> { return upsertRow('transactions', transactionToRow(t) as unknown as Record<string, unknown>, mapTransaction as never); },
   async deleteTransaction(id: string): Promise<void> { return deleteRow('transactions', id); },
 

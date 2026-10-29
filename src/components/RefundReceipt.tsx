@@ -44,7 +44,7 @@ export function RefundReceipt({ subscription, playerName, recipientName, setting
     <div className="receipt-print-root mx-auto w-full max-w-3xl rounded-2xl bg-white text-slate-900 shadow-xl">
       <div className="receipt-content space-y-4 p-6">
         <header className="border-b-2 border-red-700 pb-3"><h2 className="text-xl font-black text-red-700">{settings?.name || 'SHOOTER ACADEMY'}</h2><h3 className="font-bold">{ar ? 'فاتورة استرداد الاشتراك' : 'Subscription refund receipt'}</h3></header>
-        <p>{ar ? 'اللاعب' : 'Player'}: <strong>{playerName}</strong> · {ar ? 'ولي الأمر / المستلم' : 'Parent / recipient'}: <strong>{recipientName || '—'}</strong></p>
+        <p>{ar ? 'اللاعب' : 'Player'}: <strong>{subscription.playerNameSnapshot || playerName}</strong> · {ar ? 'ولي الأمر / المستلم' : 'Parent / recipient'}: <strong>{subscription.parentNameSnapshot || recipientName || '—'}</strong></p>
         <p className="text-sm">{ar ? 'الاشتراك الملغى' : 'Cancelled subscription'}: <span dir="ltr">{subscription.id}</span> · {subscription.startDate} — {subscription.endDate}</p>
         {loading && <p role="status">{ar ? 'جارٍ تحميل فواتير الاسترداد…' : 'Loading refund receipts…'}</p>}
         {error && <p role="alert" className="text-red-700">{error}</p>}
