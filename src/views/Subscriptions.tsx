@@ -210,7 +210,7 @@ export function Subscriptions({
       const player = players.find((p) => p.id === sub.playerId);
       if (deferredSearch) {
         const q = deferredSearch.toLowerCase();
-        if (!player?.name.toLowerCase().includes(q)) return false;
+        if (![sub.playerNameSnapshot, sub.parentNameSnapshot, player?.name, sub.playerId].some(value => value?.toLowerCase().includes(q))) return false;
       }
       if (statusFilter !== 'all' && sub.status !== statusFilter) return false;
       return true;
@@ -432,12 +432,13 @@ export function Subscriptions({
                       {/* Player */}
                       <div className="flex items-center gap-2.5 flex-1 min-w-40">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-100 to-brand-50 dark:from-brand-900/30 dark:to-brand-900/10 flex items-center justify-center text-sm font-bold">
-                          {(player?.name || '?').charAt(0)}
+                          {(sub.playerNameSnapshot || player?.name || '?').charAt(0)}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-black text-slate-900 dark:text-white truncate">
-                            {player?.name || t.unknownPlayer}
+                            {sub.playerNameSnapshot || player?.name || sub.playerId}
                           </p>
+                          {sub.parentNameSnapshot && <p className="text-xs text-slate-500">{sub.parentNameSnapshot}</p>}
                           <div className="flex items-center gap-1.5 mt-0.5">
                             {isExempt ? (
                               <span className="text-[11px] font-bold text-slate-400">{t.exemptHint}</span>
@@ -676,6 +677,7 @@ export function Subscriptions({
                       {/* Description + meta */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{tx.description}</p>
+                        {tx.playerId && <p className="text-xs text-slate-500">{tx.playerNameSnapshot || playerOf(tx.playerId)?.name || tx.playerId} · {tx.parentNameSnapshot || parents.find(p => p.id === playerOf(tx.playerId!)?.parentId)?.name || '—'}</p>}
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           <Badge color={CATEGORY_COLORS[tx.category] || 'slate'}>
                             {categoryLabel(tx.category, lang)}
@@ -745,7 +747,7 @@ export function Subscriptions({
       {cancelSub && <SubscriptionCancellation key={cancelSub.id} subscription={cancelSub} lang={lang} onClose={() => setCancelSub(null)} onSaved={async () => { await onRefresh(); if (cancelSub.status === 'cancelled') setRefundReceiptSub(cancelSub); }} />}
       {supportSub && <SubscriptionSupport subscription={supportSub} lang={lang} onClose={() => setSupportSub(null)} onSaved={onRefresh} />}
       {receiptSub && <PaymentReceipt subscription={receiptSub} transactions={transactions} players={players} parents={parents} settings={settings} lang={lang} officialReceiptNumber={paymentProofs.find(proof => proof.status === 'approved' && proof.subscriptionId === receiptSub.id)?.receiptNumber} onClose={() => setReceiptSub(null)} />}
-      {refundReceiptSub && <RefundReceipt subscription={refundReceiptSub} playerName={players.find(p => p.id === refundReceiptSub.playerId)?.name || '—'} recipientName={parents.find(p => p.id === players.find(player => player.id === refundReceiptSub.playerId)?.parentId)?.name} settings={settings} lang={lang} onClose={() => setRefundReceiptSub(null)} />}
+      {refundReceiptSub && <RefundReceipt subscription={refundReceiptSub} playerName={refundReceiptSub.playerNameSnapshot || players.find(p => p.id === refundReceiptSub.playerId)?.name || refundReceiptSub.playerId} recipientName={refundReceiptSub.parentNameSnapshot || parents.find(p => p.id === players.find(player => player.id === refundReceiptSub.playerId)?.parentId)?.name} settings={settings} lang={lang} onClose={() => setRefundReceiptSub(null)} />}
 
       {/* ---------------- Modals ---------------- */}
       {(showAddSub || editSub || renewSub) && (

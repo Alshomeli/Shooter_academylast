@@ -79,7 +79,12 @@ export interface Parent {
   joinedDate: string;
 }
 
-export interface Subscription {
+export interface FinancialIdentity {
+  playerNameSnapshot?: string;
+  parentNameSnapshot?: string;
+}
+
+export interface Subscription extends FinancialIdentity {
   exemptionReason?: string;
   version?: number;
   id: string;
@@ -129,7 +134,7 @@ export interface Training {
   objectives: string;
 }
 
-export interface Transaction {
+export interface Transaction extends FinancialIdentity {
   version?: number;
   subscriptionId?: string;
   playerId?: string;
