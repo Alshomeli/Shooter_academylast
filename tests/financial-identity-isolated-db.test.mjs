@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
-const migration = await readFile(new URL('../supabase/migrations/20261029121043_preserve_financial_identity.sql', import.meta.url), 'utf8');
+const migration = await readFile(new URL('../supabase/migrations/20261029121625_preserve_financial_identity.sql', import.meta.url), 'utf8');
 const parentA = '11111111-1111-4111-8111-111111111111';
 const parentB = '22222222-2222-4222-8222-222222222222';
 async function fixture() {
