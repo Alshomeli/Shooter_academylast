@@ -315,7 +315,9 @@ export default function App() {
       setData({
         settings, staff, teams, players, parents, subscriptions,
         attendance, matches, trainings, transactions, tournaments, evaluations, notifications,
-        auditLogs, loginLogs,
+        // Preserve already loaded audit data across ordinary realtime refreshes.
+        auditLogs: manager ? dataRef.current.auditLogs : auditLogs,
+        loginLogs: manager ? dataRef.current.loginLogs : loginLogs,
       });
     } catch (err) {
       console.error('[load]', err);
