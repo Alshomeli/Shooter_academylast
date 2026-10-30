@@ -306,7 +306,7 @@ export default function App() {
         db.getSettings(),
         parent ? [] : db.getStaff(), db.getTeams(role === 'coach'), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
         role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
-        db.getTrainings(), finance ? db.getTransactions() : [], parent ? [] : db.getTournaments(),
+        db.getTrainings(), finance ? db.getTransactions() : [], (parent || role === 'coach') ? [] : db.getTournaments(),
         db.getEvaluations(), db.getNotifications(),
         manager ? db.getAuditLogs() : [], manager ? db.getLoginAuditLogs() : [],
       ]);
@@ -315,6 +315,8 @@ export default function App() {
         settings, staff, teams, players, parents, subscriptions,
         attendance, matches, trainings, transactions, tournaments, evaluations, notifications,
         auditLogs, loginLogs,
+        // Keep the coach's on-demand tournament data through general refreshes.
+        tournaments: role === 'coach' ? dataRef.current.tournaments : tournaments,
       });
     } catch (err) {
       console.error('[load]', err);
@@ -339,6 +341,20 @@ export default function App() {
     return run;
   }, [currentUser]);
   loadAllDataRef.current = loadAllData;
+
+  // Coaches need tournament records only when opening the AI center.
+  useEffect(() => {
+    if (currentUser?.role !== 'coach' || currentTab !== 'ai-center') return;
+    const userId = currentUser.authUserId;
+    let cancelled = false;
+    void db.getTournaments().then(tournaments => {
+      if (cancelled || userRef.current !== userId) return;
+      setData(previous => ({ ...previous, tournaments }));
+    }).catch(error => {
+      if (!cancelled) console.error('[coach tournaments]', error);
+    });
+    return () => { cancelled = true; };
+  }, [currentUser?.authUserId, currentUser?.role, currentTab]);
 
   // A session switch invalidates every result belonging to the previous
   // account and prevents its old snapshot from flashing in the new account.
