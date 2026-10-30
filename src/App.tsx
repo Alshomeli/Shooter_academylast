@@ -308,7 +308,8 @@ export default function App() {
         role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
         db.getTrainings(), finance ? db.getTransactions() : [], parent ? [] : db.getTournaments(),
         db.getEvaluations(), db.getNotifications(),
-        manager ? db.getAuditLogs() : [], manager ? db.getLoginAuditLogs() : [],
+        // Audit history is needed only on the manager's audit-logs page.
+        [], [],
       ]);
       if (!stillCurrent()) return;
       setData({
@@ -339,6 +340,23 @@ export default function App() {
     return run;
   }, [currentUser]);
   loadAllDataRef.current = loadAllData;
+
+  // Fetch potentially large audit histories only when a manager opens that page.
+  // Keep this independent of the main dashboard refresh to avoid extra requests.
+  useEffect(() => {
+    if (currentUser?.role !== 'manager' || currentTab !== 'audit-logs') return;
+    const userId = currentUser.authUserId;
+    let cancelled = false;
+    void Promise.all([db.getAuditLogs(), db.getLoginAuditLogs()])
+      .then(([auditLogs, loginLogs]) => {
+        if (cancelled || userRef.current !== userId) return;
+        setData(previous => ({ ...previous, auditLogs, loginLogs }));
+      })
+      .catch(error => {
+        if (!cancelled) console.error('[audit-logs]', error);
+      });
+    return () => { cancelled = true; };
+  }, [currentUser?.authUserId, currentUser?.role, currentTab]);
 
   // A session switch invalidates every result belonging to the previous
   // account and prevents its old snapshot from flashing in the new account.
