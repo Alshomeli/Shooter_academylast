@@ -396,13 +396,26 @@ export default function App() {
       debounce = setTimeout(() => void loadAllData(), 500);
     };
     const channels = tables.map((t) => db.subscribe(t, handleChange));
-    const refreshVisible = () => { if (document.visibilityState === 'visible') void loadAllData(); };
-    const poll = window.setInterval(refreshVisible, 60000);
+    // Avoid duplicate full-data refreshes from focus and polling in quick succession.
+    // Realtime changes still refresh independently via the debounced handler above.
+    let lastBackgroundRefresh = Date.now();
+    const refreshVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastBackgroundRefresh < 60000) return;
+      lastBackgroundRefresh = now;
+      void loadAllData();
+    };
+    // Keep a periodic fallback for missed realtime events, but reduce its cost.
+    const poll = window.setInterval(refreshVisible, 300000);
     window.addEventListener('focus', refreshVisible);
+    document.addEventListener('visibilitychange', refreshVisible);
     return () => {
       if (debounce) clearTimeout(debounce);
       channels.forEach((ch) => supabaseUnsubscribe(ch));
-      clearInterval(poll); window.removeEventListener('focus', refreshVisible);
+      clearInterval(poll);
+      window.removeEventListener('focus', refreshVisible);
+      document.removeEventListener('visibilitychange', refreshVisible);
     };
   }, [currentUser, loadAllData]);
 
