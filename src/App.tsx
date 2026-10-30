@@ -16,6 +16,7 @@ import type {
 } from '@/types';
 import { Login } from '@/components/Login';
 import { Sidebar } from '@/components/Sidebar';
+import { CoachOnboardingTour } from '@/components/CoachOnboardingTour';
 import { ContextualShooterAI } from '@/components/ContextualShooterAI';
 
 
@@ -699,6 +700,7 @@ export default function App() {
       className={`flex min-h-screen transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100 dark' : 'bg-slate-50 text-slate-800'}`}
       dir={lang === 'ar' ? 'rtl' : 'ltr'}
     >
+      {currentUser?.role === 'coach' && <CoachOnboardingTour userId={currentUser.authUserId || currentUser.id} lang={lang} navigate={setCurrentTab} />}
       <Sidebar
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
