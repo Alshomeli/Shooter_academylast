@@ -341,6 +341,9 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
         <p className="mt-1">{isAr ? 'تظهر الرسوم قبل إرسال الطلب. يراجع المدير التسجيل ويحدد أي خصم، ثم يصلك المبلغ النهائي قبل الدفع. لا تدفع قبل استلام الموافقة.' : 'The manager reviews your application and may approve a discount. You will receive the final amount before payment. Do not pay until approval.'}</p>
         {children.length > 0 && <p className="mt-2 font-bold">{isAr ? 'الإجمالي المبدئي' : 'Estimated total'}: {(children.length * 25).toFixed(3)} BHD ({children.length} {isAr ? 'لاعب' : 'players'})</p>}
       </div>
+      <p role="note" className="rounded-xl border border-brand-200 bg-brand-50/50 p-3 text-sm text-slate-700 dark:border-brand-900 dark:bg-brand-950/20 dark:text-slate-200">
+        {isAr ? 'خطوات الاشتراك: إرسال الطلب ← موافقة الإدارة وتحديد المبلغ ← دفع الاشتراك ورفع الإيصال ← مراجعة الدفع وتفعيل اللاعب.' : 'Subscription steps: submit the application → management approval and final fee → pay and upload receipt → payment review and player activation.'}
+      </p>
       {resumeApp?.reviewNotes && <p className="p-3 rounded-lg bg-amber-50 text-amber-800">{resumeApp.reviewNotes}</p>}
       {draftError && <p role="alert" className="p-3 text-sm text-red-600">{draftError}</p>}
       {/* Stepper */}
