@@ -313,10 +313,9 @@ export default function App() {
       if (!stillCurrent()) return;
       setData({
         settings, staff, teams, players, parents, subscriptions,
-        attendance, matches, trainings, transactions, tournaments, evaluations, notifications,
-        auditLogs, loginLogs,
-        // Keep the coach's on-demand tournament data through general refreshes.
+        attendance, matches, trainings, transactions,
         tournaments: role === 'coach' ? dataRef.current.tournaments : tournaments,
+        evaluations, notifications, auditLogs, loginLogs,
       });
     } catch (err) {
       console.error('[load]', err);
