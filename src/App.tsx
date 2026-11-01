@@ -345,19 +345,34 @@ export default function App() {
   }, [currentUser]);
   loadAllDataRef.current = loadAllData;
 
-  // Coaches fetch tournament records only when opening the AI center.
+  // Load coach tournaments on demand in either view; reuse the result across tabs.
+  const tournamentCache = useRef<{ userId: string; loaded: boolean; inFlight: boolean }>({ userId: '', loaded: false, inFlight: false });
+  const [tournamentError, setTournamentError] = useState(false);
+  const [tournamentRetry, setTournamentRetry] = useState(0);
   useEffect(() => {
-    if (currentUser?.role !== 'coach' || currentTab !== 'ai-center') return;
-    const userId = currentUser.authUserId;
-    let cancelled = false;
+    const userId = currentUser?.authUserId || '';
+    if (tournamentCache.current.userId !== userId) {
+      tournamentCache.current = { userId, loaded: false, inFlight: false };
+      setTournamentError(false);
+    }
+    if (currentUser?.role !== 'coach' || (currentTab !== 'ai-center' && currentTab !== 'tournaments')) return;
+    const cache = tournamentCache.current;
+    if (cache.loaded || cache.inFlight) return;
+    cache.inFlight = true;
+    setTournamentError(false);
     void db.getTournaments().then(tournaments => {
-      if (cancelled || userRef.current !== userId) return;
+      if (userRef.current !== userId || tournamentCache.current !== cache) return;
+      cache.loaded = true;
       setData(previous => ({ ...previous, tournaments }));
     }).catch(error => {
-      if (!cancelled) console.error('[coach tournaments]', error);
+      if (userRef.current === userId && tournamentCache.current === cache) {
+        console.error('[coach tournaments]', error);
+        setTournamentError(true);
+      }
+    }).finally(() => {
+      cache.inFlight = false;
     });
-    return () => { cancelled = true; };
-  }, [currentUser?.authUserId, currentUser?.role, currentTab]);
+  }, [currentUser?.authUserId, currentUser?.role, currentTab, tournamentRetry]);
 
   // Fetch potentially large audit histories only when a manager opens that page.
   // Keep this independent of the main dashboard refresh to avoid extra requests.
@@ -879,6 +894,14 @@ export default function App() {
 
         {/* Main content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+        {currentUser.role === 'coach' && (safeCurrentTab === 'ai-center' || safeCurrentTab === 'tournaments') && tournamentError && (
+          <div role="alert" className="mb-4 rounded-lg border border-amber-400 p-3 text-sm">
+            <span>{lang === 'ar' ? 'تعذر تحميل بيانات البطولات.' : 'Failed to load tournaments.'}</span>
+            <button className="ms-3 underline font-bold" onClick={() => setTournamentRetry(value => value + 1)}>
+              {lang === 'ar' ? 'إعادة المحاولة' : 'Retry'}
+            </button>
+          </div>
+        )}
           <div className="max-w-7xl mx-auto animate-fadeIn">
             <ErrorBoundary key={`${currentUser.authUserId}:${activeRole}:${safeCurrentTab}`} lang={lang}>
               {/* A new section must not retain the previous section while its chunk loads. */}
