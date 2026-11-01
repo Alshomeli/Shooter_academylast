@@ -306,7 +306,7 @@ export default function App() {
         db.getSettings(),
         parent ? [] : db.getStaff(), db.getTeams(role === 'coach'), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
         role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
-        db.getTrainings(), finance ? db.getTransactions() : [], parent ? [] : db.getTournaments(),
+        db.getTrainings(), finance ? db.getTransactions() : [], (parent || role === 'coach') ? [] : db.getTournaments(),
         db.getEvaluations(), db.getNotifications(),
         // Audit history is needed only on the manager's audit-logs page.
         [], [],
@@ -314,7 +314,9 @@ export default function App() {
       if (!stillCurrent()) return;
       setData({
         settings, staff, teams, players, parents, subscriptions,
-        attendance, matches, trainings, transactions, tournaments, evaluations, notifications,
+        attendance, matches, trainings, transactions,
+        tournaments: role === 'coach' ? dataRef.current.tournaments : tournaments,
+        evaluations, notifications,
         // Preserve already loaded audit data across ordinary realtime refreshes.
         auditLogs: manager ? dataRef.current.auditLogs : auditLogs,
         loginLogs: manager ? dataRef.current.loginLogs : loginLogs,
@@ -342,6 +344,35 @@ export default function App() {
     return run;
   }, [currentUser]);
   loadAllDataRef.current = loadAllData;
+
+  // Load coach tournaments on demand in either view; reuse the result across tabs.
+  const tournamentCache = useRef<{ userId: string; loaded: boolean; inFlight: boolean }>({ userId: '', loaded: false, inFlight: false });
+  const [tournamentError, setTournamentError] = useState(false);
+  const [tournamentRetry, setTournamentRetry] = useState(0);
+  useEffect(() => {
+    const userId = currentUser?.authUserId || '';
+    if (tournamentCache.current.userId !== userId) {
+      tournamentCache.current = { userId, loaded: false, inFlight: false };
+      setTournamentError(false);
+    }
+    if (currentUser?.role !== 'coach' || (currentTab !== 'ai-center' && currentTab !== 'tournaments')) return;
+    const cache = tournamentCache.current;
+    if (cache.loaded || cache.inFlight) return;
+    cache.inFlight = true;
+    setTournamentError(false);
+    void db.getTournaments().then(tournaments => {
+      if (userRef.current !== userId || tournamentCache.current !== cache) return;
+      cache.loaded = true;
+      setData(previous => ({ ...previous, tournaments }));
+    }).catch(error => {
+      if (userRef.current === userId && tournamentCache.current === cache) {
+        console.error('[coach tournaments]', error);
+        setTournamentError(true);
+      }
+    }).finally(() => {
+      cache.inFlight = false;
+    });
+  }, [currentUser?.authUserId, currentUser?.role, currentTab, tournamentRetry]);
 
   // Fetch potentially large audit histories only when a manager opens that page.
   // Keep this independent of the main dashboard refresh to avoid extra requests.
@@ -863,6 +894,14 @@ export default function App() {
 
         {/* Main content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+        {currentUser.role === 'coach' && (safeCurrentTab === 'ai-center' || safeCurrentTab === 'tournaments') && tournamentError && (
+          <div role="alert" className="mb-4 rounded-lg border border-amber-400 p-3 text-sm">
+            <span>{lang === 'ar' ? 'تعذر تحميل بيانات البطولات.' : 'Failed to load tournaments.'}</span>
+            <button className="ms-3 underline font-bold" onClick={() => setTournamentRetry(value => value + 1)}>
+              {lang === 'ar' ? 'إعادة المحاولة' : 'Retry'}
+            </button>
+          </div>
+        )}
           <div className="max-w-7xl mx-auto animate-fadeIn">
             <ErrorBoundary key={`${currentUser.authUserId}:${activeRole}:${safeCurrentTab}`} lang={lang}>
               {/* A new section must not retain the previous section while its chunk loads. */}
