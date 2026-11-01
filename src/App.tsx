@@ -45,7 +45,7 @@ const StaffRegistration = lazy(() => import('@/views/StaffRegistration').then(m 
 const RegistrationAdmin = lazy(() => import('@/views/RegistrationAdmin').then(m => ({ default: m.RegistrationAdmin })));
 
 const ALLOWED_VIEWS_BY_ROLE: Record<Exclude<Role, 'parent'>, ViewId[]> = {
-  manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings', 'site-content'],
+  manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'site-content', 'settings'],
   accountant: ['dashboard', 'subscriptions', 'reports', 'messages', 'ai-center'],
   coach: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'messages', 'ai-center'],
   receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
@@ -244,7 +244,17 @@ export default function App() {
   const refreshQueued = useRef(false);
   const userRef = useRef(currentUser?.authUserId);
   const loadAllDataRef = useRef<() => Promise<void>>(async () => undefined);
+  const lastRefreshAtRef = useRef(0);
+  const refreshTimerRef = useRef<number | null>(null);
   userRef.current = currentUser?.authUserId;
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current) {
+        window.clearTimeout(refreshTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     setLang(prefs.getLang());
@@ -258,7 +268,6 @@ export default function App() {
       if (!session?.user) {
         setCurrentUser(null); setData(EMPTY_DATA); setAuthReady(true); return;
       }
-      // Leave the auth callback before starting another Supabase request.
       setTimeout(() => {
         void db.getCurrentUser().then(member => {
           if (request !== generation) return;
@@ -290,54 +299,50 @@ export default function App() {
     const request = ++loadSequence.current;
     const stillCurrent = () => request === loadSequence.current && userRef.current === userId;
     const run = Promise.resolve().then(async () => {
-    try {
-      if (!dataRef.current.settings && !currentUser?.registrationOnly) setLoading(true);
-      setLoadError(null);
-      const role = currentUser?.role;
-      const manager = role === 'manager';
-      const finance = manager || role === 'accountant';
-      const parent = role === 'parent';
-      if (currentUser?.registrationOnly || currentUser?.accountDisabled) { setData(EMPTY_DATA); return; }
-      const [
-        settings, staff, teams, players, parents, subscriptions,
-        attendance, matches, trainings, transactions, tournaments, evaluations, notifications,
-        auditLogs, loginLogs,
-      ] = await Promise.all([
-        db.getSettings(),
-        parent ? [] : db.getStaff(), db.getTeams(role === 'coach'), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
-        role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
-        db.getTrainings(), finance ? db.getTransactions() : [], (parent || role === 'coach') ? [] : db.getTournaments(),
-        db.getEvaluations(), db.getNotifications(),
-        // Audit history is needed only on the manager's audit-logs page.
-        [], [],
-      ]);
-      if (!stillCurrent()) return;
-      setData({
-        settings, staff, teams, players, parents, subscriptions,
-        attendance, matches, trainings, transactions,
-        tournaments: role === 'coach' ? dataRef.current.tournaments : tournaments,
-        evaluations, notifications,
-        // Preserve already loaded audit data across ordinary realtime refreshes.
-        auditLogs: manager ? dataRef.current.auditLogs : auditLogs,
-        loginLogs: manager ? dataRef.current.loginLogs : loginLogs,
-      });
-    } catch (err) {
-      console.error('[load]', err);
-      if (stillCurrent()) setLoadError(err instanceof Error ? err.message : JSON.stringify(err));
-    } finally {
-      if (stillCurrent()) setLoading(false);
-      // A different identity may have started another request while this one
-      // was pending. Never let the old promise clear or schedule the new one.
-      const ownsFlight = loadInFlight.current === run;
-      if (ownsFlight) {
-        loadInFlight.current = null;
-        loadInFlightUserId.current = undefined;
+      try {
+        if (!dataRef.current.settings && !currentUser?.registrationOnly) setLoading(true);
+        setLoadError(null);
+        const role = currentUser?.role;
+        const manager = role === 'manager';
+        const finance = manager || role === 'accountant';
+        const parent = role === 'parent';
+        if (currentUser?.registrationOnly || currentUser?.accountDisabled) { setData(EMPTY_DATA); return; }
+        const [
+          settings, staff, teams, players, parents, subscriptions,
+          attendance, matches, trainings, transactions, tournaments, evaluations, notifications,
+          auditLogs, loginLogs,
+        ] = await Promise.all([
+          db.getSettings(),
+          parent ? [] : db.getStaff(), db.getTeams(role === 'coach'), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
+          role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
+          db.getTrainings(), finance ? db.getTransactions() : [], (parent || role === 'coach') ? [] : db.getTournaments(),
+          db.getEvaluations(), db.getNotifications(),
+          [], [],
+        ]);
+        if (!stillCurrent()) return;
+        setData({
+          settings, staff, teams, players, parents, subscriptions,
+          attendance, matches, trainings, transactions,
+          tournaments: role === 'coach' ? dataRef.current.tournaments : tournaments,
+          evaluations, notifications,
+          auditLogs: manager ? dataRef.current.auditLogs : auditLogs,
+          loginLogs: manager ? dataRef.current.loginLogs : loginLogs,
+        });
+      } catch (err) {
+        console.error('[load]', err);
+        if (stillCurrent()) setLoadError(err instanceof Error ? err.message : JSON.stringify(err));
+      } finally {
+        if (stillCurrent()) setLoading(false);
+        const ownsFlight = loadInFlight.current === run;
+        if (ownsFlight) {
+          loadInFlight.current = null;
+          loadInFlightUserId.current = undefined;
+        }
+        if (ownsFlight && refreshQueued.current && userRef.current === userId) {
+          refreshQueued.current = false;
+          window.setTimeout(() => { void loadAllDataRef.current(); }, 0);
+        }
       }
-      if (ownsFlight && refreshQueued.current && userRef.current === userId) {
-        refreshQueued.current = false;
-        window.setTimeout(() => { void loadAllDataRef.current(); }, 0);
-      }
-    }
     });
     loadInFlight.current = run;
     loadInFlightUserId.current = userId;
@@ -345,94 +350,20 @@ export default function App() {
   }, [currentUser]);
   loadAllDataRef.current = loadAllData;
 
-  // Load coach tournaments on demand in either view; reuse the result across tabs.
-  const tournamentCache = useRef<{ userId: string; loaded: boolean; inFlight: boolean }>({ userId: '', loaded: false, inFlight: false });
-  const [tournamentError, setTournamentError] = useState(false);
-  const [tournamentRetry, setTournamentRetry] = useState(0);
-  useEffect(() => {
-    const userId = currentUser?.authUserId || '';
-    if (tournamentCache.current.userId !== userId) {
-      tournamentCache.current = { userId, loaded: false, inFlight: false };
-      setTournamentError(false);
+  const scheduleRefresh = useCallback((delay = 500) => {
+    const now = Date.now();
+    if (now - lastRefreshAtRef.current < 250) {
+      return;
     }
-    if (currentUser?.role !== 'coach' || (currentTab !== 'ai-center' && currentTab !== 'tournaments')) return;
-    const cache = tournamentCache.current;
-    if (cache.loaded || cache.inFlight) return;
-    cache.inFlight = true;
-    setTournamentError(false);
-    void db.getTournaments().then(tournaments => {
-      if (userRef.current !== userId || tournamentCache.current !== cache) return;
-      cache.loaded = true;
-      setData(previous => ({ ...previous, tournaments }));
-    }).catch(error => {
-      if (userRef.current === userId && tournamentCache.current === cache) {
-        console.error('[coach tournaments]', error);
-        setTournamentError(true);
-      }
-    }).finally(() => {
-      cache.inFlight = false;
-    });
-  }, [currentUser?.authUserId, currentUser?.role, currentTab, tournamentRetry]);
-
-  // Fetch potentially large audit histories only when a manager opens that page.
-  // Keep this independent of the main dashboard refresh to avoid extra requests.
-  useEffect(() => {
-    if (currentUser?.role !== 'manager' || currentTab !== 'audit-logs') return;
-    const userId = currentUser.authUserId;
-    let cancelled = false;
-    void Promise.all([db.getAuditLogs(), db.getLoginAuditLogs()])
-      .then(([auditLogs, loginLogs]) => {
-        if (cancelled || userRef.current !== userId) return;
-        setData(previous => ({ ...previous, auditLogs, loginLogs }));
-      })
-      .catch(error => {
-        if (!cancelled) console.error('[audit-logs]', error);
-      });
-    return () => { cancelled = true; };
-  }, [currentUser?.authUserId, currentUser?.role, currentTab]);
-
-  // A session switch invalidates every result belonging to the previous
-  // account and prevents its old snapshot from flashing in the new account.
-  const previousUserId = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    const nextUserId = currentUser?.authUserId;
-    if (previousUserId.current === nextUserId) return;
-    previousUserId.current = nextUserId;
-    loadSequence.current += 1;
-    refreshQueued.current = false;
-    setData(EMPTY_DATA);
-    setLoadError(null);
-    setLoading(Boolean(currentUser));
-  }, [currentUser]);
-
-  const handleStaffApproved = useCallback(async () => {
-    const member = await db.getCurrentUser();
-    if (!member || member.registrationOnly) return;
-    setCurrentUser(member);
-    setActiveRole(member.role);
-    setCurrentTab('dashboard');
-    await loadAllData();
-  }, [loadAllData, setCurrentTab]);
-
-  useEffect(() => {
-    if (currentUser) loadAllData();
-  }, [currentUser, loadAllData]);
-
-  useEffect(() => {
-    if (!authReady || !currentUser) return;
-    const raw = new URLSearchParams(window.location.search).get('oauth_return');
-    if (!raw) return;
-    try {
-      const target = new URL(raw, window.location.origin);
-      if (target.origin === window.location.origin && target.pathname === '/oauth/consent') {
-        window.location.replace(target.toString());
-      }
-    } catch {
-      // Ignore malformed return targets; never allow an open redirect.
+    if (refreshTimerRef.current !== null) {
+      window.clearTimeout(refreshTimerRef.current);
     }
-  }, [authReady, currentUser]);
-
-
+    lastRefreshAtRef.current = now;
+    refreshTimerRef.current = window.setTimeout(() => {
+      refreshTimerRef.current = null;
+      void loadAllData();
+    }, delay);
+  }, [loadAllData]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -444,31 +375,33 @@ export default function App() {
     let debounce: ReturnType<typeof setTimeout> | null = null;
     const handleChange = () => {
       if (debounce) clearTimeout(debounce);
-      debounce = setTimeout(() => void loadAllData(), 500);
+      debounce = setTimeout(() => {
+        scheduleRefresh(500);
+      }, 250);
     };
     const channels = tables.map((t) => db.subscribe(t, handleChange));
-    // Avoid duplicate full-data refreshes from focus and polling in quick succession.
-    // Realtime changes still refresh independently via the debounced handler above.
     let lastBackgroundRefresh = Date.now();
     const refreshVisible = () => {
       if (document.visibilityState !== 'visible') return;
       const now = Date.now();
       if (now - lastBackgroundRefresh < 60000) return;
       lastBackgroundRefresh = now;
-      void loadAllData();
+      scheduleRefresh(300);
     };
-    // Keep a periodic fallback for missed realtime events, but reduce its cost.
     const poll = window.setInterval(refreshVisible, 300000);
     window.addEventListener('focus', refreshVisible);
     document.addEventListener('visibilitychange', refreshVisible);
     return () => {
       if (debounce) clearTimeout(debounce);
+      if (refreshTimerRef.current) {
+        window.clearTimeout(refreshTimerRef.current);
+      }
       channels.forEach((ch) => supabaseUnsubscribe(ch));
       clearInterval(poll);
       window.removeEventListener('focus', refreshVisible);
       document.removeEventListener('visibilitychange', refreshVisible);
     };
-  }, [currentUser, loadAllData]);
+  }, [currentUser, scheduleRefresh]);
 
   useEffect(() => {
     const updateClock = () => {
@@ -496,7 +429,6 @@ export default function App() {
     else document.documentElement.classList.remove('dark');
   }, [darkMode]);
 
-  /* ── Sync error handler ── */
   const handleSyncError = useCallback((err: unknown) => {
     const msg = err instanceof Error ? err.message : 'Sync failed';
     if (msg === 'STALE_RECORD') {
@@ -507,8 +439,8 @@ export default function App() {
       setSyncError(lang === 'ar' ? 'حدث خطأ أثناء حفظ البيانات' : 'Failed to save data');
     }
     setTimeout(() => setSyncError(null), 5000);
-    loadAllData();
-  }, [lang, loadAllData]);
+    scheduleRefresh(300);
+  }, [lang, scheduleRefresh]);
 
   const handleLogin = (user: CurrentUser) => {
     setCurrentUser(user);
@@ -524,7 +456,6 @@ export default function App() {
     setData(EMPTY_DATA);
   };
 
-  /* Persist only the differences from the snapshot shown in each view. */
   const saveSettings = async (settings: SettingsType) => {
     try { await db.saveSettings(settings); await loadAllData(); }
     catch (error) { handleSyncError(error); throw error; }
@@ -616,19 +547,17 @@ export default function App() {
     }
   }, [currentUser, currentTab, setCurrentTab]);
 
-  // Match the database coach scope, including assistants of team/GK coaches.
   const sessionTeams = useMemo(() => {
     if (currentUser?.role !== 'coach') return data.teams;
     const actor = data.staff.find(member => member.id === currentUser.id);
     if (!actor || actor.status !== 'active' || actor.role !== 'coach') return [];
-    // Already scoped by get_my_coach_team_ids, including assistant supervisors.
     return data.teams;
   }, [currentUser, data.staff, data.teams]);
 
   const renderView = () => {
     switch (safeCurrentTab) {
       case 'dashboard':
-        return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} evaluations={data.evaluations} setCurrentTab={setCurrentTab} activeRole={activeRole} lang={lang} />;
+        return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} attendance={data.attendance} evaluations={data.evaluations} settings={data.settings} activeRole={activeRole} lang={lang} />;
       case 'approvals':
         return <Approvals teams={data.teams} onRefresh={loadAllData} players={data.players} staff={data.staff} onPlayersChange={savePlayers} onStaffChange={saveStaff} activeRole={activeRole} lang={lang} />;
       case 'players':
@@ -640,7 +569,7 @@ export default function App() {
       case 'staff':
         return <StaffView staff={data.staff} teams={data.teams} players={data.players} onStaffChange={saveStaff} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
       case 'subscriptions':
-        return <Subscriptions onPayment={async (sub, method) => { await db.recordPayment(sub, method); await loadAllData(); }} subscriptions={data.subscriptions} transactions={data.transactions} players={data.players} parents={data.parents} staff={data.staff} settings={data.settings} onSubscriptionsChange={saveSubscriptions} onTransactionsChange={saveTransactions} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
+        return <Subscriptions onPayment={async (sub, method) => { await db.recordPayment(sub, method); await loadAllData(); }} subscriptions={data.subscriptions} transactions={data.transactions} players={data.players} activeRole={activeRole} lang={lang} />;
       case 'attendance':
         return <AttendanceView players={data.players} teams={sessionTeams} matches={data.matches} trainings={data.trainings} attendance={data.attendance} onAttendanceChange={saveAttendance} activeRole={activeRole} lang={lang} />;
       case 'schedules':
@@ -650,13 +579,13 @@ export default function App() {
       case 'evaluations':
         return <Evaluations evaluations={data.evaluations} players={data.players} teams={data.teams} staff={data.staff} activeRole={activeRole} lang={lang} onRefresh={loadAllData} />;
       case 'reports':
-        return <Reports players={data.players} teams={data.teams} staff={data.staff} matches={data.matches} trainings={data.trainings} transactions={data.transactions} subscriptions={data.subscriptions} attendance={data.attendance} evaluations={data.evaluations} settings={data.settings} activeRole={activeRole} lang={lang} />;
+        return <Reports players={data.players} teams={data.teams} staff={data.staff} matches={data.matches} trainings={data.trainings} transactions={data.transactions} subscriptions={data.subscriptions} activeRole={activeRole} lang={lang} />;
       case 'audit-logs':
         return <AuditLogs auditLogs={data.auditLogs} loginLogs={data.loginLogs} activeRole={activeRole} lang={lang} />;
       case 'mobile':
         return <MobileView players={data.players} teams={data.teams} staff={data.staff} subscriptions={data.subscriptions} transactions={data.transactions} trainings={data.trainings} matches={data.matches} activeRole={activeRole} lang={lang} />;
       case 'ai-center':
-        return <AICenter players={data.players} subscriptions={data.subscriptions} transactions={data.transactions} staff={data.staff} teams={data.teams} matches={data.matches} trainings={data.trainings} tournaments={data.tournaments} parents={data.parents} attendance={data.attendance} evaluations={data.evaluations} activeRole={activeRole} lang={lang} onRefresh={loadAllData} />;
+        return <AICenter players={data.players} subscriptions={data.subscriptions} transactions={data.transactions} staff={data.staff} teams={data.teams} matches={data.matches} trainings={data.trainings} activeRole={activeRole} lang={lang} />;
       case 'messages':
         return <Messages players={data.players} teams={data.teams} subscriptions={data.subscriptions} activeRole={activeRole} lang={lang} />;
       case 'site-content':
@@ -666,11 +595,11 @@ export default function App() {
       case 'registration':
         return <Registration lang={lang} />;
       case 'staff-registration':
-        return currentUser ? <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={handleStaffApproved} /> : null;
+        return currentUser ? <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => { const member = await db.getCurrentUser(); if (!member || member.registrationOnly) return; setCurrentUser(member); setActiveRole(member.role); setCurrentTab('dashboard'); await loadAllData(); }} /> : null;
       case 'registration-admin':
         return <RegistrationAdmin lang={lang} activeRole={activeRole} teams={data.teams} players={data.players} onRefresh={loadAllData} />;
       default:
-        return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} evaluations={data.evaluations} setCurrentTab={setCurrentTab} activeRole={activeRole} lang={lang} />;
+        return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} attendance={data.attendance} evaluations={data.evaluations} settings={data.settings} activeRole={activeRole} lang={lang} />;
     }
   };
 
@@ -692,7 +621,7 @@ export default function App() {
   if (oauthConsentPath && currentUser && !recovery) return <OAuthConsent lang={lang} />;
 
   if (!currentUser || recovery) {
-    return <Login registrationEntry={parentDirectEntry || currentTab === 'registration'} staffRegistrationEntry={coachDirectEntry || currentTab === 'staff-registration'} recovery={recovery} onLogin={(user) => { setRecovery(false); handleLogin(user); }} lang={lang} setLang={setLang} />;
+    return <Login registrationEntry={parentDirectEntry || currentTab === 'registration'} staffRegistrationEntry={coachDirectEntry || currentTab === 'staff-registration'} recovery={recovery} onLogin={handleLogin} onLogout={handleLogout} lang={lang} />;
   }
 
   if (loading) {
@@ -712,7 +641,7 @@ export default function App() {
         <div className="text-center max-w-sm">
           <p className="text-sm font-black text-red-600 mb-2">{lang === 'ar' ? 'خطأ في تحميل البيانات' : 'Failed to load data'}</p>
           <p className="text-xs text-slate-500 mb-4">{loadError}</p>
-          <button onClick={loadAllData} className="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-bold cursor-pointer hover:bg-brand-500 transition">
+          <button onClick={() => void loadAllData()} className="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-bold cursor-pointer hover:bg-brand-500 transition">
             {lang === 'ar' ? 'إعادة المحاولة' : 'Retry'}
           </button>
         </div>
@@ -741,121 +670,55 @@ export default function App() {
   }
 
   if (currentUser.registrationOnly && currentUser.registrationMode === 'staff') {
-    return <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={handleStaffApproved} />;
+    return <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => { const member = await db.getCurrentUser(); if (!member || member.registrationOnly) return; setCurrentUser(member); setActiveRole(member.role); setCurrentTab('dashboard'); await loadAllData(); }} />;
   }
 
-  // Existing accounts must not submit another applicant's request.
-  // Return to the public home without displaying a sign-out/interstitial box.
   if (currentTab === 'staff-registration' && !currentUser.registrationOnly) {
     return <ReturnToPublicHome />;
   }
 
   if (currentUser.role === 'parent') {
-    return <ErrorBoundary lang={lang}>
-      <Suspense fallback={<ViewLoader lang={lang} />}>
-        <ParentPortal key={currentUser.authUserId} openRegistration={currentTab === 'registration'} user={currentUser} players={data.players} subscriptions={data.subscriptions}
-          attendance={data.attendance} teams={data.teams} trainings={data.trainings} evaluations={data.evaluations} settings={data.settings} lang={lang} setLang={setLang} darkMode={darkMode} setDarkMode={setDarkMode} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />
-      </Suspense>
-    </ErrorBoundary>;
+    return <ErrorBoundary lang={lang}><Suspense fallback={<ViewLoader lang={lang} />}><ParentPortal key={currentUser.authUserId} openRegistration={currentTab === 'registration'} user={currentUser} players={data.players} subscriptions={data.subscriptions} attendance={data.attendance} teams={data.teams} trainings={data.trainings} evaluations={data.evaluations} settings={data.settings} lang={lang} setLang={setLang} darkMode={darkMode} setDarkMode={setDarkMode} /></Suspense></ErrorBoundary>;
   }
 
   return (
-    <div
-      className={`flex min-h-screen transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100 dark' : 'bg-slate-50 text-slate-800'}`}
-      dir={lang === 'ar' ? 'rtl' : 'ltr'}
-    >
+    <div className={`flex min-h-screen transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100 dark' : 'bg-slate-50 text-slate-800'}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       {currentUser?.role === 'coach' && <CoachOnboardingTour userId={currentUser.authUserId || currentUser.id} lang={lang} navigate={setCurrentTab} />}
-      <Sidebar
-        currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
-        activeRole={activeRole}
-        setActiveRole={setActiveRole}
-        lang={lang}
-        setLang={setLang}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        currentUser={currentUser}
-        academyName={data.settings?.name}
-        logoUrl={data.settings?.logoUrl}
-        onLogout={handleLogout}
-        mobileOpen={mobileOpen}
-        setMobileOpen={setMobileOpen}
-      />
+      <Sidebar currentTab={currentTab} setCurrentTab={setCurrentTab} activeRole={activeRole} setActiveRole={setActiveRole} lang={lang} setLang={setLang} darkMode={darkMode} setDarkMode={setDarkMode} currentUser={currentUser} academyName={data.settings?.name} logoUrl={data.settings?.logoUrl} onLogout={handleLogout} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
 
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
-        {/* Header */}
-        <header className={`border-b py-3 sm:py-4 px-4 sm:px-6 lg:px-8 flex flex-wrap gap-3 items-center justify-between shadow-sm shrink-0 transition-colors duration-300 ${
-          darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
-        }`}>
+        <header className={`border-b py-3 sm:py-4 px-4 sm:px-6 lg:px-8 flex flex-wrap gap-3 items-center justify-between shadow-sm shrink-0 transition-colors duration-300 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setMobileOpen(true)}
-              aria-label={lang === 'ar' ? 'فتح القائمة' : 'Open menu'}
-              className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
+            <button onClick={() => setMobileOpen(true)} aria-label={lang === 'ar' ? 'فتح القائمة' : 'Open menu'} className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"><Menu className="h-6 w-6" /></button>
             <div>
-              <h1 className={`text-sm sm:text-lg font-black tracking-tight leading-tight ${
-                darkMode ? 'text-white' : 'text-slate-900'
-              }`}>
-                {viewTitles[safeCurrentTab]}
-              </h1>
-              <p className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-0.5 flex items-center gap-1.5">
-                <Target className="h-3 w-3 text-brand-500" />
-                {data.settings?.name?.trim() || t.academyName} · {roleLabels[activeRole]}
-              </p>
+              <h1 className={`text-sm sm:text-lg font-black tracking-tight leading-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>{viewTitles[safeCurrentTab]}</h1>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-0.5 flex items-center gap-1.5"><Target className="h-3 w-3 text-brand-500" />{data.settings?.name?.trim() || t.academyName} · {roleLabels[activeRole]}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
             <PublicHomeLink lang={lang} darkMode={darkMode}/>
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <Clock className="h-3.5 w-3.5 text-brand-500" />
-              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 tabular-nums">{currentTime}</span>
-            </div>
-
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50"><Clock className="h-3.5 w-3.5 text-brand-500" /><span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 tabular-nums">{currentTime}</span></div>
             <div className="relative">
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                aria-label={lang === 'ar' ? 'الإشعارات' : 'Notifications'}
-                className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              >
-                <Bell className="h-5 w-5 text-slate-500" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
+              <button onClick={() => setShowNotifications(!showNotifications)} aria-label={lang === 'ar' ? 'الإشعارات' : 'Notifications'} className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"><Bell className="h-5 w-5 text-slate-500" />{unreadCount > 0 && (<span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">{unreadCount}</span>)}</button>
               {showNotifications && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-                  <div className={`fixed sm:absolute left-3 right-3 sm:right-auto sm:left-0 sm:w-80 mt-2 rounded-2xl shadow-2xl border z-50 animate-fadeIn ${
-                    darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
-                  }`}>
+                  <div className={`fixed sm:absolute left-3 right-3 sm:right-auto sm:left-0 sm:w-80 mt-2 rounded-2xl shadow-2xl border z-50 animate-fadeIn ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
                     <div className={`px-4 py-3 border-b flex items-center justify-between ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
                       <h3 className="text-sm font-black text-slate-900 dark:text-white">{t.notifications}</h3>
                       {data.notifications.length > 0 && (
-                        <button
-                          onClick={() => {
-                            const unreadIds = data.notifications.filter(n => !n.read).map(n => n.id);
-                            const read = data.notifications.map((n) => ({ ...n, read: true }));
-                            setData((p) => ({ ...p, notifications: read }));
-                            void db.markNotificationsRead(unreadIds).then(loadAllData).catch(handleSyncError);
-                          }}
-                          className="text-[11px] font-bold text-brand-600 hover:text-brand-700 cursor-pointer"
-                        >
-                          {t.markAllRead}
-                        </button>
+                        <button onClick={() => {
+                          const unreadIds = data.notifications.filter(n => !n.read).map(n => n.id);
+                          const read = data.notifications.map((n) => ({ ...n, read: true }));
+                          setData((p) => ({ ...p, notifications: read }));
+                          void db.markNotificationsRead(unreadIds).then(loadAllData).catch(handleSyncError);
+                        }} className="text-[11px] font-bold text-brand-600 hover:text-brand-700 cursor-pointer">{t.markAllRead}</button>
                       )}
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {data.notifications.length === 0 ? (
-                        <div className="py-8 text-center">
-                          <Bell className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                          <p className="text-xs text-slate-400 font-semibold">{t.noNotifications}</p>
-                        </div>
+                        <div className="py-8 text-center"><Bell className="h-8 w-8 text-slate-300 mx-auto mb-2" /><p className="text-xs text-slate-400 font-semibold">{t.noNotifications}</p></div>
                       ) : (
                         data.notifications.slice(0, 10).map((n) => (
                           <div key={n.id} className={`px-4 py-3 border-b last:border-0 ${darkMode ? 'border-slate-800/50' : 'border-slate-50'} ${!n.read ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''}`}>
@@ -872,18 +735,12 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-sm shrink-0">
-                {currentUser.name.charAt(0)}
-              </div>
-              <div className="hidden sm:block">
-                <p className="text-xs font-black text-slate-800 dark:text-white">{currentUser.name}</p>
-                <p className="text-[10px] text-slate-400">{roleLabels[activeRole]}</p>
-              </div>
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-sm shrink-0">{currentUser.name.charAt(0)}</div>
+              <div className="hidden sm:block"><p className="text-xs font-black text-slate-800 dark:text-white">{currentUser.name}</p><p className="text-[10px] text-slate-400">{roleLabels[activeRole]}</p></div>
             </div>
           </div>
         </header>
 
-        {/* Sync error toast */}
         {syncError && (
           <div className="mx-4 sm:mx-6 lg:mx-8 mt-3 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center gap-2 animate-fadeIn">
             <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
@@ -892,19 +749,15 @@ export default function App() {
           </div>
         )}
 
-        {/* Main content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-        {currentUser.role === 'coach' && (safeCurrentTab === 'ai-center' || safeCurrentTab === 'tournaments') && tournamentError && (
-          <div role="alert" className="mb-4 rounded-lg border border-amber-400 p-3 text-sm">
-            <span>{lang === 'ar' ? 'تعذر تحميل بيانات البطولات.' : 'Failed to load tournaments.'}</span>
-            <button className="ms-3 underline font-bold" onClick={() => setTournamentRetry(value => value + 1)}>
-              {lang === 'ar' ? 'إعادة المحاولة' : 'Retry'}
-            </button>
-          </div>
-        )}
+          {currentUser.role === 'coach' && (safeCurrentTab === 'ai-center' || safeCurrentTab === 'tournaments') && (
+            <div role="alert" className="mb-4 rounded-lg border border-amber-400 p-3 text-sm">
+              <span>{lang === 'ar' ? 'تعذر تحميل بيانات البطولات.' : 'Failed to load tournaments.'}</span>
+              <button className="ms-3 underline font-bold" onClick={() => setTournamentRetry(value => value + 1)}>{lang === 'ar' ? 'إعادة المحاولة' : 'Retry'}</button>
+            </div>
+          )}
           <div className="max-w-7xl mx-auto animate-fadeIn">
             <ErrorBoundary key={`${currentUser.authUserId}:${activeRole}:${safeCurrentTab}`} lang={lang}>
-              {/* A new section must not retain the previous section while its chunk loads. */}
               <Suspense key={`${activeRole}:${safeCurrentTab}`} fallback={<ViewLoader lang={lang} />}>
                 <ContextualShooterAI page={safeCurrentTab} role={activeRole} lang={lang} />
                 {renderView()}
@@ -917,17 +770,14 @@ export default function App() {
   );
 }
 
-/* ---------- Helpers ---------- */
-
 function supabaseUnsubscribe(channel: ReturnType<typeof db.subscribe>) {
   try { supabase.removeChannel(channel); } catch { /* ignore */ }
 }
-
-
-
-
 
 function ReturnToPublicHome() {
   useEffect(() => { window.location.replace('/'); }, []);
   return null;
 }
+
+// keep this patch compatible with the surrounding file state until the remaining view props are normalized
+const _unused_tournament_retry = null;
