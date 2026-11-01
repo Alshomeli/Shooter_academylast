@@ -19,7 +19,6 @@ import { Sidebar } from '@/components/Sidebar';
 import { CoachOnboardingTour } from '@/components/CoachOnboardingTour';
 import { ContextualShooterAI } from '@/components/ContextualShooterAI';
 
-
 /* ── Lazy-loaded views for code splitting ── */
 const SiteContent = lazy(() => import('@/views/SiteContent').then(m => ({ default: m.SiteContent })));
 const Dashboard = lazy(() => import('@/views/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -51,7 +50,6 @@ const ALLOWED_VIEWS_BY_ROLE: Record<Exclude<Role, 'parent'>, ViewId[]> = {
   receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
 };
 
-/* ── Error Boundary ── */
 interface ErrorBoundaryProps { children: ReactNode; lang: Lang; }
 interface ErrorBoundaryState { hasError: boolean; error: Error | null; }
 
@@ -244,8 +242,11 @@ export default function App() {
   const refreshQueued = useRef(false);
   const userRef = useRef(currentUser?.authUserId);
   const loadAllDataRef = useRef<() => Promise<void>>(async () => undefined);
-  const lastRefreshAtRef = useRef(0);
   const refreshTimerRef = useRef<number | null>(null);
+  const lastRefreshAtRef = useRef(0);
+  const tournamentCache = useRef<{ userId: string; loaded: boolean; inFlight: boolean }>({ userId: '', loaded: false, inFlight: false });
+  const [tournamentError, setTournamentError] = useState(false);
+  const [tournamentRetry, setTournamentRetry] = useState(0);
   userRef.current = currentUser?.authUserId;
 
   useEffect(() => {
@@ -402,6 +403,87 @@ export default function App() {
       document.removeEventListener('visibilitychange', refreshVisible);
     };
   }, [currentUser, scheduleRefresh]);
+
+  useEffect(() => {
+    if (currentUser?.role !== 'coach' || (currentTab !== 'ai-center' && currentTab !== 'tournaments')) return;
+    const userId = currentUser.authUserId;
+    const cache = tournamentCache.current;
+    if (cache.userId !== userId) {
+      tournamentCache.current = { userId, loaded: false, inFlight: false };
+      setTournamentError(false);
+    }
+    if (tournamentCache.current.loaded || tournamentCache.current.inFlight) return;
+    tournamentCache.current.inFlight = true;
+    setTournamentError(false);
+    void db.getTournaments().then(tournaments => {
+      if (userRef.current !== userId || tournamentCache.current.userId !== userId) return;
+      tournamentCache.current.loaded = true;
+      setData(previous => ({ ...previous, tournaments }));
+    }).catch(error => {
+      if (userRef.current === userId && tournamentCache.current.userId === userId) {
+        console.error('[coach tournaments]', error);
+        setTournamentError(true);
+      }
+    }).finally(() => {
+      if (tournamentCache.current.userId === userId) {
+        tournamentCache.current.inFlight = false;
+      }
+    });
+  }, [currentUser?.authUserId, currentUser?.role, currentTab, tournamentRetry]);
+
+  useEffect(() => {
+    if (currentUser?.role !== 'manager' || currentTab !== 'audit-logs') return;
+    const userId = currentUser.authUserId;
+    let cancelled = false;
+    void Promise.all([db.getAuditLogs(), db.getLoginAuditLogs()])
+      .then(([auditLogs, loginLogs]) => {
+        if (cancelled || userRef.current !== userId) return;
+        setData(previous => ({ ...previous, auditLogs, loginLogs }));
+      })
+      .catch(error => {
+        if (!cancelled) console.error('[audit-logs]', error);
+      });
+    return () => { cancelled = true; };
+  }, [currentUser?.authUserId, currentUser?.role, currentTab]);
+
+  const previousUserId = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const nextUserId = currentUser?.authUserId;
+    if (previousUserId.current === nextUserId) return;
+    previousUserId.current = nextUserId;
+    loadSequence.current += 1;
+    refreshQueued.current = false;
+    setData(EMPTY_DATA);
+    setLoadError(null);
+    setLoading(Boolean(currentUser));
+  }, [currentUser]);
+
+  const handleStaffApproved = useCallback(async () => {
+    const member = await db.getCurrentUser();
+    if (!member || member.registrationOnly) return;
+    setCurrentUser(member);
+    setActiveRole(member.role);
+    setCurrentTab('dashboard');
+    await loadAllData();
+  }, [loadAllData, setCurrentTab]);
+
+  useEffect(() => {
+    if (currentUser) loadAllData();
+  }, [currentUser, loadAllData]);
+
+  useEffect(() => {
+    if (!authReady || !currentUser) return;
+    const raw = new URLSearchParams(window.location.search).get('oauth_return');
+    if (!raw) return;
+    try {
+      const target = new URL(raw, window.location.origin);
+      if (target.origin === window.location.origin && target.pathname === '/oauth/consent') {
+        window.location.replace(target.toString());
+      }
+    } catch {
+      // Ignore malformed return targets; never allow an open redirect.
+    }
+  }, [authReady, currentUser]);
 
   useEffect(() => {
     const updateClock = () => {
@@ -595,7 +677,7 @@ export default function App() {
       case 'registration':
         return <Registration lang={lang} />;
       case 'staff-registration':
-        return currentUser ? <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => { const member = await db.getCurrentUser(); if (!member || member.registrationOnly) return; setCurrentUser(member); setActiveRole(member.role); setCurrentTab('dashboard'); await loadAllData(); }} /> : null;
+        return currentUser ? <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={handleStaffApproved} /> : null;
       case 'registration-admin':
         return <RegistrationAdmin lang={lang} activeRole={activeRole} teams={data.teams} players={data.players} onRefresh={loadAllData} />;
       default:
@@ -654,9 +736,7 @@ export default function App() {
       <main className="min-h-screen bg-slate-950 p-4 sm:p-8 flex items-center justify-center" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
         <div className="w-full max-w-md rounded-2xl bg-white p-6 sm:p-8 shadow-xl text-slate-900 text-center">
           <h1 className="text-xl font-black mb-2">{lang === 'ar' ? 'الحساب غير نشط' : 'Account inactive'}</h1>
-          <p className="text-sm text-slate-600 mb-5">{lang === 'ar'
-            ? 'هذا الحساب موجود في النظام ولكنه غير نشط حاليًا. تواصل مع الإدارة إذا كنت تعتقد أن هذه الحالة غير صحيحة.'
-            : 'This account exists in the system but is currently inactive. Contact administration if you believe this is incorrect.'}</p>
+          <p className="text-sm text-slate-600 mb-5">{lang === 'ar' ? 'هذا الحساب موجود في النظام ولكنه غير نشط حاليًا. تواصل مع الإدارة إذا كنت تعتقد أن هذه الحالة غير صحيحة.' : 'This account exists in the system but is currently inactive. Contact administration if you believe this is incorrect.'}</p>
           <button onClick={handleLogout} className="w-full rounded-xl bg-slate-900 py-3 font-bold text-white hover:bg-slate-800">
             {lang === 'ar' ? 'تسجيل الخروج' : 'Sign out'}
           </button>
@@ -670,7 +750,7 @@ export default function App() {
   }
 
   if (currentUser.registrationOnly && currentUser.registrationMode === 'staff') {
-    return <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => { const member = await db.getCurrentUser(); if (!member || member.registrationOnly) return; setCurrentUser(member); setActiveRole(member.role); setCurrentTab('dashboard'); await loadAllData(); }} />;
+    return <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={handleStaffApproved} />;
   }
 
   if (currentTab === 'staff-registration' && !currentUser.registrationOnly) {
@@ -707,14 +787,7 @@ export default function App() {
                   <div className={`fixed sm:absolute left-3 right-3 sm:right-auto sm:left-0 sm:w-80 mt-2 rounded-2xl shadow-2xl border z-50 animate-fadeIn ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
                     <div className={`px-4 py-3 border-b flex items-center justify-between ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
                       <h3 className="text-sm font-black text-slate-900 dark:text-white">{t.notifications}</h3>
-                      {data.notifications.length > 0 && (
-                        <button onClick={() => {
-                          const unreadIds = data.notifications.filter(n => !n.read).map(n => n.id);
-                          const read = data.notifications.map((n) => ({ ...n, read: true }));
-                          setData((p) => ({ ...p, notifications: read }));
-                          void db.markNotificationsRead(unreadIds).then(loadAllData).catch(handleSyncError);
-                        }} className="text-[11px] font-bold text-brand-600 hover:text-brand-700 cursor-pointer">{t.markAllRead}</button>
-                      )}
+                      {data.notifications.length > 0 && (<button onClick={() => { const unreadIds = data.notifications.filter(n => !n.read).map(n => n.id); const read = data.notifications.map((n) => ({ ...n, read: true })); setData((p) => ({ ...p, notifications: read })); void db.markNotificationsRead(unreadIds).then(loadAllData).catch(handleSyncError); }} className="text-[11px] font-bold text-brand-600 hover:text-brand-700 cursor-pointer">{t.markAllRead}</button>)}
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {data.notifications.length === 0 ? (
@@ -750,7 +823,7 @@ export default function App() {
         )}
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          {currentUser.role === 'coach' && (safeCurrentTab === 'ai-center' || safeCurrentTab === 'tournaments') && (
+          {currentUser.role === 'coach' && (safeCurrentTab === 'ai-center' || safeCurrentTab === 'tournaments') && tournamentError && (
             <div role="alert" className="mb-4 rounded-lg border border-amber-400 p-3 text-sm">
               <span>{lang === 'ar' ? 'تعذر تحميل بيانات البطولات.' : 'Failed to load tournaments.'}</span>
               <button className="ms-3 underline font-bold" onClick={() => setTournamentRetry(value => value + 1)}>{lang === 'ar' ? 'إعادة المحاولة' : 'Retry'}</button>
@@ -778,6 +851,3 @@ function ReturnToPublicHome() {
   useEffect(() => { window.location.replace('/'); }, []);
   return null;
 }
-
-// keep this patch compatible with the surrounding file state until the remaining view props are normalized
-const _unused_tournament_retry = null;
