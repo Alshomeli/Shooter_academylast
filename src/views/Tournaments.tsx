@@ -14,7 +14,7 @@ interface TournamentsProps {
 const EMOJI_OPTIONS = ['🏆', '🎖️', '🏅', '🥇', '🥈', '🥉', '⚽', '🔥'];
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang }: TournamentsProps) {
   const t = tr(lang);
@@ -49,7 +49,7 @@ export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {t.add}

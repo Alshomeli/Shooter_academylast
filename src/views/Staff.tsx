@@ -44,8 +44,6 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
   const [editMember, setEditMember] = useState<Staff | null>(null);
   const [viewMember, setViewMember] = useState<Staff | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [showReassign, setShowReassign] = useState(false);
-  const [reassignCoachId, setReassignCoachId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [staffDocuments, setStaffDocuments] = useState<StaffDocument[]>([]);
@@ -89,13 +87,16 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
     });
   }, [staff, deferredSearch, roleFilter]);
 
-  const coachTeams = (coachId: string) =>
-    teams.filter((tm) => tm.coachId === coachId).map((tm) => tm.name);
-
-  const coachPlayerCount = (coachId: string) => {
-    const teamIds = teams.filter((tm) => tm.coachId === coachId).map((tm) => tm.id);
-    return players.filter((p) => teamIds.includes(p.teamId)).length;
+  const coachPlayers = (coachId: string) => {
+    const member = staff.find(s => s.id === coachId);
+    const coach = member?.coachKind === 'assistant' ? staff.find(s => s.id === member.supervisingCoachId && s.status === 'active' && s.role === 'coach' && (s.coachKind === 'team' || s.coachKind === 'goalkeeper')) : member;
+    if (!coach || member?.status !== 'active' || member.role !== 'coach') return [];
+    if (coach.coachKind === 'goalkeeper') return players.filter(p => ['حارس مرمى','حارس','goalkeeper','gk'].includes(p.position.trim().toLowerCase()));
+    const teamIds = teams.filter(t => t.coachId === coach.id).map(t => t.id);
+    return players.filter(p => teamIds.includes(p.teamId));
   };
+  const coachTeams = (coachId: string) => teams.filter(t => coachPlayers(coachId).some(p => p.teamId === t.id)).map(t => t.name);
+  const coachPlayerCount = (coachId: string) => coachPlayers(coachId).length;
 
   const handleSave = async (data: Omit<Staff, 'id'>, id?: string) => {
     if (id) {
@@ -111,11 +112,9 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
     if (!deleteId) return;
     setDeleteError('');
     try {
-      await db.deleteStaff(deleteId, showReassign ? reassignCoachId : null);
+      await db.forceDeleteUser('staff', deleteId);
       await onRefresh();
       setDeleteId(null);
-      setShowReassign(false);
-      setReassignCoachId(null);
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : String(e));
     }
@@ -140,15 +139,8 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
       setDeleteError(isAr ? 'لا يمكن حذف حسابك الخاص أثناء استخدامك للنظام.' : 'You cannot delete your own account while signed in.');
       return;
     }
-    const memberTeams = teams.filter((tm) => tm.coachId === id);
     setDeleteError('');
     setDeleteId(id);
-    if (member?.role === 'coach' && memberTeams.length > 0) {
-      setReassignCoachId(null);
-      setShowReassign(true);
-    } else {
-      setShowReassign(false);
-    }
   };
 
   return (
@@ -157,7 +149,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
         {canManage && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {t.add}
@@ -181,7 +173,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={isAr ? 'ابحث بالاسم أو البريد أو التخصص...' : 'Search by name, email or specialization...'}
-            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
+            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
           />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -191,8 +183,8 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
               onClick={() => setRoleFilter(rf.value)}
               className={`px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
                 roleFilter === rf.value
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
+                  ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand-400'
               }`}
             >
               {rf.label}
@@ -240,7 +232,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
 
                 {/* Role badge */}
                 <div className="flex items-center gap-2 mb-3">
-                  <Badge color={ROLE_COLORS[s.role] || 'slate'}>{roleLabel(s.role, lang)}</Badge>
+                  <Badge color={ROLE_COLORS[s.role] || 'slate'}>{s.role === 'coach' && s.coachKind === 'assistant' ? (isAr ? 'مساعد مدرب' : 'Assistant coach') : s.role === 'coach' && s.coachKind === 'goalkeeper' ? (isAr ? 'مدرب حراس' : 'Goalkeeper coach') : roleLabel(s.role, lang)}</Badge>
                   {canSeeSalary && (
                     <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                       {s.salary.toLocaleString()} {t.currency}
@@ -310,7 +302,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
                 {/* Actions */}
                 <div className="flex items-center gap-1 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <ContactLinks phone={s.phone} email={s.email} small />
-                  {canUploadFor(s) && <button onClick={() => { setUploadMember(s); setUploadType('certificate'); }} className="flex items-center justify-center p-1.5 rounded-lg text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20" title={isAr?'إضافة صورة أو شهادة':'Add photo or document'}><FileUp className="h-3.5 w-3.5"/></button>}
+                  {canUploadFor(s) && <button onClick={() => { setUploadMember(s); setUploadType('certificate'); }} className="flex items-center justify-center p-1.5 rounded-lg text-brand-700 bg-brand-50 dark:bg-brand-900/20" title={isAr?'إضافة صورة أو شهادة':'Add photo or document'}><FileUp className="h-3.5 w-3.5"/></button>}
                   <button
                     onClick={() => setViewMember(s)}
                     className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
@@ -344,6 +336,10 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
       {(showAdd || editMember) && (
         <StaffForm
           member={editMember}
+          staff={staff}
+          teams={teams}
+          canAssignTeams={activeRole === 'manager'}
+          onTeamsAssigned={onRefresh}
           onSave={handleSave}
           onClose={() => {
             setShowAdd(false);
@@ -375,52 +371,21 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
           <input value={uploadTitle} onChange={e=>setUploadTitle(e.target.value)} className={inputCls} placeholder={isAr?'اسم المستند':'Document title'}/>
           <input type="file" accept={uploadType==='profile_photo'?'image/jpeg,image/png,image/webp':'image/jpeg,image/png,image/webp,application/pdf'} onChange={e=>setUploadFile(e.target.files?.[0]||null)} className="block w-full text-sm"/>
           {uploadType!=='profile_photo'&&<input type="date" value={uploadExpiry} onChange={e=>setUploadExpiry(e.target.value)} className={inputCls}/>}
-          <button disabled={!uploadFile||uploadBusy} onClick={()=>void handleDocumentUpload()} className="w-full rounded-xl bg-emerald-600 text-white py-2.5 font-bold disabled:opacity-50">{uploadBusy?(isAr?'جارٍ الرفع...':'Uploading...'):(isAr?'رفع وحفظ':'Upload & save')}</button>
+          <button disabled={!uploadFile||uploadBusy} onClick={()=>void handleDocumentUpload()} className="w-full rounded-xl bg-brand-600 text-white py-2.5 font-bold disabled:opacity-50">{uploadBusy?(isAr?'جارٍ الرفع...':'Uploading...'):(isAr?'رفع وحفظ':'Upload & save')}</button>
         </div>
       </Modal>
 
       {deleteError && <p role="alert" className="text-sm font-bold text-red-600">{deleteError}</p>}
 
-      {/* Delete confirmation — coach reassignment or simple */}
-      {deleteId && showReassign ? (
-        <Modal open onClose={() => { setDeleteId(null); setShowReassign(false); }} title={t.reassignCoach} size="sm">
-          <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">{t.reassignCoachDesc}</p>
-            {deleteError && <p role="alert" className="text-sm text-red-600">{deleteError}</p>}
-            <select
-              value={reassignCoachId ?? ''}
-              onChange={(e) => setReassignCoachId(e.target.value || null)}
-              className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
-            >
-              <option value="">{t.noReplacement}</option>
-              {staff.filter((s) => s.role === 'coach' && s.status === 'active' && s.id !== deleteId).map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => { setDeleteId(null); setShowReassign(false); }} className="px-4 py-2 text-sm rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition cursor-pointer">
-                {t.cancel}
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={!reassignCoachId}
-                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-500 transition cursor-pointer font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t.delete}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : (
-        <ConfirmDialog
-          open={!!deleteId && !showReassign}
-          onClose={() => setDeleteId(null)}
-          onConfirm={handleDelete}
-          title={t.deleteStaff}
-          message={t.deleteStaffConfirm}
-          confirmLabel={t.delete}
-        />
-      )}
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title={t.deleteStaff}
+        message={t.deleteStaffConfirm}
+        confirmLabel={t.delete}
+      />
     </div>
   );
 }
@@ -429,11 +394,19 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
 
 function StaffForm({
   member,
+  staff,
+  teams,
+  canAssignTeams,
+  onTeamsAssigned,
   onSave,
   onClose,
   lang,
 }: {
   member: Staff | null;
+  staff: Staff[];
+  teams: Team[];
+  canAssignTeams: boolean;
+  onTeamsAssigned: () => Promise<void>;
   onSave: (data: Omit<Staff, 'id'>, id?: string) => void;
   onClose: () => void;
   lang: Lang;
@@ -448,6 +421,8 @@ function StaffForm({
     email: member?.email || '',
     phone: member?.phone || '',
     role: member?.role || 'coach',
+    coachKind: member?.coachKind || 'team',
+    supervisingCoachId: member?.supervisingCoachId || '',
     salary: member?.salary ?? 0,
     specialization: member?.specialization || '',
     status: member?.status || 'active',
@@ -461,6 +436,35 @@ function StaffForm({
     notes: member?.notes || '',
   });
 
+  const [assignTeamId, setAssignTeamId] = useState('');
+  const [assigningTeam, setAssigningTeam] = useState(false);
+  const [transferConfirmed, setTransferConfirmed] = useState(false);
+  const [assignmentMessage, setAssignmentMessage] = useState('');
+  const [assignmentError, setAssignmentError] = useState('');
+  const assignmentField = member?.coachKind === 'goalkeeper' ? 'goalkeeperCoachId' : 'coachId';
+  const assignedTeams = teams.filter(team => team[assignmentField] === member?.id);
+  const assignTeam = async () => {
+    if (!canAssignTeams || !member || assigningTeam || !assignTeamId) return;
+    const team = teams.find(item => item.id === assignTeamId);
+    if (!team || team[assignmentField] === member.id) return;
+    if (team[assignmentField] && !transferConfirmed) return;
+    setAssigningTeam(true); setAssignmentMessage(''); setAssignmentError('');
+    try {
+      if (typeof team.version !== 'number') throw new Error('STALE_RECORD');
+      const column = assignmentField === 'goalkeeperCoachId' ? 'goalkeeper_coach_id' : 'coach_id';
+      const { data: updated, error } = await supabase.from('teams')
+        .update({ [column]: member.id }).eq('id', team.id)
+        .eq('row_version', team.version).select('id').maybeSingle();
+      if (error) throw error;
+      if (!updated) throw new Error('STALE_RECORD');
+      setAssignTeamId(''); setTransferConfirmed(false);
+      setAssignmentMessage(isAr ? 'تم ربط الفئة بالمدرب.' : 'Category assigned to coach.');
+      await onTeamsAssigned();
+    } catch {
+      setAssignmentError(isAr ? 'تعذر تحديث الفئات. أعد فتح النافذة للتحقق من الربط قبل المحاولة مجددًا.' : 'Could not refresh category assignments. Reopen this window to check the assignment before retrying.');
+    } finally { setAssigningTeam(false); }
+  };
+
   const isCoach = form.role === 'coach';
 
   const [saving, setSaving] = useState(false);
@@ -469,7 +473,14 @@ function StaffForm({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email) return;
-    if (saving) return;
+    if (isCoach && form.coachKind === 'assistant' && form.supervisingCoachId) {
+      const supervisor = staff.find(s => s.id === form.supervisingCoachId);
+      if (!supervisor || supervisor.id === member?.id || supervisor.role !== 'coach' || supervisor.status !== 'active' || !['team', 'goalkeeper'].includes(supervisor.coachKind || 'team')) {
+        setSaveError(isAr ? 'المدرب المشرف غير متاح. اختر مدرب فريق أو مدرب حراس نشط.' : 'Invalid supervisor. Select an active team or goalkeeper coach.');
+        return;
+      }
+    }
+    if (saving || assigningTeam) return;
     setSaving(true); setSaveError('');
     try {
     const licensesArray = form.licenses
@@ -483,6 +494,8 @@ function StaffForm({
         email: form.email,
         phone: form.phone,
         role: form.role as Role,
+        coachKind: isCoach ? form.coachKind : 'team',
+        supervisingCoachId: isCoach && form.coachKind === 'assistant' ? form.supervisingCoachId || undefined : undefined,
         salary: Number(form.salary) || 0,
         specialization: form.specialization,
         status: form.status as Staff['status'],
@@ -527,6 +540,44 @@ function StaffForm({
               <option value="receptionist">{t.receptionist}</option>
             </select>
           </Field>
+          {isCoach && <Field label={isAr ? 'نوع المدرب' : 'Coach type'}>
+            <select value={form.coachKind} onChange={e => set('coachKind', e.target.value as Staff['coachKind'] & string)} className={inputCls}>
+              <option value="team">{isAr ? 'مدرب فريق' : 'Team coach'}</option>
+              <option value="assistant">{isAr ? 'مساعد مدرب' : 'Assistant coach'}</option>
+              <option value="goalkeeper">{isAr ? 'مدرب حراس' : 'Goalkeeper coach'}</option>
+            </select>
+          </Field>}
+          {member && canAssignTeams && isCoach && <Field label={isAr ? 'الفئات المعيّنة / أضف فئة' : 'Assigned categories / Add category'}>
+            {member.coachKind === 'assistant' ? (
+              <p className="text-xs text-slate-500">{isAr ? 'يتبع المساعد فئات المدرب المشرف. غيّر المدرب المرتبط بالمساعد لتغيير فئاته.' : 'Assistants inherit their supervising coach’s categories.'}</p>
+            ) : form.coachKind !== (member.coachKind || 'team') ? (
+              <p className="text-xs text-slate-500">{isAr ? 'احفظ تغيير نوع المدرب ثم أعد فتح التعديل لتعيين الفئة.' : 'Save the coach type change and reopen this form to assign a category.'}</p>
+            ) : <>
+              <p className="mb-2 text-xs text-slate-500">{assignedTeams.map(team => team.name).join('، ') || (isAr ? 'لا توجد فئات معيّنة' : 'No assigned categories')}</p>
+              <select aria-label={isAr ? 'اختر فئة للمدرب' : 'Choose coach category'} value={assignTeamId} onChange={event => { setAssignTeamId(event.target.value); setTransferConfirmed(false); setAssignmentMessage(''); setAssignmentError(''); }} disabled={assigningTeam || saving || member.status !== 'active'} className={inputCls}>
+                <option value="">{isAr ? 'اختر فئة موجودة...' : 'Select an existing category...'}</option>
+                {[false, true].map(occupied => <optgroup key={String(occupied)} label={occupied ? (isAr ? 'الفئات المرتبطة' : 'Assigned categories') : (isAr ? 'الفئات غير المرتبطة' : 'Unassigned categories')}>
+                  {teams.filter(team => team[assignmentField] !== member.id && !!team[assignmentField] === occupied).map(team => (
+                    <option key={team.id} value={team.id}>{team.name}{occupied ? ` — ${staff.find(coach => coach.id === team[assignmentField])?.name || (isAr ? 'مدرب آخر' : 'Another coach')}` : ''}</option>
+                  ))}
+                </optgroup>)}
+              </select>
+              {!!teams.find(team => team.id === assignTeamId)?.[assignmentField] && <label className="mt-2 flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
+                <input type="checkbox" checked={transferConfirmed} onChange={event => setTransferConfirmed(event.target.checked)} disabled={assigningTeam || saving} />
+                {isAr ? `أؤكد نقل تكليف الفئة من ${staff.find(coach => coach.id === teams.find(team => team.id === assignTeamId)?.[assignmentField])?.name || 'المدرب الحالي'} إلى ${member.name}.` : `I confirm transferring this category from ${staff.find(coach => coach.id === teams.find(team => team.id === assignTeamId)?.[assignmentField])?.name || 'the current coach'} to ${member.name}.`}
+              </label>}
+              <button type="button" disabled={!assignTeamId || assigningTeam || saving || member.status !== 'active' || (!!teams.find(team => team.id === assignTeamId)?.[assignmentField] && !transferConfirmed)} onClick={() => void assignTeam()} className="mt-2 rounded-lg bg-brand-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50">{assigningTeam ? (isAr ? 'جارٍ الربط...' : 'Assigning...') : (isAr ? 'ربط الفئة' : 'Assign category')}</button>
+              <p className="mt-1 text-xs text-slate-500">{isAr ? 'يحفظ الربط مباشرة. اختيار فئة مرتبطة ينقل تكليفها من مدربها الحالي إلى هذا المدرب.' : 'Saves immediately. Selecting an assigned category transfers its assignment from the current coach to this coach.'}</p>
+              {assignmentMessage && <p role="status" className="mt-1 text-xs text-emerald-600">{assignmentMessage}</p>}
+              {assignmentError && <p role="alert" className="mt-1 text-xs text-red-600">{assignmentError}</p>}
+            </>}
+          </Field>}
+          {isCoach && form.coachKind === 'assistant' && <Field label={isAr ? 'المدرب المرتبط بالمساعد' : 'Supervising coach'}>
+            <select value={form.supervisingCoachId} onChange={e => set('supervisingCoachId', e.target.value)} className={inputCls}>
+              <option value="">{isAr ? 'بانتظار تحديد المدرب — لا وصول للاعبين' : 'Unassigned — no player access'}</option>
+              {staff.filter(s => s.id !== member?.id && s.role === 'coach' && s.status === 'active' && s.coachKind !== 'assistant').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </Field>}
           <Field label={isAr ? 'الراتب الشهري' : 'Monthly salary'}>
             <input
               type="number"
@@ -638,7 +689,7 @@ function StaffDetail({
         <div className="min-w-0">
           <h3 className="text-lg font-black text-slate-900 dark:text-white truncate">{member.name}</h3>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <Badge color={ROLE_COLORS[member.role] || 'slate'}>{roleLabel(member.role, lang)}</Badge>
+            <Badge color={ROLE_COLORS[member.role] || 'slate'}>{member.role === 'coach' && member.coachKind === 'assistant' ? (isAr ? 'مساعد مدرب' : 'Assistant coach') : member.role === 'coach' && member.coachKind === 'goalkeeper' ? (isAr ? 'مدرب حراس' : 'Goalkeeper coach') : roleLabel(member.role, lang)}</Badge>
             <Badge color={member.status === 'active' ? 'emerald' : member.status === 'pending' ? 'amber' : 'slate'}>
               {member.status === 'active' ? t.active : member.status === 'pending' ? t.pending : t.inactive}
             </Badge>
@@ -712,7 +763,7 @@ function StaffDetail({
         </div>
       )}
 
-      {documents.filter(d=>d.documentType!=='profile_photo').length>0&&<div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 space-y-2"><p className="text-xs font-black text-slate-500 flex items-center gap-1.5"><FileText className="h-4 w-4"/>{isAr?'المستندات والشهادات':'Documents & certificates'}</p>{documents.filter(d=>d.documentType!=='profile_photo').map(d=>{const today=new Date().toISOString().slice(0,10);const in30=new Date(Date.now()+30*86400000).toISOString().slice(0,10);const expired=!!d.expiryDate&&d.expiryDate<today;const soon=!!d.expiryDate&&d.expiryDate>=today&&d.expiryDate<=in30;return <button key={d.id} onClick={async()=>window.open(await db.getStaffDocumentUrl(d.filePath),'_blank','noopener,noreferrer')} className="w-full flex items-center justify-between gap-3 border-t dark:border-slate-700 pt-3 text-sm"><span className="font-bold">{d.title}</span><span className={`flex items-center gap-1 text-xs font-bold ${expired?'text-red-600':soon?'text-amber-600':'text-emerald-600'}`}>{(expired||soon)&&<AlertTriangle className="h-3.5 w-3.5"/>}{expired?(isAr?'منتهية':'Expired'):soon?`${isAr?'تنتهي':'Expires'} ${d.expiryDate}`:d.expiryDate?`${isAr?'صالحة حتى':'Valid to'} ${d.expiryDate}`:(isAr?'عرض':'View')}</span></button>})}</div>}
+      {documents.filter(d=>d.documentType!=='profile_photo').length>0&&<div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 space-y-2"><p className="text-xs font-black text-slate-500 flex items-center gap-1.5"><FileText className="h-4 w-4"/>{isAr?'المستندات والشهادات':'Documents & certificates'}</p>{documents.filter(d=>d.documentType!=='profile_photo').map(d=>{const today=new Date().toISOString().slice(0,10);const in30=new Date(Date.now()+30*86400000).toISOString().slice(0,10);const expired=!!d.expiryDate&&d.expiryDate<today;const soon=!!d.expiryDate&&d.expiryDate>=today&&d.expiryDate<=in30;return <button key={d.id} onClick={async()=>window.open(await db.getStaffDocumentUrl(d.filePath),'_blank','noopener,noreferrer')} className="w-full flex items-center justify-between gap-3 border-t dark:border-slate-700 pt-3 text-sm"><span className="font-bold">{d.title}</span><span className={`flex items-center gap-1 text-xs font-bold ${expired?'text-red-600':soon?'text-amber-600':'text-brand-600'}`}>{(expired||soon)&&<AlertTriangle className="h-3.5 w-3.5"/>}{expired?(isAr?'منتهية':'Expired'):soon?`${isAr?'تنتهي':'Expires'} ${d.expiryDate}`:d.expiryDate?`${isAr?'صالحة حتى':'Valid to'} ${d.expiryDate}`:(isAr?'عرض':'View')}</span></button>})}</div>}
 
       {/* Notes */}
       {member.notes && (
@@ -730,7 +781,7 @@ function StaffDetail({
 /* ----------------------------- Helpers ----------------------------- */
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -751,3 +802,5 @@ function InfoRow({ label, value, ltr }: { label: string; value: string; ltr?: bo
     </div>
   );
 }
+
+

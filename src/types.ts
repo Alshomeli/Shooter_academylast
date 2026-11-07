@@ -1,6 +1,10 @@
 export type Role = 'manager' | 'accountant' | 'coach' | 'receptionist' | 'parent';
 
+export type CoachKind = 'team' | 'assistant' | 'goalkeeper';
+
 export interface Staff {
+  coachKind?: CoachKind;
+  supervisingCoachId?: string;
   version?: number;
   id: string;
   name: string;
@@ -23,6 +27,9 @@ export interface Staff {
 }
 
 export interface Team {
+  categoryKind?: 'team' | 'goalkeeper';
+  status?: 'active' | 'inactive';
+  goalkeeperCoachId?: string;
   version?: number;
   id: string;
   name: string;
@@ -72,7 +79,13 @@ export interface Parent {
   joinedDate: string;
 }
 
-export interface Subscription {
+export interface FinancialIdentity {
+  playerNameSnapshot?: string;
+  parentNameSnapshot?: string;
+}
+
+export interface Subscription extends FinancialIdentity {
+  exemptionReason?: string;
   version?: number;
   id: string;
   playerId: string;
@@ -80,7 +93,7 @@ export interface Subscription {
   amount: number;
   startDate: string;
   endDate: string;
-  status: 'paid' | 'unpaid';
+  status: 'paid' | 'unpaid' | 'exempt' | 'cancelled';
   paymentMethod?: string;
   paidAt?: string;
 }
@@ -121,7 +134,7 @@ export interface Training {
   objectives: string;
 }
 
-export interface Transaction {
+export interface Transaction extends FinancialIdentity {
   version?: number;
   subscriptionId?: string;
   playerId?: string;
@@ -147,6 +160,13 @@ export interface Tournament {
 }
 
 export interface PlayerEvaluation {
+  templateVersion?: number;
+  heightCm?: number | null; weightKg?: number | null;
+  nutritionPlan?: string; evaluatorName?: string; generalRating?: string;
+  evaluatorSignature?: string; coachSignature?: string;
+  totalScore?: number | null;
+  evaluationType?: 'outfield' | 'goalkeeper';
+  teamName?: string;
   id: string;
   playerId: string;
   teamId: string;
@@ -251,9 +271,10 @@ export interface StaffDocument {
 }
 
 export interface CurrentUser {
+  coachKind?: CoachKind;
   authUserId?: string;
   registrationOnly?: boolean;
-  registrationMode?: 'parent' | 'staff';
+  registrationMode?: 'parent' | 'staff' | 'choose';
   accountDisabled?: boolean;
   id: string;
   name: string;
@@ -264,7 +285,7 @@ export interface CurrentUser {
 export interface StaffApplication {
   id: string;
   applicantUserId: string;
-  requestedRole: 'manager' | 'coach' | 'accountant' | 'receptionist';
+  requestedRole: 'manager' | 'coach' | 'assistant_coach' | 'goalkeeper_coach' | 'accountant' | 'receptionist';
   fullName: string;
   email: string;
   phone: string;
@@ -300,6 +321,7 @@ export type ViewId =
   | 'mobile'
   | 'ai-center'
   | 'messages'
+  | 'site-content'
   | 'settings'
   | 'registration'
   | 'staff-registration'
@@ -388,3 +410,5 @@ export interface RegistrationApplication {
   createdAt: string;
   updatedAt: string;
 }
+
+

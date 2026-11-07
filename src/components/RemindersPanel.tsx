@@ -19,17 +19,17 @@ export function RemindersPanel({ reminders, onNavigate, compact, lang = 'ar' }: 
   const STATUS_CONFIG = {
     overdue: { color: 'red' as const, icon: AlertCircle, label: t.overdue, bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-800/30' },
     expiring: { color: 'amber' as const, icon: Clock, label: t.expiring, bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-800/30' },
-    active: { color: 'emerald' as const, icon: CheckCircle, label: t.active, bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-200 dark:border-emerald-800/30' },
+    active: { color: 'emerald' as const, icon: CheckCircle, label: t.active, bg: 'bg-brand-50 dark:bg-brand-900/20', border: 'border-brand-200 dark:border-brand-800/30' },
   };
 
   if (reminders.length === 0) {
     return (
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 text-center shadow-sm">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 mb-3">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand-100 dark:bg-brand-900/30 text-brand-600 mb-3">
           <CheckCircle className="h-6 w-6" />
         </div>
         <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-          {isAr ? 'جميع الاشتراكات مسددة' : 'All subscriptions are paid'}
+          {isAr ? 'لا توجد تذكيرات اشتراك حالياً' : 'No subscription reminders at this time'}
         </p>
         <p className="text-xs text-slate-400 mt-1">
           {isAr ? 'لا توجد تذكيرات متأخرة حالياً' : 'No overdue reminders at this time'}
@@ -55,7 +55,7 @@ export function RemindersPanel({ reminders, onNavigate, compact, lang = 'ar' }: 
           </div>
         </div>
         {onNavigate && (
-          <button onClick={onNavigate} className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer">
+          <button onClick={onNavigate} className="text-[11px] font-bold text-brand-600 hover:text-brand-700 cursor-pointer">
             {t.viewAll}
           </button>
         )}
@@ -74,7 +74,7 @@ export function RemindersPanel({ reminders, onNavigate, compact, lang = 'ar' }: 
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{playerName}</p>
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  <Badge color={cfg.color}>{cfg.label}</Badge>
+                  <Badge color={cfg.color}>{r.subscription.status === 'paid' ? (isAr ? 'متابعة التجديد' : 'Renewal reminder') : cfg.label}</Badge>
                   <span className="text-[10px] text-slate-400 font-semibold">
                     {r.daysUntilExpiry < 0
                       ? (isAr ? `متأخر ${Math.abs(r.daysUntilExpiry)} يوم` : `${Math.abs(r.daysUntilExpiry)} days overdue`)
@@ -82,7 +82,7 @@ export function RemindersPanel({ reminders, onNavigate, compact, lang = 'ar' }: 
                         ? (isAr ? 'ينتهي اليوم' : 'Expires today')
                         : (isAr ? `باقي ${r.daysUntilExpiry} يوم` : `${r.daysUntilExpiry} days left`)}
                   </span>
-                  <span className="text-[10px] font-black text-slate-600 dark:text-slate-300">{r.subscription.amount} {t.currency}</span>
+                  <span className="text-[10px] font-black text-slate-600 dark:text-slate-300">{r.subscription.status === 'paid' ? (isAr ? 'الفترة مسددة' : 'Period paid') : `${r.subscription.amount} ${t.currency}`}</span>
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -91,7 +91,7 @@ export function RemindersPanel({ reminders, onNavigate, compact, lang = 'ar' }: 
                     href={r.whatsappLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition cursor-pointer"
+                    className="p-1.5 rounded-lg bg-brand-100 dark:bg-brand-900/30 text-brand-600 hover:bg-brand-200 dark:hover:bg-brand-900/50 transition cursor-pointer"
                     title={isAr ? 'إرسال واتساب' : 'Send WhatsApp'}
                   >
                     <MessageCircle className="h-3.5 w-3.5" />

@@ -3,9 +3,7 @@ alter table public.player_evaluations
   add column if not exists development_priorities text[] not null default '{}'::text[],
   add column if not exists training_action text,
   add column if not exists reassessment_date date,
-  add column if not exists final_recommendation text
-
-
+  add column if not exists final_recommendation text;
 
 alter table public.player_evaluations
   drop constraint if exists player_evaluations_detailed_scores_object,
@@ -16,9 +14,7 @@ alter table public.player_evaluations
     check (cardinality(development_priorities) <= 2),
   drop constraint if exists player_evaluations_reassessment_date_valid,
   add constraint player_evaluations_reassessment_date_valid
-    check (reassessment_date is null or reassessment_date >= evaluation_date)
-
-
+    check (reassessment_date is null or reassessment_date >= evaluation_date);
 
 create or replace function internal.save_player_evaluation_v2_impl(
   p_evaluation_id uuid,
@@ -110,9 +106,7 @@ begin
   where id=p_evaluation_id;
   return p_evaluation_id;
 end;
-$$
-
-
+$$;
 
 create or replace function public.save_player_evaluation_v2(
   p_evaluation_id uuid,
@@ -137,11 +131,8 @@ create or replace function public.save_player_evaluation_v2(
 language sql set search_path = ''
 as $$
   select internal.save_player_evaluation_v2_impl($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18);
-$$
+$$;
 
+revoke all on function public.save_player_evaluation_v2(uuid,text,date,text,smallint,smallint,smallint,smallint,smallint,text,text,text,text,jsonb,text[],text,date,text) from public, anon;
 
-
-revoke all on function public.save_player_evaluation_v2(uuid,text,date,text,smallint,smallint,smallint,smallint,smallint,text,text,text,text,jsonb,text[],text,date,text) from public, anon
-
-
-grant execute on function public.save_player_evaluation_v2(uuid,text,date,text,smallint,smallint,smallint,smallint,smallint,text,text,text,text,jsonb,text[],text,date,text) to authenticated
+grant execute on function public.save_player_evaluation_v2(uuid,text,date,text,smallint,smallint,smallint,smallint,smallint,text,text,text,text,jsonb,text[],text,date,text) to authenticated;

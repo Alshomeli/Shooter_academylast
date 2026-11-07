@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { X, Loader2, AlertCircle } from 'lucide-react';
 
 interface ModalProps {
@@ -151,16 +151,18 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({ open, onClose, onConfirm, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel' }: ConfirmDialogProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const pending = useRef(false);
+  useEffect(() => { if (open) setError(''); }, [open]);
   if (!open) return null;
   const confirm = async () => {
-    if (busy) return; setBusy(true); setError('');
+    if (pending.current) return; pending.current = true; setBusy(true); setError('');
     try { await onConfirm(); onClose(); }
     catch { setError(document.documentElement.lang === 'ar' ? 'تعذر حفظ التغيير. حاول مجددًا.' : 'Could not save the change. Please try again.'); }
-    finally { setBusy(false); }
+    finally { pending.current = false; setBusy(false); }
   };
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm animate-fadeIn" onClick={onClose} />
+      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm animate-fadeIn" onClick={busy ? undefined : onClose} />
       <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 animate-fadeIn">
         <h3 className="text-base font-black text-slate-900 dark:text-white mb-2">{title}</h3>
         <p className="text-sm text-slate-600 dark:text-slate-300 mb-5 leading-relaxed">{message}</p>
@@ -180,7 +182,7 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, message, confir
 
 /* ---------- Form helpers ---------- */
 
-export const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
+export const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 export function FormField({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
   return (
@@ -217,7 +219,7 @@ export function SaveButton({ loading, children, disabled }: SaveButtonProps) {
     <button
       type="submit"
       disabled={loading || disabled}
-      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed transition cursor-pointer"
+      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white bg-brand-600 hover:bg-brand-500 disabled:opacity-60 disabled:cursor-not-allowed transition cursor-pointer"
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin" />}
       {loading ? 'Saving...' : children}

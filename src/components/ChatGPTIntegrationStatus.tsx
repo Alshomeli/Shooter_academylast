@@ -58,7 +58,7 @@ export function ChatGPTIntegrationStatus({ lang }: Props) {
     <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${fullyReady ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'}`}>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${fullyReady ? 'bg-brand-100 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'}`}>
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
@@ -131,7 +131,7 @@ function StatusRow({
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-3">
       <span className="text-xs font-black text-slate-700 dark:text-slate-200">{label}</span>
-      <span className={`inline-flex items-center gap-1.5 text-[10px] font-black ${ready ? 'text-emerald-600' : loading ? 'text-slate-400' : 'text-amber-600'}`}>
+      <span className={`inline-flex items-center gap-1.5 text-[10px] font-black ${ready ? 'text-brand-600' : loading ? 'text-slate-400' : 'text-amber-600'}`}>
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : ready ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
         {text}
       </span>

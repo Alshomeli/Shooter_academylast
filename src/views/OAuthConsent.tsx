@@ -156,7 +156,7 @@ export function OAuthConsent() {
               {ar ? 'يستخدم التكامل صلاحيات حسابك الحالية فقط. أي تعديل إداري يظل خاضعًا للمعاينة والتأكيد الصريح داخل بوابة العمليات.' : 'The integration uses only your existing account permissions. Administrative changes still require preview and explicit confirmation through the operations gateway.'}
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
-              <button onClick={() => void decide(true)} disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">
+              <button onClick={() => void decide(true)} disabled={busy} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 {ar ? 'السماح' : 'Allow'}
               </button>

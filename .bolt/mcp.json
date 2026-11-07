@@ -8,6 +8,12 @@
     },
     "linear": {
       "enabled": true
+    },
+    "sentry": {
+      "enabled": true
+    },
+    "shooter": {
+      "enabled": false
     }
   }
 }

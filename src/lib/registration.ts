@@ -205,5 +205,9 @@ export async function deleteRegistrationChild(appId: string, childId: string): P
 
 export function errorMessage(error: unknown, ar: boolean) {
   const message = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
+  const categoryYear = message.match(/A unique active birth-year category is required for (\d{4})/);
+  if (categoryYear) return ar
+    ? `يجب وجود فئة نشطة واحدة لمواليد ${categoryYear[1]}. راجع الفئات ثم أعد اعتماد الدفع؛ لم يُحفظ اعتماد جزئي.`
+    : `Exactly one active category must match birth year ${categoryYear[1]}. Review categories and retry approval; no partial approval was saved.`;
   return `${ar ? 'تعذر إتمام العملية.' : 'Unable to complete this action.'} ${message}`;
 }

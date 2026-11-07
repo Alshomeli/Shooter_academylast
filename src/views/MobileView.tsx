@@ -47,7 +47,7 @@ export function MobileView({ subscriptions, lang }: MobileViewProps) {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                 activeTab === tab.id
-                  ? 'bg-emerald-600 text-white shadow-md'
+                  ? 'bg-brand-600 text-white shadow-md'
                   : 'bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
@@ -77,10 +77,10 @@ export function MobileView({ subscriptions, lang }: MobileViewProps) {
               {/* App content */}
               <div className="px-4 pb-4 h-full overflow-y-auto">
                 <div className="flex items-center gap-2 mb-4 pt-2">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-black text-lg">🎯</div>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-lg">🎯</div>
                   <div>
                     <p className="text-white text-sm font-black">{t.academyName}</p>
-                    <p className="text-emerald-400 text-[9px]">{isAr ? 'ولي الأمر' : 'Parent'}</p>
+                    <p className="text-brand-400 text-[9px]">{isAr ? 'ولي الأمر' : 'Parent'}</p>
                   </div>
                 </div>
 
@@ -99,7 +99,7 @@ export function MobileView({ subscriptions, lang }: MobileViewProps) {
                 {/* Menu items */}
                 <div className="space-y-2">
                   {[
-                    { label: isAr ? 'الحضور والغياب' : 'Attendance', icon: '✅', color: 'bg-emerald-900/40' },
+                    { label: isAr ? 'الحضور والغياب' : 'Attendance', icon: '✅', color: 'bg-brand-900/40' },
                     { label: isAr ? 'جدول التدريبات' : 'Training schedule', icon: '📅', color: 'bg-blue-900/40' },
                     { label: isAr ? 'نتائج المباريات' : 'Match results', icon: '⚽', color: 'bg-amber-900/40' },
                     { label: isAr ? 'دفع الاشتراك' : 'Pay subscription', icon: '💳', color: 'bg-red-900/40' },
@@ -120,7 +120,7 @@ export function MobileView({ subscriptions, lang }: MobileViewProps) {
           <div className="space-y-4">
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white">
                   <Smartphone className="h-6 w-6" />
                 </div>
                 <div>
@@ -142,7 +142,7 @@ export function MobileView({ subscriptions, lang }: MobileViewProps) {
 
               {/* Direct contact deep links */}
               <div className="grid grid-cols-3 gap-2 mt-3">
-                <a href={`https://wa.me/${ACADEMY_PHONE}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition cursor-pointer">
+                <a href={`https://wa.me/${ACADEMY_PHONE}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-brand-50 dark:bg-brand-900/20 text-brand-600 hover:bg-brand-100 dark:hover:bg-brand-900/30 transition cursor-pointer">
                   <MessageCircle className="h-4 w-4" />
                   <span className="text-[10px] font-bold">{isAr ? 'واتساب' : 'WhatsApp'}</span>
                 </a>
@@ -164,11 +164,11 @@ export function MobileView({ subscriptions, lang }: MobileViewProps) {
 
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
-                <QrCode className="h-5 w-5 text-emerald-600" />
+                <QrCode className="h-5 w-5 text-brand-600" />
                 <h3 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'رمز التحميل السريع' : 'Quick download QR'}</h3>
               </div>
               <div className="flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                <a href={`https://wa.me/${ACADEMY_PHONE}`} target="_blank" rel="noopener noreferrer" className="block w-32 h-32 bg-white rounded-lg flex items-center justify-center border-4 border-emerald-500 hover:border-emerald-400 transition cursor-pointer">
+                <a href={`https://wa.me/${ACADEMY_PHONE}`} target="_blank" rel="noopener noreferrer" className="block w-32 h-32 bg-white rounded-lg flex items-center justify-center border-4 border-brand-500 hover:border-brand-400 transition cursor-pointer">
                   <QrCode className="h-24 w-24 text-slate-900" />
                 </a>
               </div>
@@ -181,7 +181,7 @@ export function MobileView({ subscriptions, lang }: MobileViewProps) {
       {activeTab === 'api' && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <Settings className="h-5 w-5 text-emerald-600" />
+            <Settings className="h-5 w-5 text-brand-600" />
             <h3 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'واجهة برمجة التطبيقات (REST API)' : 'REST API'}</h3>
             <Badge color="emerald">{isAr ? 'مفعّل' : 'Active'}</Badge>
           </div>
@@ -201,10 +201,10 @@ export function MobileView({ subscriptions, lang }: MobileViewProps) {
               </div>
             ))}
           </div>
-          <div className="mt-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/30">
+          <div className="mt-4 p-3 rounded-xl bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800/30">
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-emerald-600" />
-              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">{isAr ? 'مفتاح API نشط' : 'API Key active'}: sk_live_shooter_****a3f9</p>
+              <CheckCircle className="h-4 w-4 text-brand-600" />
+              <p className="text-xs font-bold text-brand-700 dark:text-brand-400">{isAr ? 'مفتاح API نشط' : 'API Key active'}: sk_live_shooter_****a3f9</p>
             </div>
           </div>
         </div>

@@ -1,4 +1,8 @@
+import { categoryPlayers } from '@/lib/goalkeepers';
 import { useState, useMemo } from 'react';
+import { assertNewAttendance } from '@/lib/attendance-identity';
+import { academyToday } from '@/lib/report-dates';
+import { errorMessage } from '@/lib/registration';
 import {
   ClipboardCheck, Plus, Search, Check, X, Clock, Calendar, Users, Trash2, TrendingUp,
 } from 'lucide-react';
@@ -12,7 +16,7 @@ interface AttendanceProps {
   attendance: Attendance[];
   matches: Match[];
   trainings: Training[];
-  onAttendanceChange: (a: Attendance[]) => void;
+  onAttendanceChange: (a: Attendance[]) => Promise<void>;
   activeRole: Role;
   lang: Lang;
 }
@@ -21,7 +25,7 @@ type Status = 'present' | 'absent' | 'excused';
 type SessionType = 'training' | 'match';
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 export function AttendanceView({ players, teams, attendance, matches, trainings, onAttendanceChange, activeRole, lang }: AttendanceProps) {
   const t = tr(lang);
@@ -45,7 +49,8 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
       .filter((a) => {
         const player = playerById(a.playerId);
         if (!player) return false;
-        if (teamFilter !== 'all' && player.teamId !== teamFilter) return false;
+        const sessionTeamId = a.trainingId ? trainings.find(t => t.id === a.trainingId)?.teamId : a.matchId ? matches.find(m => m.id === a.matchId)?.teamId : player.teamId;
+        if (teamFilter !== 'all' && sessionTeamId !== teamFilter) return false;
         if (typeFilter !== 'all' && a.sessionType !== typeFilter) return false;
         if (dateFilter && a.sessionDate !== dateFilter) return false;
         if (search && !player.name.includes(search)) return false;
@@ -53,7 +58,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
       })
       .sort((a, b) => (a.sessionDate < b.sessionDate ? 1 : a.sessionDate > b.sessionDate ? -1 : 0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attendance, players, teamFilter, typeFilter, dateFilter, search]);
+  }, [attendance, players, trainings, matches, teamFilter, typeFilter, dateFilter, search]);
 
   const kpis = useMemo(() => {
     const total = attendance.length;
@@ -70,6 +75,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
   };
 
   const handleBatchSave = async (records: Omit<Attendance, 'id'>[]) => {
+    assertNewAttendance(attendance, records, isAr);
     const withIds = records.map((r, i) => ({ ...r, id: `att-${Date.now()}-${i}` }));
     await onAttendanceChange([...withIds, ...attendance]);
     setShowAdd(false);
@@ -80,7 +86,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
     s === 'present' ? 'emerald' : s === 'absent' ? 'red' : 'amber';
   const typeLabel = (ty: SessionType) => (ty === 'training' ? t.training : t.match);
 
-  const today = new Date().toISOString().substring(0, 10);
+  const today = academyToday();
 
   return (
     <div className="space-y-5 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
@@ -88,7 +94,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             تسجيل حضور جديد
@@ -144,7 +150,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={isAr ? 'ابحث باسم اللاعب...' : 'Search by player name...'}
-            className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
+            className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
           />
         </div>
         <div className="relative">
@@ -152,10 +158,10 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
           <select
             value={teamFilter}
             onChange={(e) => setTeamFilter(e.target.value)}
-            className="appearance-none px-3 py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            className="appearance-none px-3 py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/50"
           >
             <option value="all">{isAr ? 'كل الفرق' : 'All teams'}</option>
-            {teams.map((tm) => (
+            {teams.filter(tm => tm.status !== 'inactive').map((tm) => (
               <option key={tm.id} value={tm.id}>{tm.name}</option>
             ))}
           </select>
@@ -163,7 +169,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/50"
         >
           <option value="all">{isAr ? 'كل الأنواع' : 'All types'}</option>
           <option value="training">{t.training}</option>
@@ -175,7 +181,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
             type="date"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="bg-slate-50 dark:bg-slate-800 text-sm py-2.5 pr-10 pl-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
+            className="bg-slate-50 dark:bg-slate-800 text-sm py-2.5 pr-10 pl-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
           />
         </div>
         {(teamFilter !== 'all' || typeFilter !== 'all' || dateFilter || search) && (
@@ -222,7 +228,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-black text-sm shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-sm shrink-0">
                             #{player?.jerseyNumber ?? '?'}
                           </div>
                           <span className="font-bold text-slate-800 dark:text-slate-100">{playerName(a.playerId)}</span>
@@ -230,7 +236,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
                       </td>
                       <td className="py-3 px-4">
                         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                          {player ? teamName(player.teamId) : '—'}
+                          {teamName(a.trainingId ? trainings.find(t => t.id === a.trainingId)?.teamId || '' : a.matchId ? matches.find(m => m.id === a.matchId)?.teamId || '' : player?.teamId || '')}
                         </span>
                       </td>
                       <td className="py-3 px-4">
@@ -332,8 +338,8 @@ function BatchAttendanceForm({
   const [saveError, setSaveError] = useState('');
 
   const teamPlayers = useMemo(
-    () => players.filter((p) => p.teamId === teamId),
-    [players, teamId],
+    () => { const team = teams.find(t => t.id === teamId); return team ? categoryPlayers(team, players) : []; },
+    [players, teamId, teams],
   );
 
   const availableSessions = useMemo(() => {
@@ -384,7 +390,7 @@ function BatchAttendanceForm({
     if (!sessionId || records.length === 0) return;
     if (saving) return; setSaving(true); setSaveError('');
     try { await onSave(records); }
-    catch { setSaveError(isAr ? 'تعذر حفظ الحضور. راجع السجلات قبل إعادة المحاولة.' : 'Could not save attendance. Review the records before retrying.'); }
+    catch (error) { setSaveError(errorMessage(error, isAr)); }
     finally { setSaving(false); }
   };
 
@@ -402,7 +408,7 @@ function BatchAttendanceForm({
               className={inputCls}
             >
               <option value="">{isAr ? 'اختر الفريق...' : 'Select team...'}</option>
-              {teams.map((tm) => (
+              {teams.filter(tm => tm.status !== 'inactive').map((tm) => (
                 <option key={tm.id} value={tm.id}>{tm.name}</option>
               ))}
             </select>
@@ -454,7 +460,7 @@ function BatchAttendanceForm({
                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{isAr ? 'تعيين الكل:' : 'Mark all:'}</span>
                 <button
                   onClick={() => markAll('present')}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-brand-700 dark:text-brand-400 bg-brand-100 dark:bg-brand-900/30 hover:bg-brand-200 dark:hover:bg-brand-900/50 transition cursor-pointer"
                 >
                   <Check className="h-3.5 w-3.5" /> {t.present}
                 </button>
@@ -472,7 +478,7 @@ function BatchAttendanceForm({
                 </button>
               </div>
               <div className="flex items-center gap-3 text-[11px] font-bold">
-                <span className="text-emerald-600 dark:text-emerald-400">{t.present} {presentCount}</span>
+                <span className="text-brand-600 dark:text-brand-400">{t.present} {presentCount}</span>
                 <span className="text-red-600 dark:text-red-400">{t.absent} {absentCount}</span>
                 <span className="text-amber-600 dark:text-amber-400">{t.excused} {excusedCount}</span>
                 <span className="text-slate-400">{isAr ? 'من' : 'of'} {teamPlayers.length}</span>
@@ -498,8 +504,8 @@ function BatchAttendanceForm({
                         onClick={() => setStatus(p.id, 'present')}
                         className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
                           marks[p.id] === 'present'
-                            ? 'bg-emerald-600 text-white border-emerald-600 ring-2 ring-emerald-500/40 scale-105 shadow-md'
-                            : 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+                            ? 'bg-brand-600 text-white border-brand-600 ring-2 ring-brand-500/40 scale-105 shadow-md'
+                            : 'bg-white dark:bg-slate-800 text-brand-700 dark:text-brand-400 border-brand-200 dark:border-brand-900/50 hover:bg-brand-50 dark:hover:bg-brand-900/20'
                         }`}
                       >
                         <Check className="h-3.5 w-3.5" /> {t.present}
@@ -561,7 +567,7 @@ function BatchAttendanceForm({
               type="button"
               onClick={handleSave}
               disabled={saving || markedCount === 0}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white bg-brand-600 hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
             >
               <Check className="h-4 w-4" />
               {isAr ? 'حفظ الكل' : 'Save all'}

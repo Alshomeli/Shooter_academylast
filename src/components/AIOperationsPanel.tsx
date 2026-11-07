@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarCheck2, CheckCircle2, ClipboardCheck, CreditCard, FileCheck2, Loader2, ShieldCheck, XCircle } from 'lucide-react';
-import type { Lang, Player, PlayerEvaluation, RegistrationApplication, Role, Subscription, Training } from '@/types';
+import type { Lang, Match, Player, PlayerEvaluation, RegistrationApplication, Role, Subscription, Training } from '@/types';
+import { academyToday } from '@/lib/report-dates';
 import { fetchAllApplications } from '@/lib/registration';
 import { paymentMethodLabel } from '@/lib/i18n';
 import {
@@ -22,6 +23,7 @@ interface Props {
   players: Player[];
   evaluations: PlayerEvaluation[];
   trainings: Training[];
+  matches: Match[];
   onCompleted: () => Promise<void>;
 }
 
@@ -35,7 +37,7 @@ function errorText(error: unknown, ar: boolean) {
   return ar ? `تعذر إتمام العملية: ${message}` : `Unable to complete the action: ${message}`;
 }
 
-export function AIOperationsPanel({ activeRole, lang, subscriptions, players, evaluations, trainings, onCompleted }: Props) {
+export function AIOperationsPanel({ activeRole, lang, subscriptions, players, evaluations, trainings, matches, onCompleted }: Props) {
   const ar = lang === 'ar';
   const canPayment = activeRole === 'manager' || activeRole === 'accountant';
   const canCreateSubscription = activeRole === 'manager' || activeRole === 'accountant' || activeRole === 'receptionist';
@@ -51,15 +53,16 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
   const [registrationDecision, setRegistrationDecision] = useState<RegistrationDecision>('approve');
   const [reviewNotes, setReviewNotes] = useState('');
   const [attendancePlayerId, setAttendancePlayerId] = useState('');
-  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [attendanceDate, setAttendanceDate] = useState(academyToday());
   const [attendanceType, setAttendanceType] = useState<'training' | 'match'>('training');
   const [attendanceStatus, setAttendanceStatus] = useState<'present' | 'absent' | 'excused'>('present');
   const [attendanceNotes, setAttendanceNotes] = useState('');
   const [attendanceTrainingId, setAttendanceTrainingId] = useState('');
+  const [attendanceMatchId, setAttendanceMatchId] = useState('');
   const [selectedEvaluationId, setSelectedEvaluationId] = useState('');
   const [newSubPlayerId, setNewSubPlayerId] = useState('');
   const [newSubPlanType, setNewSubPlanType] = useState<Subscription['planType']>('monthly');
-  const [newSubStartDate, setNewSubStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [newSubStartDate, setNewSubStartDate] = useState(academyToday());
   const [prepared, setPrepared] = useState<PreparedAIAction | null>(null);
   const [history, setHistory] = useState<AIActionHistoryItem[]>([]);
   const [snapshot, setSnapshot] = useState<AIOperationsSnapshot['snapshot'] | null>(null);
@@ -165,6 +168,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
         status: attendanceStatus,
         notes: attendanceNotes.trim(),
         trainingId: attendanceType === 'training' ? attendanceTrainingId || null : null,
+        matchId: attendanceType === 'match' ? attendanceMatchId || null : null,
       }));
     } catch (e) {
       setError(errorText(e, ar));
@@ -266,7 +270,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
         </div>
         <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3">
           <p className="text-[10px] font-bold text-slate-400">{ar ? 'لاعبون نشطون' : 'Active players'}</p>
-          <p className="mt-1 text-xl font-black text-emerald-600">{snapshot?.activePlayers ?? players.filter((player) => player.status === 'active').length}</p>
+          <p className="mt-1 text-xl font-black text-brand-600">{snapshot?.activePlayers ?? players.filter((player) => player.status === 'active').length}</p>
         </div>
       </div>
 
@@ -287,7 +291,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
                 </div>
                 <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${
                   item.status === 'executed'
-                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                    ? 'bg-brand-100 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
                     : item.status === 'failed' || item.status === 'expired'
                       ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
                       : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
@@ -299,7 +303,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
       )}
 
       {error && <div className="mb-3 rounded-xl bg-red-50 dark:bg-red-950/30 px-3 py-2 text-xs font-bold text-red-600">{error}</div>}
-      {message && <div className="mb-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">{message}</div>}
+      {message && <div className="mb-3 rounded-xl bg-brand-50 dark:bg-brand-950/30 px-3 py-2 text-xs font-bold text-brand-700 dark:text-brand-400">{message}</div>}
 
       {prepared ? (
         <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4">
@@ -315,7 +319,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
           </p>
           <div className="flex flex-wrap gap-2 mt-4">
             <button onClick={() => void confirmPrepared()} disabled={busy}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50">
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               {ar ? 'تأكيد وتنفيذ' : 'Confirm & execute'}
             </button>
@@ -331,7 +335,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
           {canPayment && (
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
               <div className="flex items-center gap-2 mb-3">
-                <CreditCard className="h-4 w-4 text-emerald-600" />
+                <CreditCard className="h-4 w-4 text-brand-600" />
                 <h4 className="text-xs font-black text-slate-800 dark:text-white">{ar ? 'تسجيل دفعة اشتراك' : 'Record subscription payment'}</h4>
               </div>
               <div className="space-y-3">
@@ -424,7 +428,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
                 <h4 className="text-xs font-black text-slate-800 dark:text-white">{ar ? 'تسجيل حضور لاعب' : 'Record player attendance'}</h4>
               </div>
               <div className="space-y-3">
-                <select value={attendancePlayerId} onChange={(e) => setAttendancePlayerId(e.target.value)} className={inputCls}>
+                <select value={attendancePlayerId} onChange={(e) => { setAttendancePlayerId(e.target.value); setAttendanceMatchId(''); setPrepared(null); }} className={inputCls}>
                   <option value="">{ar ? 'اختر اللاعب' : 'Select player'}</option>
                   {players.filter((p) => p.status === 'active').map((player) => (
                     <option key={player.id} value={player.id}>{player.name}</option>
@@ -459,6 +463,20 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
                       ))}
                   </select>
                 )}
+                {attendanceType === 'match' && (
+                  <select value={attendanceMatchId} aria-label={ar ? 'المباراة' : 'Match'} className={inputCls}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setAttendanceMatchId(id);
+                      const match = matches.find((item) => item.id === id);
+                      if (match) setAttendanceDate(match.matchDate);
+                    }}>
+                    <option value="">{ar ? 'بدون ربط بمباراة محددة' : 'No specific match'}</option>
+                    {matches.filter((match) => attendancePlayerId && match.teamId === players.find((player) => player.id === attendancePlayerId)?.teamId).sort((a, b) => b.matchDate.localeCompare(a.matchDate)).map((match) => (
+                      <option key={match.id} value={match.id}>{match.matchDate} — {match.opponent}</option>
+                    ))}
+                  </select>
+                )}
                 <select value={attendanceStatus} onChange={(e) => setAttendanceStatus(e.target.value as 'present' | 'absent' | 'excused')} className={inputCls}>
                   <option value="present">{ar ? 'حاضر' : 'Present'}</option>
                   <option value="absent">{ar ? 'غائب' : 'Absent'}</option>
@@ -477,7 +495,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
           {canPublishEvaluation && (
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
               <div className="flex items-center gap-2 mb-3">
-                <FileCheck2 className="h-4 w-4 text-emerald-600" />
+                <FileCheck2 className="h-4 w-4 text-brand-600" />
                 <h4 className="text-xs font-black text-slate-800 dark:text-white">{ar ? 'نشر تقييم لاعب' : 'Publish player evaluation'}</h4>
               </div>
               <div className="space-y-3">

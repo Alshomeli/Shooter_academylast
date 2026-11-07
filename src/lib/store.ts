@@ -1,9 +1,11 @@
+import type { EvaluationDraft } from '@/lib/evaluation-template';
+import { resolveOnboardingMode } from '@/lib/onboarding-mode';
 import { supabase } from '@/lib/supabase';
 import { collectionChanges, type Row } from '@/lib/collection-diff';
 import type {
   Staff, Team, Player, Parent, Subscription, Attendance,
   Match, Training, Transaction, Tournament, PlayerEvaluation,
-  Settings, AuditLog, Notification, Lang, CurrentUser, PaymentProof, PlayerDocument, StaffDocument,
+  Settings, AuditLog, Notification, CurrentUser, PaymentProof, PlayerDocument, StaffDocument,
 } from '@/types';
 import {
   mapStaff, mapTeam, mapPlayer, mapParent, mapSubscription, mapAttendance,
@@ -17,14 +19,7 @@ import {
 
 /* ---------- Preferences (still localStorage, no session data) ---------- */
 
-const PREFIX = 'shooter_';
-
-export const prefs = {
-  getLang: (): Lang => (localStorage.getItem(PREFIX + 'lang') as Lang) || 'ar',
-  saveLang: (v: Lang) => localStorage.setItem(PREFIX + 'lang', v),
-  getDarkMode: (): boolean => localStorage.getItem(PREFIX + 'dark_mode') === 'true',
-  saveDarkMode: (v: boolean) => localStorage.setItem(PREFIX + 'dark_mode', String(v)),
-};
+export { prefs } from '@/lib/preferences';
 
 /* ---------- Auth ---------- */
 
@@ -61,8 +56,21 @@ async function fetchAll<T>(table: string, mapper: (r: Record<string, unknown>) =
   return (data || []).map(r => ({ ...mapper(r), version: Number(r.row_version) }));
 }
 
+async function withFinancialIdentity<T extends { id: string }>(kind: 'subscription' | 'transaction', records: T[]) {
+  if (!records.length) return records;
+  const batches = Array.from({ length: Math.ceil(records.length / 100) }, (_, index) => records.slice(index * 100, (index + 1) * 100));
+  const results = await Promise.all(batches.map(batch => supabase.from('financial_record_identity')
+    .select('record_id,player_name,parent_name').eq('record_kind', kind).in('record_id', batch.map(record => record.id))));
+  for (const result of results) if (result.error) throw result.error;
+  const identities = new Map(results.flatMap(result => result.data || []).map(row => [row.record_id, row]));
+  return records.map(record => {
+    const identity = identities.get(record.id);
+    return { ...record, playerNameSnapshot: identity?.player_name || undefined, parentNameSnapshot: identity?.parent_name || undefined };
+  });
+}
+
 const TABLE_PUBLIC_COLUMNS: Record<string, string> = {
-  staff: 'row_version,id,name,email,phone,role,specialization,status,joined_date,avatar_url,licenses,experience_years,rating,tactical_style,notes,user_id,created_at',
+  staff: 'row_version,id,name,email,phone,role,coach_kind,supervising_coach_id,specialization,status,joined_date,avatar_url,licenses,experience_years,rating,tactical_style,notes,user_id,created_at',
   parents: 'row_version,user_id,id,name,nationality,phone,whatsapp_phone,email,address,occupation,workplace,avatar_url,status,notes,joined_date,created_at',
   players: 'row_version,id,name,birth_date,blood_type,jersey_number,position,team_id,parent_name,parent_phone,parent_email,parent_id,status,joined_date,created_at',
 };
@@ -111,7 +119,7 @@ async function fetchParentRows(): Promise<Parent[]> {
 }
 
 async function fetchPlayerRows(): Promise<Player[]> {
-  const { data, error } = await supabase.from('players').select(TABLE_PUBLIC_COLUMNS.players);
+  const { data, error } = await supabase.from('players').select(TABLE_PUBLIC_COLUMNS.players).is('archived_at', null);
   if (error) throw error;
   const rows = (data || []) as unknown as Record<string, unknown>[];
   const { data: privateRows, error: privateError } = await supabase.rpc('get_player_private');
@@ -159,10 +167,10 @@ export const db = {
     if (error) throw error;
     if (!user) return null;
     const { data: staff, error: staffError } = await supabase.from('staff')
-      .select('id,name,email,role,status').eq('user_id', user.id).maybeSingle();
+      .select('id,name,email,role,status,coach_kind').eq('user_id', user.id).maybeSingle();
     if (staffError) throw staffError;
     if (staff) {
-      if (staff.status === 'active') return { ...staff, authUserId: user.id } as CurrentUser;
+      if (staff.status === 'active') return { ...staff, coachKind: staff.coach_kind, authUserId: user.id } as CurrentUser;
       // A linked staff profile is an existing account even when disabled.
       // Do not route it back into onboarding as if it were a new applicant.
       return { ...staff, authUserId: user.id, accountDisabled: true } as CurrentUser;
@@ -188,13 +196,23 @@ export const db = {
         authUserId: user.id,
         name: staffApplication.full_name || user.email || '',
         email: staffApplication.email || user.email || '',
-        role: staffApplication.requested_role as CurrentUser['role'],
+        role: (['assistant_coach', 'goalkeeper_coach'].includes(staffApplication.requested_role) ? 'coach' : staffApplication.requested_role) as CurrentUser['role'],
         registrationOnly: true,
         registrationMode: 'staff',
       };
     }
 
-    const onboardingMode = user.user_metadata?.onboarding_mode === 'staff' ? 'staff' : 'parent';
+    const { data: parentApplication, error: applicationError } = await supabase.from('registration_applications')
+      .select('id').eq('applicant_user_id', user.id).limit(1).maybeSingle();
+    if (applicationError) throw applicationError;
+    // Onboarding intent only selects an application form, never permissions.
+    const onboardingMode = parentApplication ? 'parent' : resolveOnboardingMode(
+      user.user_metadata?.onboarding_mode, window.location.search);
+    if (!parentApplication && onboardingMode !== 'choose' && user.user_metadata?.onboarding_mode !== onboardingMode) {
+      const { error: intentError } = await supabase.auth.updateUser({ data: { onboarding_mode: onboardingMode } });
+      if (intentError) throw intentError;
+    }
+
     return {
       id: user.id,
       authUserId: user.id,
@@ -364,7 +382,14 @@ export const db = {
     if (error) throw error;
   },
 
-  async getTeams(): Promise<Team[]> { return fetchAll('teams', mapTeam as never); },
+  async getTeams(coachOnly = false): Promise<Team[]> {
+    const teams = await fetchAll('teams', mapTeam as never) as Team[];
+    if (!coachOnly) return teams;
+    const { data, error } = await supabase.rpc('get_my_coach_team_ids');
+    if (error) throw error;
+    const allowed = new Set((data || []) as string[]);
+    return teams.filter(team => allowed.has(team.id));
+  },
   async saveTeam(t: Team): Promise<Team> { return upsertRow('teams', teamToRow(t) as unknown as Record<string, unknown>, mapTeam as never); },
   async deleteTeam(id: string): Promise<void> {
     const { error } = await supabase.rpc('delete_team_safely', { p_team_id: id });
@@ -374,12 +399,20 @@ export const db = {
   async getPlayers(): Promise<Player[]> { return fetchPlayerRows(); },
   async savePlayer(p: Player): Promise<Player> { return upsertRow('players', playerToRow(p) as unknown as Record<string, unknown>, mapPlayer as never); },
   async deletePlayer(id: string): Promise<void> { return deleteRow('players', id); },
+  async archivePlayer(id: string): Promise<void> {
+    const { error } = await supabase.rpc('archive_player_safely', { p_player_id: id });
+    if (error) throw new Error(error.message || 'Player archive failed');
+  },
+  async forceDeleteUser(targetType: 'staff' | 'player', id: string): Promise<void> {
+    const { error } = await supabase.rpc('force_delete_user', { p_target_type: targetType, p_target_id: id });
+    if (error) throw new Error(error.message || 'Delete failed');
+  },
 
   async getParents(): Promise<Parent[]> { return fetchParentRows(); },
   async saveParent(p: Parent): Promise<Parent> { return upsertRow('parents', parentToRow(p) as unknown as Record<string, unknown>, mapParent as never); },
   async deleteParent(id: string): Promise<void> { return deleteRow('parents', id); },
 
-  async getSubscriptions(): Promise<Subscription[]> { return fetchAll('subscriptions', mapSubscription as never); },
+  async getSubscriptions(): Promise<Subscription[]> { return withFinancialIdentity('subscription', await fetchAll<Subscription>('subscriptions', mapSubscription as never)); },
   async saveSubscription(s: Subscription): Promise<Subscription> { return upsertRow('subscriptions', subscriptionToRow(s) as unknown as Record<string, unknown>, mapSubscription as never); },
   async deleteSubscription(id: string): Promise<void> { return deleteRow('subscriptions', id); },
 
@@ -395,7 +428,7 @@ export const db = {
   async saveTraining(t: Training): Promise<Training> { return upsertRow('trainings', trainingToRow(t) as unknown as Record<string, unknown>, mapTraining as never); },
   async deleteTraining(id: string): Promise<void> { return deleteRow('trainings', id); },
 
-  async getTransactions(): Promise<Transaction[]> { return fetchAll('transactions', mapTransaction as never); },
+  async getTransactions(): Promise<Transaction[]> { return withFinancialIdentity('transaction', await fetchAll<Transaction>('transactions', mapTransaction as never)); },
   async saveTransaction(t: Transaction): Promise<Transaction> { return upsertRow('transactions', transactionToRow(t) as unknown as Record<string, unknown>, mapTransaction as never); },
   async deleteTransaction(id: string): Promise<void> { return deleteRow('transactions', id); },
 
@@ -408,19 +441,14 @@ export const db = {
     if (error) throw error;
     return (data || []).map(r => mapEvaluation(r as never));
   },
-  async savePlayerEvaluation(ev: { id?: string; playerId: string; evaluationDate: string; periodType: string; technicalScore: number | null; tacticalScore: number | null; physicalScore: number | null; mentalScore: number | null; disciplineScore: number | null; strengths: string; developmentAreas: string; coachNotes: string; coachRecommendation: string; detailedScores: Record<string, number | null>; developmentPriorities: string[]; trainingAction: string; reassessmentDate: string | null; finalRecommendation: string }): Promise<string> {
-    const { data, error } = await supabase.rpc('save_player_evaluation_v2', {
-      p_evaluation_id: ev.id ?? null, p_player_id: ev.playerId,
-      p_evaluation_date: ev.evaluationDate, p_period_type: ev.periodType,
-      p_technical_score: ev.technicalScore, p_tactical_score: ev.tacticalScore,
-      p_physical_score: ev.physicalScore, p_mental_score: ev.mentalScore,
-      p_discipline_score: ev.disciplineScore, p_strengths: ev.strengths || null,
-      p_development_areas: ev.developmentAreas || null,
-      p_coach_notes: ev.coachNotes || null, p_coach_recommendation: ev.coachRecommendation || null,
-      p_detailed_scores: ev.detailedScores || {}, p_development_priorities: ev.developmentPriorities || [],
-      p_training_action: ev.trainingAction || null, p_reassessment_date: ev.reassessmentDate || null,
-      p_final_recommendation: ev.finalRecommendation || null,
-    });
+  async getMyEvaluationKind(): Promise<'outfield' | 'goalkeeper'> {
+    const { data, error } = await supabase.rpc('get_my_evaluation_kind');
+    if (error) throw error;
+    if (data !== 'outfield' && data !== 'goalkeeper') throw new Error('تعذر تحديد نوع المدرب. يرجى مراجعة الإدارة.');
+    return data;
+  },
+  async savePlayerEvaluation(ev: EvaluationDraft): Promise<string> {
+    const { data, error } = await supabase.rpc('save_player_evaluation_v3', { p_form: ev });
     if (error) throw error;
     return data as string;
   },
@@ -517,3 +545,5 @@ export const db = {
       .subscribe();
   },
 };
+
+

@@ -1,10 +1,13 @@
+import { OnboardingChoice } from '@/components/OnboardingChoice';
+import { PublicHomeLink } from '@/components/PublicHomeLink';
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy, Component, type ReactNode } from 'react';
 import { Menu, Bell, Clock, Target, Loader2, AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { db, prefs, signOut, isRegistering } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { tr } from '@/lib/i18n';
-import { ParentPortal } from '@/views/ParentPortal';
+import { getInitialTab, getPostLoginTab, getTabUrl } from '@/lib/navigation';
+import { LegalPage } from '@/views/LegalPage';
 import type {
   CurrentUser, Lang, Role, ViewId,
   Staff as StaffType, Team, Player, Parent, Subscription, Attendance,
@@ -13,9 +16,12 @@ import type {
 } from '@/types';
 import { Login } from '@/components/Login';
 import { Sidebar } from '@/components/Sidebar';
+import { CoachOnboardingTour } from '@/components/CoachOnboardingTour';
+import { ContextualShooterAI } from '@/components/ContextualShooterAI';
 
 
 /* ── Lazy-loaded views for code splitting ── */
+const SiteContent = lazy(() => import('@/views/SiteContent').then(m => ({ default: m.SiteContent })));
 const Dashboard = lazy(() => import('@/views/Dashboard').then(m => ({ default: m.Dashboard })));
 const Approvals = lazy(() => import('@/views/Approvals').then(m => ({ default: m.Approvals })));
 const Players = lazy(() => import('@/views/Players').then(m => ({ default: m.Players })));
@@ -33,9 +39,17 @@ const Tournaments = lazy(() => import('@/views/Tournaments').then(m => ({ defaul
 const Evaluations = lazy(() => import('@/views/Evaluations').then(m => ({ default: m.Evaluations })));
 const AuditLogs = lazy(() => import('@/views/AuditLogs').then(m => ({ default: m.AuditLogs })));
 const Messages = lazy(() => import('@/views/Messages').then(m => ({ default: m.Messages })));
+const ParentPortal = lazy(() => import('@/views/ParentPortal').then(m => ({ default: m.ParentPortal })));
 const Registration = lazy(() => import('@/views/Registration').then(m => ({ default: m.Registration })));
 const StaffRegistration = lazy(() => import('@/views/StaffRegistration').then(m => ({ default: m.StaffRegistration })));
 const RegistrationAdmin = lazy(() => import('@/views/RegistrationAdmin').then(m => ({ default: m.RegistrationAdmin })));
+
+const ALLOWED_VIEWS_BY_ROLE: Record<Exclude<Role, 'parent'>, ViewId[]> = {
+  manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings', 'site-content'],
+  accountant: ['dashboard', 'subscriptions', 'reports', 'messages', 'ai-center'],
+  coach: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'messages', 'ai-center'],
+  receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
+};
 
 /* ── Error Boundary ── */
 interface ErrorBoundaryProps { children: ReactNode; lang: Lang; }
@@ -58,7 +72,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
           </p>
           <button
             onClick={() => { this.setState({ hasError: false, error: null }); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold cursor-pointer hover:bg-emerald-500 transition"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-bold cursor-pointer hover:bg-brand-500 transition"
           >
             <RefreshCw className="h-4 w-4" />
             {isAr ? 'إعادة المحاولة' : 'Try Again'}
@@ -70,10 +84,11 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
-function ViewLoader() {
+function ViewLoader({ lang }: { lang: Lang }) {
   return (
-    <div className="flex items-center justify-center min-h-[300px]">
-      <Loader2 className="h-7 w-7 text-emerald-600 animate-spin" />
+    <div role="status" className="flex flex-col gap-3 items-center justify-center min-h-[300px]" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <Loader2 aria-hidden="true" className="h-7 w-7 text-brand-600 animate-spin" />
+      <p className="text-sm font-bold text-slate-500 dark:text-slate-400">{tr(lang).loading}</p>
     </div>
   );
 }
@@ -173,11 +188,11 @@ function OAuthConsent({ lang }: { lang: Lang }) {
     }
   };
 
-  if (!details && !error) return <main className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-emerald-500" /></main>;
+  if (!details && !error) return <main className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-brand-500" /></main>;
   const scopes = details?.scope?.split(/\s+/).filter(Boolean) ?? [];
   return <main className="min-h-screen bg-slate-950 p-4 flex items-center justify-center" dir={ar ? 'rtl' : 'ltr'}>
     <section className="w-full max-w-lg rounded-2xl bg-white p-6 sm:p-8 text-slate-900 shadow-xl">
-      <ShieldCheck className="h-10 w-10 text-emerald-600 mb-4" />
+      <ShieldCheck className="h-10 w-10 text-brand-600 mb-4" />
       <h1 className="text-xl font-black mb-2">{ar ? 'السماح بالوصول' : 'Authorize access'}</h1>
       {error ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : <>
         <p className="text-sm text-slate-600 mb-5">{ar ? 'راجع التطبيق والصلاحيات المطلوبة قبل الموافقة.' : 'Review the application and requested permissions before approving.'}</p>
@@ -189,7 +204,7 @@ function OAuthConsent({ lang }: { lang: Lang }) {
         <p className="mt-4 text-xs text-slate-500">{ar ? 'وافق فقط إذا كنت تعرف التطبيق وتثق به.' : 'Approve only if you recognize and trust this application.'}</p>
         <div className="mt-6 grid grid-cols-2 gap-3">
           <button disabled={busy} onClick={() => void decide('deny')} className="rounded-xl border border-slate-300 py-3 text-sm font-bold disabled:opacity-50">{ar ? 'رفض' : 'Deny'}</button>
-          <button disabled={busy} onClick={() => void decide('approve')} className="rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : (ar ? 'موافقة' : 'Approve')}</button>
+          <button disabled={busy} onClick={() => void decide('approve')} className="rounded-xl bg-brand-600 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : (ar ? 'موافقة' : 'Approve')}</button>
         </div>
       </>}
     </section>
@@ -199,21 +214,19 @@ function OAuthConsent({ lang }: { lang: Lang }) {
 export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [activeRole, setActiveRole] = useState<Role>('manager');
-  const [currentTab, setCurrentTab] = useState<ViewId>(() => {
-    const path = window.location.pathname.replace(/\/+$/, '') || '/';
-    if (path === '/parent') return 'registration';
-    if (path === '/coach') return 'staff-registration';
-    const params = new URLSearchParams(window.location.search);
-    const view = params.get('view') || window.location.hash.replace('#', '');
-    if (view === 'registration' || view === 'staff-registration' || view === 'registration-admin') return view as ViewId;
-    return 'dashboard';
-  });
+  const [currentTab, setCurrentTabState] = useState<ViewId>(() =>
+    getInitialTab(window.location.pathname, window.location.search, window.location.hash)
+  );
+  const setCurrentTab = useCallback((tab: ViewId) => {
+    setCurrentTabState(tab);
+    window.history.replaceState(window.history.state, '', getTabUrl(tab, window.location.href));
+  }, []);
   const entryPath = window.location.pathname.replace(/\/+$/, '') || '/';
   const parentDirectEntry = entryPath === '/parent';
   const coachDirectEntry = entryPath === '/coach';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [lang, setLang] = useState<Lang>('ar');
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -227,8 +240,10 @@ export default function App() {
   dataRef.current = data;
   const loadSequence = useRef(0);
   const loadInFlight = useRef<Promise<void> | null>(null);
+  const loadInFlightUserId = useRef<string | undefined>(undefined);
   const refreshQueued = useRef(false);
   const userRef = useRef(currentUser?.authUserId);
+  const loadAllDataRef = useRef<() => Promise<void>>(async () => undefined);
   userRef.current = currentUser?.authUserId;
 
   useEffect(() => {
@@ -250,6 +265,9 @@ export default function App() {
           setCurrentUser(member);
           if (member) {
             setActiveRole(member.role);
+            if ((_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') && !member.registrationOnly && !member.accountDisabled) {
+              void db.addLoginAuditLog({ id: '', action: 'login', details: '', timestamp: '', userRole: '', userName: '' }).catch(console.error);
+            }
             if (member.registrationOnly && member.registrationMode === 'staff') setCurrentTab('staff-registration');
             else if (member.role === 'parent' && !member.registrationOnly) setCurrentTab('dashboard');
           }
@@ -260,18 +278,18 @@ export default function App() {
       }, 0);
     });
     return () => { generation++; authData.subscription.unsubscribe(); };
-  }, []);
+  }, [setCurrentTab]);
 
   const loadAllData = useCallback(async () => {
-    if (!currentUser) return;
-    if (loadInFlight.current) {
+    if (!currentUser || currentUser.authUserId !== userRef.current) return;
+    const userId = currentUser.authUserId;
+    if (loadInFlight.current && loadInFlightUserId.current === userId) {
       refreshQueued.current = true;
       return loadInFlight.current;
     }
     const request = ++loadSequence.current;
-    const userId = currentUser.authUserId;
     const stillCurrent = () => request === loadSequence.current && userRef.current === userId;
-    const run = (async () => {
+    const run = Promise.resolve().then(async () => {
     try {
       if (!dataRef.current.settings && !currentUser?.registrationOnly) setLoading(true);
       setLoadError(null);
@@ -279,40 +297,122 @@ export default function App() {
       const manager = role === 'manager';
       const finance = manager || role === 'accountant';
       const parent = role === 'parent';
-      if (currentUser?.registrationOnly) { setData(EMPTY_DATA); return; }
+      if (currentUser?.registrationOnly || currentUser?.accountDisabled) { setData(EMPTY_DATA); return; }
       const [
         settings, staff, teams, players, parents, subscriptions,
         attendance, matches, trainings, transactions, tournaments, evaluations, notifications,
         auditLogs, loginLogs,
       ] = await Promise.all([
         db.getSettings(),
-        parent ? [] : db.getStaff(), parent ? [] : db.getTeams(), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
+        parent ? [] : db.getStaff(), db.getTeams(role === 'coach'), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
         role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
-        parent ? [] : db.getTrainings(), finance ? db.getTransactions() : [], parent ? [] : db.getTournaments(),
+        db.getTrainings(), finance ? db.getTransactions() : [], (parent || role === 'coach') ? [] : db.getTournaments(),
         db.getEvaluations(), db.getNotifications(),
-        manager ? db.getAuditLogs() : [], manager ? db.getLoginAuditLogs() : [],
+        // Audit history is needed only on the manager's audit-logs page.
+        [], [],
       ]);
       if (!stillCurrent()) return;
       setData({
         settings, staff, teams, players, parents, subscriptions,
-        attendance, matches, trainings, transactions, tournaments, evaluations, notifications,
-        auditLogs, loginLogs,
+        attendance, matches, trainings, transactions,
+        tournaments: role === 'coach' ? dataRef.current.tournaments : tournaments,
+        evaluations, notifications,
+        // Preserve already loaded audit data across ordinary realtime refreshes.
+        auditLogs: manager ? dataRef.current.auditLogs : auditLogs,
+        loginLogs: manager ? dataRef.current.loginLogs : loginLogs,
       });
     } catch (err) {
       console.error('[load]', err);
-      if (stillCurrent()) setLoadError('تعذر تحميل البيانات. يرجى المحاولة مرة أخرى. / Could not load your data. Please try again.');
+      if (stillCurrent()) setLoadError(err instanceof Error ? err.message : JSON.stringify(err));
     } finally {
       if (stillCurrent()) setLoading(false);
-      loadInFlight.current = null;
-      if (refreshQueued.current && userRef.current === userId) {
+      // A different identity may have started another request while this one
+      // was pending. Never let the old promise clear or schedule the new one.
+      const ownsFlight = loadInFlight.current === run;
+      if (ownsFlight) {
+        loadInFlight.current = null;
+        loadInFlightUserId.current = undefined;
+      }
+      if (ownsFlight && refreshQueued.current && userRef.current === userId) {
         refreshQueued.current = false;
-        window.setTimeout(() => { void loadAllData(); }, 0);
+        window.setTimeout(() => { void loadAllDataRef.current(); }, 0);
       }
     }
-    })();
+    });
     loadInFlight.current = run;
+    loadInFlightUserId.current = userId;
     return run;
   }, [currentUser]);
+  loadAllDataRef.current = loadAllData;
+
+  // Load coach tournaments on demand in either view; reuse the result across tabs.
+  const tournamentCache = useRef<{ userId: string; loaded: boolean; inFlight: boolean }>({ userId: '', loaded: false, inFlight: false });
+  const [tournamentError, setTournamentError] = useState(false);
+  const [tournamentRetry, setTournamentRetry] = useState(0);
+  useEffect(() => {
+    const userId = currentUser?.authUserId || '';
+    if (tournamentCache.current.userId !== userId) {
+      tournamentCache.current = { userId, loaded: false, inFlight: false };
+      setTournamentError(false);
+    }
+    if (currentUser?.role !== 'coach' || (currentTab !== 'ai-center' && currentTab !== 'tournaments')) return;
+    const cache = tournamentCache.current;
+    if (cache.loaded || cache.inFlight) return;
+    cache.inFlight = true;
+    setTournamentError(false);
+    void db.getTournaments().then(tournaments => {
+      if (userRef.current !== userId || tournamentCache.current !== cache) return;
+      cache.loaded = true;
+      setData(previous => ({ ...previous, tournaments }));
+    }).catch(error => {
+      if (userRef.current === userId && tournamentCache.current === cache) {
+        console.error('[coach tournaments]', error);
+        setTournamentError(true);
+      }
+    }).finally(() => {
+      cache.inFlight = false;
+    });
+  }, [currentUser?.authUserId, currentUser?.role, currentTab, tournamentRetry]);
+
+  // Fetch potentially large audit histories only when a manager opens that page.
+  // Keep this independent of the main dashboard refresh to avoid extra requests.
+  useEffect(() => {
+    if (currentUser?.role !== 'manager' || currentTab !== 'audit-logs') return;
+    const userId = currentUser.authUserId;
+    let cancelled = false;
+    void Promise.all([db.getAuditLogs(), db.getLoginAuditLogs()])
+      .then(([auditLogs, loginLogs]) => {
+        if (cancelled || userRef.current !== userId) return;
+        setData(previous => ({ ...previous, auditLogs, loginLogs }));
+      })
+      .catch(error => {
+        if (!cancelled) console.error('[audit-logs]', error);
+      });
+    return () => { cancelled = true; };
+  }, [currentUser?.authUserId, currentUser?.role, currentTab]);
+
+  // A session switch invalidates every result belonging to the previous
+  // account and prevents its old snapshot from flashing in the new account.
+  const previousUserId = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const nextUserId = currentUser?.authUserId;
+    if (previousUserId.current === nextUserId) return;
+    previousUserId.current = nextUserId;
+    loadSequence.current += 1;
+    refreshQueued.current = false;
+    setData(EMPTY_DATA);
+    setLoadError(null);
+    setLoading(Boolean(currentUser));
+  }, [currentUser]);
+
+  const handleStaffApproved = useCallback(async () => {
+    const member = await db.getCurrentUser();
+    if (!member || member.registrationOnly) return;
+    setCurrentUser(member);
+    setActiveRole(member.role);
+    setCurrentTab('dashboard');
+    await loadAllData();
+  }, [loadAllData, setCurrentTab]);
 
   useEffect(() => {
     if (currentUser) loadAllData();
@@ -347,13 +447,26 @@ export default function App() {
       debounce = setTimeout(() => void loadAllData(), 500);
     };
     const channels = tables.map((t) => db.subscribe(t, handleChange));
-    const refreshVisible = () => { if (document.visibilityState === 'visible') void loadAllData(); };
-    const poll = window.setInterval(refreshVisible, 60000);
+    // Avoid duplicate full-data refreshes from focus and polling in quick succession.
+    // Realtime changes still refresh independently via the debounced handler above.
+    let lastBackgroundRefresh = Date.now();
+    const refreshVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastBackgroundRefresh < 60000) return;
+      lastBackgroundRefresh = now;
+      void loadAllData();
+    };
+    // Keep a periodic fallback for missed realtime events, but reduce its cost.
+    const poll = window.setInterval(refreshVisible, 300000);
     window.addEventListener('focus', refreshVisible);
+    document.addEventListener('visibilitychange', refreshVisible);
     return () => {
       if (debounce) clearTimeout(debounce);
       channels.forEach((ch) => supabaseUnsubscribe(ch));
-      clearInterval(poll); window.removeEventListener('focus', refreshVisible);
+      clearInterval(poll);
+      window.removeEventListener('focus', refreshVisible);
+      document.removeEventListener('visibilitychange', refreshVisible);
     };
   }, [currentUser, loadAllData]);
 
@@ -400,10 +513,8 @@ export default function App() {
   const handleLogin = (user: CurrentUser) => {
     setCurrentUser(user);
     setActiveRole(user.role);
-    const view = new URLSearchParams(window.location.search).get('view');
-    setCurrentTab(user.registrationOnly && user.registrationMode === 'staff'
-      ? 'staff-registration'
-      : (user.role === 'parent' && !user.registrationOnly ? 'dashboard' : (view === 'registration' || view === 'staff-registration' ? view : 'dashboard')));
+    const params = new URLSearchParams(window.location.search);
+    setCurrentTab(getPostLoginTab(user, params.get('view'), params.get('tab'), ALLOWED_VIEWS_BY_ROLE));
   };
 
   const handleLogout = async () => {
@@ -481,35 +592,38 @@ export default function App() {
     registration: t.registration,
     'staff-registration': lang === 'ar' ? 'طلب موظف / مدرب' : 'Staff / coach application',
     'registration-admin': t.registrationAdmin,
+    'site-content': lang === 'ar' ? 'إدارة الموقع' : 'Website content',
     settings: t.settings,
   };
 
   const roleLabels: Record<Role, string> = {
     manager: t.manager,
     accountant: t.accountant,
-    coach: t.coach,
+    coach: currentUser?.coachKind === 'assistant' ? (lang === 'ar' ? 'مساعد مدرب' : 'Assistant coach') : currentUser?.coachKind === 'goalkeeper' ? (lang === 'ar' ? 'مدرب حراس' : 'Goalkeeper coach') : t.coach,
     receptionist: t.receptionist,
     parent: t.parent,
   };
 
-  const allowedViewsByRole: Record<Exclude<Role, 'parent'>, ViewId[]> = {
-    manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings'],
-    accountant: ['dashboard', 'subscriptions', 'reports', 'messages', 'ai-center'],
-    coach: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'messages', 'ai-center'],
-    receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
-  };
-
   const safeCurrentTab: ViewId = activeRole === 'parent'
     ? 'dashboard'
-    : (allowedViewsByRole[activeRole]?.includes(currentTab) ? currentTab : 'dashboard');
+    : (ALLOWED_VIEWS_BY_ROLE[activeRole]?.includes(currentTab) ? currentTab : 'dashboard');
 
   useEffect(() => {
     if (!currentUser || currentUser.registrationOnly || currentUser.role === 'parent') return;
     if (currentTab === 'staff-registration') return;
-    if (!allowedViewsByRole[currentUser.role as Exclude<Role, 'parent'>]?.includes(currentTab)) {
+    if (!ALLOWED_VIEWS_BY_ROLE[currentUser.role as Exclude<Role, 'parent'>]?.includes(currentTab)) {
       setCurrentTab('dashboard');
     }
-  }, [currentUser, currentTab]);
+  }, [currentUser, currentTab, setCurrentTab]);
+
+  // Match the database coach scope, including assistants of team/GK coaches.
+  const sessionTeams = useMemo(() => {
+    if (currentUser?.role !== 'coach') return data.teams;
+    const actor = data.staff.find(member => member.id === currentUser.id);
+    if (!actor || actor.status !== 'active' || actor.role !== 'coach') return [];
+    // Already scoped by get_my_coach_team_ids, including assistant supervisors.
+    return data.teams;
+  }, [currentUser, data.staff, data.teams]);
 
   const renderView = () => {
     switch (safeCurrentTab) {
@@ -518,7 +632,7 @@ export default function App() {
       case 'approvals':
         return <Approvals teams={data.teams} onRefresh={loadAllData} players={data.players} staff={data.staff} onPlayersChange={savePlayers} onStaffChange={saveStaff} activeRole={activeRole} lang={lang} />;
       case 'players':
-        return <Players players={data.players} parents={data.parents} teams={data.teams} evaluations={data.evaluations} onPlayersChange={savePlayers} activeRole={activeRole} lang={lang} />;
+        return <Players players={data.players} parents={data.parents} teams={data.teams} evaluations={data.evaluations} onPlayersChange={savePlayers} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
       case 'parents':
         return <Parents parents={data.parents} players={data.players} teams={data.teams} subscriptions={data.subscriptions} onParentsChange={saveParents} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
       case 'teams':
@@ -528,9 +642,9 @@ export default function App() {
       case 'subscriptions':
         return <Subscriptions onPayment={async (sub, method) => { await db.recordPayment(sub, method); await loadAllData(); }} subscriptions={data.subscriptions} transactions={data.transactions} players={data.players} parents={data.parents} staff={data.staff} settings={data.settings} onSubscriptionsChange={saveSubscriptions} onTransactionsChange={saveTransactions} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
       case 'attendance':
-        return <AttendanceView players={data.players} teams={data.teams} matches={data.matches} trainings={data.trainings} attendance={data.attendance} onAttendanceChange={saveAttendance} activeRole={activeRole} lang={lang} />;
+        return <AttendanceView players={data.players} teams={sessionTeams} matches={data.matches} trainings={data.trainings} attendance={data.attendance} onAttendanceChange={saveAttendance} activeRole={activeRole} lang={lang} />;
       case 'schedules':
-        return <Schedules matches={data.matches} trainings={data.trainings} teams={data.teams} players={data.players} onMatchesChange={saveMatches} onTrainingsChange={saveTrainings} activeRole={activeRole} lang={lang} />;
+        return <Schedules matches={data.matches} trainings={data.trainings} teams={sessionTeams} players={data.players} onMatchesChange={saveMatches} onTrainingsChange={saveTrainings} activeRole={activeRole} lang={lang} />;
       case 'tournaments':
         return <Tournaments tournaments={data.tournaments} onTournamentsChange={saveTournaments} activeRole={activeRole} lang={lang} />;
       case 'evaluations':
@@ -545,15 +659,14 @@ export default function App() {
         return <AICenter players={data.players} subscriptions={data.subscriptions} transactions={data.transactions} staff={data.staff} teams={data.teams} matches={data.matches} trainings={data.trainings} tournaments={data.tournaments} parents={data.parents} attendance={data.attendance} evaluations={data.evaluations} activeRole={activeRole} lang={lang} onRefresh={loadAllData} />;
       case 'messages':
         return <Messages players={data.players} teams={data.teams} subscriptions={data.subscriptions} activeRole={activeRole} lang={lang} />;
+      case 'site-content':
+        return <SiteContent activeRole={activeRole} lang={lang} staff={data.staff} />;
       case 'settings':
         return data.settings ? <SettingsView settings={data.settings} onSettingsChange={saveSettings} activeRole={activeRole} lang={lang} /> : null;
       case 'registration':
         return <Registration lang={lang} />;
       case 'staff-registration':
-        return currentUser ? <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => {
-          const member = await db.getCurrentUser();
-          if (member && !member.registrationOnly) { setCurrentUser(member); setActiveRole(member.role); setCurrentTab('dashboard'); await loadAllData(); }
-        }} /> : null;
+        return currentUser ? <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={handleStaffApproved} /> : null;
       case 'registration-admin':
         return <RegistrationAdmin lang={lang} activeRole={activeRole} teams={data.teams} players={data.players} onRefresh={loadAllData} />;
       default:
@@ -563,12 +676,15 @@ export default function App() {
 
   const unreadCount = useMemo(() => data.notifications.filter((n) => !n.read).length, [data.notifications]);
 
+  const legalPath = window.location.pathname.replace(/\/+$/, '') || '/';
+  if (legalPath === '/privacy' || legalPath === '/terms') return <LegalPage page={legalPath === '/privacy' ? 'privacy' : 'terms'} />;
+
   const oauthConsentPath = (window.location.pathname.replace(/\/+$/, '') || '/') === '/oauth/consent';
 
   if (!authReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <Loader2 className="h-8 w-8 text-emerald-600 animate-spin" />
+        <Loader2 className="h-8 w-8 text-brand-600 animate-spin" />
       </div>
     );
   }
@@ -583,7 +699,7 @@ export default function App() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
         <div className="text-center">
-          <Loader2 className="h-8 w-8 text-emerald-600 animate-spin mx-auto mb-3" />
+          <Loader2 className="h-8 w-8 text-brand-600 animate-spin mx-auto mb-3" />
           <p className="text-sm font-bold text-slate-500 dark:text-slate-400">{lang === 'ar' ? 'جاري تحميل البيانات...' : 'Loading data...'}</p>
         </div>
       </div>
@@ -596,7 +712,7 @@ export default function App() {
         <div className="text-center max-w-sm">
           <p className="text-sm font-black text-red-600 mb-2">{lang === 'ar' ? 'خطأ في تحميل البيانات' : 'Failed to load data'}</p>
           <p className="text-xs text-slate-500 mb-4">{loadError}</p>
-          <button onClick={loadAllData} className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold cursor-pointer hover:bg-emerald-500 transition">
+          <button onClick={loadAllData} className="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-bold cursor-pointer hover:bg-brand-500 transition">
             {lang === 'ar' ? 'إعادة المحاولة' : 'Retry'}
           </button>
         </div>
@@ -620,34 +736,27 @@ export default function App() {
     );
   }
 
-  if (currentUser.registrationOnly && currentUser.registrationMode === 'staff') {
-    return <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => {
-      const member = await db.getCurrentUser();
-      if (member && !member.registrationOnly) { setCurrentUser(member); setActiveRole(member.role); setCurrentTab('dashboard'); await loadAllData(); }
-    }} />;
+  if (currentUser.registrationOnly && currentUser.registrationMode === 'choose') {
+    return <OnboardingChoice lang={lang} onSelected={handleLogin} onLogout={handleLogout} />;
   }
 
-  // A staff application must belong to the applicant's own Auth account.
-  // Never render the application form using an already-active manager/parent/staff session.
+  if (currentUser.registrationOnly && currentUser.registrationMode === 'staff') {
+    return <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={handleStaffApproved} />;
+  }
+
+  // Existing accounts must not submit another applicant's request.
+  // Return to the public home without displaying a sign-out/interstitial box.
   if (currentTab === 'staff-registration' && !currentUser.registrationOnly) {
-    return (
-      <main className="min-h-screen bg-slate-950 p-4 sm:p-8 flex items-center justify-center" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-        <div className="w-full max-w-xl rounded-2xl bg-white p-6 sm:p-8 shadow-xl text-slate-900">
-          <h1 className="text-xl font-black mb-2">{lang === 'ar' ? 'طلب انضمام مدير / موظف / مدرب' : 'Manager / staff / coach application'}</h1>
-          <p className="text-sm text-slate-600 mb-5">{lang === 'ar'
-            ? 'أنت مسجل الدخول حاليًا بحساب موجود في النظام. لحماية الحسابات، يجب أن يكون طلب الانضمام مرتبطًا بحساب المتقدم نفسه، وليس بحساب المدير أو ولي الأمر الحالي.'
-            : 'You are currently signed in with an existing account. For account safety, the application must belong to the applicant’s own account, not the current manager or parent account.'}</p>
-          <button onClick={async () => { await handleLogout(); window.location.search = '?view=staff-registration'; }} className="w-full rounded-xl bg-emerald-600 py-3 font-bold text-white hover:bg-emerald-500">
-            {lang === 'ar' ? 'تسجيل الخروج والبدء بحساب المتقدم' : 'Sign out and continue with applicant account'}
-          </button>
-        </div>
-      </main>
-    );
+    return <ReturnToPublicHome />;
   }
 
   if (currentUser.role === 'parent') {
-    return <ParentPortal key={currentUser.authUserId} openRegistration={currentTab === 'registration'} user={currentUser} players={data.players} subscriptions={data.subscriptions}
-      attendance={data.attendance} evaluations={data.evaluations} settings={data.settings} lang={lang} setLang={setLang} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />;
+    return <ErrorBoundary lang={lang}>
+      <Suspense fallback={<ViewLoader lang={lang} />}>
+        <ParentPortal key={currentUser.authUserId} openRegistration={currentTab === 'registration'} user={currentUser} players={data.players} subscriptions={data.subscriptions}
+          attendance={data.attendance} teams={data.teams} trainings={data.trainings} evaluations={data.evaluations} settings={data.settings} lang={lang} setLang={setLang} darkMode={darkMode} setDarkMode={setDarkMode} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />
+      </Suspense>
+    </ErrorBoundary>;
   }
 
   return (
@@ -655,6 +764,7 @@ export default function App() {
       className={`flex min-h-screen transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100 dark' : 'bg-slate-50 text-slate-800'}`}
       dir={lang === 'ar' ? 'rtl' : 'ltr'}
     >
+      {currentUser?.role === 'coach' && <CoachOnboardingTour userId={currentUser.authUserId || currentUser.id} lang={lang} navigate={setCurrentTab} />}
       <Sidebar
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
@@ -674,7 +784,7 @@ export default function App() {
 
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
         {/* Header */}
-        <header className={`border-b py-3 sm:py-4 px-4 sm:px-6 lg:px-8 flex items-center justify-between shadow-sm shrink-0 transition-colors duration-300 ${
+        <header className={`border-b py-3 sm:py-4 px-4 sm:px-6 lg:px-8 flex flex-wrap gap-3 items-center justify-between shadow-sm shrink-0 transition-colors duration-300 ${
           darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
         }`}>
           <div className="flex items-center gap-3">
@@ -692,15 +802,16 @@ export default function App() {
                 {viewTitles[safeCurrentTab]}
               </h1>
               <p className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-0.5 flex items-center gap-1.5">
-                <Target className="h-3 w-3 text-emerald-500" />
+                <Target className="h-3 w-3 text-brand-500" />
                 {data.settings?.name?.trim() || t.academyName} · {roleLabels[activeRole]}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <PublicHomeLink lang={lang} darkMode={darkMode}/>
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <Clock className="h-3.5 w-3.5 text-emerald-500" />
+              <Clock className="h-3.5 w-3.5 text-brand-500" />
               <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 tabular-nums">{currentTime}</span>
             </div>
 
@@ -733,7 +844,7 @@ export default function App() {
                             setData((p) => ({ ...p, notifications: read }));
                             void db.markNotificationsRead(unreadIds).then(loadAllData).catch(handleSyncError);
                           }}
-                          className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                          className="text-[11px] font-bold text-brand-600 hover:text-brand-700 cursor-pointer"
                         >
                           {t.markAllRead}
                         </button>
@@ -761,7 +872,7 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-black text-sm shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-sm shrink-0">
                 {currentUser.name.charAt(0)}
               </div>
               <div className="hidden sm:block">
@@ -783,9 +894,19 @@ export default function App() {
 
         {/* Main content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+        {currentUser.role === 'coach' && (safeCurrentTab === 'ai-center' || safeCurrentTab === 'tournaments') && tournamentError && (
+          <div role="alert" className="mb-4 rounded-lg border border-amber-400 p-3 text-sm">
+            <span>{lang === 'ar' ? 'تعذر تحميل بيانات البطولات.' : 'Failed to load tournaments.'}</span>
+            <button className="ms-3 underline font-bold" onClick={() => setTournamentRetry(value => value + 1)}>
+              {lang === 'ar' ? 'إعادة المحاولة' : 'Retry'}
+            </button>
+          </div>
+        )}
           <div className="max-w-7xl mx-auto animate-fadeIn">
-            <ErrorBoundary lang={lang}>
-              <Suspense fallback={<ViewLoader />}>
+            <ErrorBoundary key={`${currentUser.authUserId}:${activeRole}:${safeCurrentTab}`} lang={lang}>
+              {/* A new section must not retain the previous section while its chunk loads. */}
+              <Suspense key={`${activeRole}:${safeCurrentTab}`} fallback={<ViewLoader lang={lang} />}>
+                <ContextualShooterAI page={safeCurrentTab} role={activeRole} lang={lang} />
                 {renderView()}
               </Suspense>
             </ErrorBoundary>
@@ -800,4 +921,13 @@ export default function App() {
 
 function supabaseUnsubscribe(channel: ReturnType<typeof db.subscribe>) {
   try { supabase.removeChannel(channel); } catch { /* ignore */ }
+}
+
+
+
+
+
+function ReturnToPublicHome() {
+  useEffect(() => { window.location.replace('/'); }, []);
+  return null;
 }

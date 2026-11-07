@@ -27,36 +27,23 @@ create table if not exists public.player_evaluations (
   check (status <> 'published' or (
     technical_score is not null and tactical_score is not null and physical_score is not null and mental_score is not null and discipline_score is not null and published_at is not null
   ))
-)
+);
 
+create index if not exists idx_player_evaluations_player_date on public.player_evaluations(player_id, evaluation_date desc);
 
+create index if not exists idx_player_evaluations_team_date on public.player_evaluations(team_id, evaluation_date desc);
 
-create index if not exists idx_player_evaluations_player_date on public.player_evaluations(player_id, evaluation_date desc)
+create index if not exists idx_player_evaluations_coach on public.player_evaluations(coach_id);
 
+create index if not exists idx_player_evaluations_status on public.player_evaluations(status);
 
-create index if not exists idx_player_evaluations_team_date on public.player_evaluations(team_id, evaluation_date desc)
+alter table public.player_evaluations enable row level security;
 
+revoke all on public.player_evaluations from anon;
 
-create index if not exists idx_player_evaluations_coach on public.player_evaluations(coach_id)
+revoke insert, update, delete on public.player_evaluations from authenticated;
 
-
-create index if not exists idx_player_evaluations_status on public.player_evaluations(status)
-
-
-
-alter table public.player_evaluations enable row level security
-
-
-
-revoke all on public.player_evaluations from anon
-
-
-revoke insert, update, delete on public.player_evaluations from authenticated
-
-
-grant select on public.player_evaluations to authenticated
-
-
+grant select on public.player_evaluations to authenticated;
 
 create policy player_evaluations_select_authorized
 on public.player_evaluations
@@ -66,9 +53,7 @@ using (
   internal.has_role(array['manager'::text])
   or (internal.has_role(array['coach'::text]) and internal.is_coach_of_team(team_id))
   or (internal.has_role(array['parent'::text]) and status = 'published' and internal.is_parent_of_player(player_id))
-)
-
-
+);
 
 create or replace function public.save_player_evaluation(
   p_evaluation_id uuid,
@@ -151,9 +136,7 @@ begin
 
   return p_evaluation_id;
 end;
-$$
-
-
+$$;
 
 create or replace function public.publish_player_evaluation(p_evaluation_id uuid)
 returns public.player_evaluations
@@ -195,21 +178,14 @@ begin
 
   return v_eval;
 end;
-$$
+$$;
 
+revoke all on function public.save_player_evaluation(uuid,text,date,text,smallint,smallint,smallint,smallint,smallint,text,text,text,text) from public, anon;
 
+grant execute on function public.save_player_evaluation(uuid,text,date,text,smallint,smallint,smallint,smallint,smallint,text,text,text,text) to authenticated;
 
-revoke all on function public.save_player_evaluation(uuid,text,date,text,smallint,smallint,smallint,smallint,smallint,text,text,text,text) from public, anon
+revoke all on function public.publish_player_evaluation(uuid) from public, anon;
 
+grant execute on function public.publish_player_evaluation(uuid) to authenticated;
 
-grant execute on function public.save_player_evaluation(uuid,text,date,text,smallint,smallint,smallint,smallint,smallint,text,text,text,text) to authenticated
-
-
-revoke all on function public.publish_player_evaluation(uuid) from public, anon
-
-
-grant execute on function public.publish_player_evaluation(uuid) to authenticated
-
-
-
-comment on table public.player_evaluations is 'Historical player performance evaluations. Coaches can evaluate only players on their assigned team; parents can read published evaluations for their own children.'
+comment on table public.player_evaluations is 'Historical player performance evaluations. Coaches can evaluate only players on their assigned team; parents can read published evaluations for their own children.';

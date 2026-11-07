@@ -1,5 +1,29 @@
 export type ValidationResult = { valid: boolean; message?: string };
 
+export function validatePlayerParentLink(
+  parentId: string,
+  availableParentIds: readonly string[],
+  previousParentId?: string,
+  lang: 'ar' | 'en' = 'ar',
+): ValidationResult {
+  // An existing unlinked record may still receive unrelated corrections.
+  // Creating another unlinked player or clearing a working link is refused.
+  if (!parentId.trim()) {
+    if (previousParentId !== undefined && !previousParentId.trim()) return { valid: true };
+    return {
+      valid: false,
+      message: lang === 'ar' ? 'اختر ولي الأمر لربط اللاعب به.' : 'Select a parent to link this player.',
+    };
+  }
+  if (!availableParentIds.includes(parentId)) {
+    return {
+      valid: false,
+      message: lang === 'ar' ? 'ولي الأمر المحدد غير متاح. حدّث الصفحة واختره مجددًا.' : 'The selected parent is unavailable. Refresh and select the parent again.',
+    };
+  }
+  return { valid: true };
+}
+
 export function validateRequired(value: string, label: string): ValidationResult {
   if (!value || !value.trim()) return { valid: false, message: `${label} مطلوب` };
   return { valid: true };

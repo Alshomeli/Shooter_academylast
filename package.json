@@ -9,7 +9,12 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "test": "node --import tsx --test tests/*.test.mjs"
+    "test": "node --import tsx --test --test-concurrency=1 tests/*.test.mjs",
+    "test:isolated": "node --import tsx --test tests/*isolated-db.test.mjs tests/family-payments-release-readiness.test.mjs",
+    "supabase:local:start": "node scripts/supabase-local.mjs start",
+    "supabase:local:status": "node scripts/supabase-local.mjs status",
+    "supabase:local:stop": "node scripts/supabase-local.mjs stop",
+    "supabase:local:check": "node scripts/supabase-local.mjs check"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
@@ -22,7 +27,7 @@
     "@eslint/js": "^9.9.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^6.1.1",
+    "@vitejs/plugin-react": "^5.2.0",
     "autoprefixer": "^10.4.18",
     "eslint": "^9.39.5",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
@@ -33,6 +38,6 @@
     "tsx": "4.20.6",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.70.1",
-    "vite": "^8.3.1"
+    "vite": "^7.3.7"
   }
 }

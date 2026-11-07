@@ -7,14 +7,14 @@ const reports = await readFile(new URL('../supabase/functions/telegram-reply/rep
 const entry = await readFile(new URL('../supabase/functions/telegram-reply/index.ts',import.meta.url),'utf8');
 const source = reports.replace(/^export /gm,'') + '\n' + entry.replace(/^import .*;\n/gm,'');
 const js = nodeModule.stripTypeScriptTypes ? nodeModule.stripTypeScriptTypes(source) : (await import('typescript')).default.transpileModule(source,{compilerOptions:{target:99,module:0}}).outputText;
-function runtime(){
+function runtime(identityRole){
  let handler;const calls=[];
  const env={TELEGRAM_BOT_TOKEN:'test-token',TELEGRAM_WEBHOOK_SECRET:'test-secret',TELEGRAM_MANAGER_CHAT_IDS:'42',SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test-key'};
  const fetch=async(url,options={})=>{
   calls.push({url:String(url),options});const u=new URL(String(url));
   if(u.host==='api.telegram.org')return Response.json({ok:true});
   const table=u.pathname.split('/').at(-1);
-  const rows=table==='matches'?[{id:'m',opponent:'المحرق',match_date:'2026-09-30',result:'scheduled'}]:[];
+  const rows=table==='telegram_identity' && identityRole ? [{role:identityRole,user_id:'parent-user'}] : table==='matches'?[{id:'m',opponent:'المحرق',match_date:'2026-09-30',result:'scheduled'}]:[];
   return Response.json(rows,{headers:{'content-range':`0-0/${rows.length}`}});
  };
  new Function('Deno','fetch','crypto',js)({env:{get:k=>env[k]},serve:fn=>{handler=fn;}},fetch,webcrypto);
@@ -37,4 +37,13 @@ test('authorized private report includes matches and uses read-only REST',async(
 });
 test('unsupported write requests do not read or mutate the database',async()=>{
  const r=runtime();await r.run(r.request(42,'test-secret','private','احذف المباراة اليوم'));const writes=r.calls.filter(c=>c.url.includes('/rest/v1/') && ['PATCH','DELETE','PUT'].includes(c.options.method));assert.equal(writes.length,0);
+});
+
+test('linked parent cannot reach manager reports or administrative data',async()=>{
+ const r=runtime('parent');await r.run(r.request(99,'test-secret','private','تفاصيل اليوم'));
+ const reads=r.calls.filter(c=>c.url.includes('/rest/v1/') && (c.options.method||'GET')==='GET');
+ assert.equal(reads.length,0);
+ assert.equal(r.calls.filter(c=>c.url.includes('/rpc/')).length,1);
+ const output=r.calls.filter(c=>c.url.includes('sendMessage')).map(c=>JSON.parse(c.options.body).text).join(' ');
+ assert.match(output,/بوابة ولي الأمر/);
 });

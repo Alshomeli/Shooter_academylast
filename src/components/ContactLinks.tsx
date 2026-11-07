@@ -32,7 +32,7 @@ export function ContactLinks({ phone, whatsapp, email, address, small }: Contact
           href={waLink}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${cls} bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 hover:bg-emerald-200 dark:hover:bg-emerald-900/50`}
+          className={`${cls} bg-brand-100 dark:bg-brand-900/30 text-brand-600 hover:bg-brand-200 dark:hover:bg-brand-900/50`}
           title="WhatsApp"
         >
           <MessageCircle className={size} />

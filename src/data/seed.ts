@@ -160,7 +160,7 @@ export const SEED_TOURNAMENTS: Tournament[] = [
 export const SEED_SETTINGS: Settings = {
   id: 'settings-1',
   name: 'أكاديمية شوتر لكرة القدم - Shooter Academy',
-  logoUrl: '🎯',
+  logoUrl: '/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy 2.png',
   phone: '+973 17123456',
   email: 'info@shooter-academy.com',
   address: 'مملكة البحرين، المنامة، ضاحية السيف - مجمع الملاعب الحديثة',
