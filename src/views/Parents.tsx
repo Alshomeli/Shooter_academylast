@@ -101,7 +101,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {t.add}
@@ -109,7 +109,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
         )}
       </PageHeader>
 
-      {inviteNotice && <p role="status" className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-800 dark:border-brand-900/40 dark:bg-brand-900/20 dark:text-brand-300">{inviteNotice}</p>}
+      {inviteNotice && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300">{inviteNotice}</p>}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
@@ -120,7 +120,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.searchParents}
-            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
+            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
           />
         </div>
         <select
@@ -161,7 +161,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-xl shrink-0">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-xl shrink-0">
                       {p.avatarUrl || '👤'}
                     </div>
                     <div className="min-w-0">
@@ -193,12 +193,12 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
                 <div className="space-y-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                   <div className="flex items-center gap-1.5">
                     <Phone className="h-3.5 w-3.5 shrink-0" />
-                    <a href={`tel:${p.phone.replace(/[^0-9]/g, '')}`} dir="ltr" className="hover:text-brand-600 transition">{p.phone}</a>
+                    <a href={`tel:${p.phone.replace(/[^0-9]/g, '')}`} dir="ltr" className="hover:text-emerald-600 transition">{p.phone}</a>
                   </div>
                   {p.email && (
                     <div className="flex items-center gap-1.5">
                       <Mail className="h-3.5 w-3.5 shrink-0" />
-                      <a href={`mailto:${p.email}`} dir="ltr" className="truncate hover:text-brand-600 transition">{p.email}</a>
+                      <a href={`mailto:${p.email}`} dir="ltr" className="truncate hover:text-emerald-600 transition">{p.email}</a>
                     </div>
                   )}
                   {p.address && (
@@ -220,7 +220,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
                   {activeRole === 'manager' && !p.userId && p.status === 'active' && p.email && (
                     <button
                       onClick={() => void prepareInvite(p)}
-                      className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg text-[11px] font-bold text-brand-700 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/30 transition cursor-pointer"
+                      className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg text-[11px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition cursor-pointer"
                       title={isAr ? 'دعوة حساب ولي الأمر' : 'Invite parent account'}
                     >
                       <UserPlus className="h-3.5 w-3.5" />
@@ -486,7 +486,7 @@ function ParentDetail({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-3xl">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-3xl">
           {parent.avatarUrl || '👤'}
         </div>
         <div className="min-w-0">
@@ -503,9 +503,9 @@ function ParentDetail({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <InfoRow label={isAr ? 'الرقم الوطني' : 'National ID'} value={parent.nationalId || na} ltr />
         <InfoRow label={t.nationality} value={parent.nationality || na} />
-        <InfoRow label={t.phone} value={<a href={`tel:${parent.phone.replace(/[^0-9]/g, '')}`} className="hover:text-brand-600 transition">{parent.phone}</a>} ltr />
-        <InfoRow label={isAr ? 'رقم واتساب' : 'WhatsApp number'} value={parent.whatsappPhone ? <a href={`https://wa.me/${parent.whatsappPhone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="hover:text-brand-600 transition">{parent.whatsappPhone}</a> : na} ltr />
-        <InfoRow label={t.email} value={parent.email ? <a href={`mailto:${parent.email}`} className="hover:text-brand-600 transition">{parent.email}</a> : na} ltr />
+        <InfoRow label={t.phone} value={<a href={`tel:${parent.phone.replace(/[^0-9]/g, '')}`} className="hover:text-emerald-600 transition">{parent.phone}</a>} ltr />
+        <InfoRow label={isAr ? 'رقم واتساب' : 'WhatsApp number'} value={parent.whatsappPhone ? <a href={`https://wa.me/${parent.whatsappPhone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="hover:text-emerald-600 transition">{parent.whatsappPhone}</a> : na} ltr />
+        <InfoRow label={t.email} value={parent.email ? <a href={`mailto:${parent.email}`} className="hover:text-emerald-600 transition">{parent.email}</a> : na} ltr />
         <InfoRow label={t.occupation} value={parent.occupation || na} />
         <InfoRow label={t.workplace} value={parent.workplace || na} />
         <InfoRow label={t.joinedDate} value={parent.joinedDate} />
@@ -526,7 +526,7 @@ function ParentDetail({
       {/* Children list */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <UsersRound className="h-4 w-4 text-brand-600" />
+          <UsersRound className="h-4 w-4 text-emerald-600" />
           <h4 className="text-sm font-black text-slate-900 dark:text-white">
             {isAr ? `الأبناء المسجلون (${children.length})` : `Registered children (${children.length})`}
           </h4>
@@ -544,7 +544,7 @@ function ParentDetail({
                   key={kid.id}
                   className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-sm shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-black text-sm shrink-0">
                     #{kid.jerseyNumber}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -559,7 +559,7 @@ function ParentDetail({
                     </Badge>
                     {sub && (
                       <Badge color={sub.status === 'paid' ? 'blue' : 'amber'}>
-                        {sub.status === 'cancelled' ? (lang === 'ar' ? 'ملغى' : 'Cancelled') : sub.status === 'exempt' ? t.exempt : sub.status === 'paid' ? t.paid : t.unpaid}
+                        {sub.status === 'paid' ? t.paid : t.unpaid}
                       </Badge>
                     )}
                   </div>
@@ -574,7 +574,7 @@ function ParentDetail({
 }
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

@@ -154,10 +154,9 @@ test('telegram manager assistant keeps payment proof and staff document queries 
 });
 
 
-test('Parent Telegram identity is supported without administrative operations', () => {
+test('Telegram operations are restricted to manager and coach linked roles', () => {
   assert.match(source, /role\?: "manager" \| "coach"/);
-  assert.match(source, /role\?: "manager" \| "coach" \| "parent"/);
-  assert.ok(source.indexOf('if (telegramIdentity.role === "parent")') < source.indexOf('let incomingText = textMessage'));
+  assert.doesNotMatch(source, /role\?: "manager" \| "coach" \| "parent"/);
   assert.match(source, /linkedIdentity\?\.role !== "coach"/);
   assert.match(source, /telegram_identity/);
 });

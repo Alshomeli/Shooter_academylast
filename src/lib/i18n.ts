@@ -61,7 +61,6 @@ export const t = {
     yearly: 'سنوي',
     paid: 'مدفوع',
     unpaid: 'غير مدفوع',
-    exempt: 'معفي',
     present: 'حاضر',
     absent: 'غائب',
     excused: 'بعذر',
@@ -92,9 +91,6 @@ export const t = {
     transactionsTab: 'المعاملات المالية',
     remindersTab: 'التذكيرات والتحليلات',
     addSubscription: 'إضافة اشتراك',
-    addExemptSubscription: 'إضافة اشتراك معفى',
-    activateSubscription: 'تفعيل الاشتراك',
-    exemptHint: 'إعفاء كامل من الرسوم للفترة المحددة — يستمر اللاعب دون حركة مالية',
     addTransaction: 'إضافة معاملة',
     searchPlayer: 'ابحث باسم اللاعب...',
     noMatchingSubs: 'لا توجد اشتراكات مطابقة',
@@ -601,7 +597,6 @@ export const t = {
     yearly: 'Yearly',
     paid: 'Paid',
     unpaid: 'Unpaid',
-    exempt: 'Exempt',
     present: 'Present',
     absent: 'Absent',
     excused: 'Excused',
@@ -632,9 +627,6 @@ export const t = {
     transactionsTab: 'Transactions',
     remindersTab: 'Reminders & Analytics',
     addSubscription: 'Add Subscription',
-    addExemptSubscription: 'Add Exempt Subscription',
-    activateSubscription: 'Activate Subscription',
-    exemptHint: 'Full fee exemption for the specified period — player continues with no cash transaction',
     addTransaction: 'Add Transaction',
     searchPlayer: 'Search by player name...',
     noMatchingSubs: 'No matching subscriptions',
@@ -1091,8 +1083,6 @@ export function roleLabel(role: string, lang: Lang): string {
   const t = tr(lang);
   const map: Record<string, string> = {
     manager: t.manager, accountant: t.accountant, coach: t.coach,
-    assistant_coach: lang === 'ar' ? 'مساعد مدرب' : 'Assistant coach',
-    goalkeeper_coach: lang === 'ar' ? 'مدرب حراس' : 'Goalkeeper coach',
     receptionist: t.receptionist, parent: t.parent,
   };
   return map[role] || role;
@@ -1102,7 +1092,7 @@ export function statusLabel(status: string, lang: Lang): string {
   const t = tr(lang);
   const map: Record<string, string> = {
     active: t.active, inactive: t.inactive, pending: t.pending,
-    paid: t.paid, unpaid: t.unpaid, exempt: t.exempt,
+    paid: t.paid, unpaid: t.unpaid,
     present: t.present, absent: t.absent, excused: t.excused,
     win: t.win, loss: t.loss, draw: t.draw, scheduled: t.scheduled,
   };
@@ -1122,7 +1112,6 @@ export function planLabel(plan: string, lang: Lang): string {
 export function categoryLabel(category: string, lang: Lang): string {
   const t = tr(lang);
   const map: Record<string, string> = {
-    subscription_support: lang === 'ar' ? 'رسوم مُعادة — إعفاء أو انسحاب' : 'Fee refunds — exemption or withdrawal',
     subscription: t.catSubscription, salary: t.catSalary,
     equipment: t.catEquipment, rent: t.catRent, other: t.catOther,
   };
@@ -1158,4 +1147,3 @@ export function dayLabel(day: string, lang: Lang): string {
   };
   return map[day] || day;
 }
-

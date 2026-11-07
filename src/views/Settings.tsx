@@ -15,9 +15,7 @@ interface SettingsProps {
 }
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
-
-const DEFAULT_ACADEMY_LOGO = '/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy 2.png';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
 
 function isImageLogo(value: string) {
   return /^(https?:\/\/|data:image\/|\/)/i.test(value.trim());
@@ -84,8 +82,8 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
         className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm"
       >
         {/* Info banner */}
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-brand-50/60 dark:bg-brand-900/10 border border-brand-100 dark:border-brand-900/20 mb-7">
-          <div className="shrink-0 w-9 h-9 rounded-lg bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50/60 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/20 mb-7">
+          <div className="shrink-0 w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
             <Target className="h-5 w-5" />
           </div>
           <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -109,23 +107,20 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
           {/* Logo + Name (full row) */}
           <div className="md:col-span-2 flex items-end gap-3">
             <div className="shrink-0">
-              <span className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 {isAr ? 'الشعار' : 'Logo'}
-              </span>
-              <div className="w-24 h-24 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
-                <img
-                  src={form.logoUrl && isImageLogo(form.logoUrl) ? form.logoUrl : DEFAULT_ACADEMY_LOGO}
-                  alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'}
-                  className="w-full h-full object-contain p-2"
-                />
+              </label>
+              <div className="w-14 h-14 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-2xl overflow-hidden">
+                {form.logoUrl && isImageLogo(form.logoUrl)
+                  ? <img src={form.logoUrl} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="w-full h-full object-contain p-1" />
+                  : <span>{form.logoUrl || '⚽'}</span>}
               </div>
             </div>
             <div className="flex-1">
-              <label htmlFor="settings-name" className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 {isAr ? 'اسم الأكاديمية' : 'Academy name'}
               </label>
               <input
-                id="settings-name"
                 value={form.name}
                 onChange={(e) => set('name', e.target.value)}
                 className={inputCls}
@@ -133,12 +128,11 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
                 required
               />
             </div>
-            <div className="w-40 shrink-0">
-              <label htmlFor="settings-logo-url" className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+            <div className="w-28 shrink-0">
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 {isAr ? 'الشعار' : 'Logo'}
               </label>
               <input
-                id="settings-logo-url"
                 value={form.logoUrl}
                 onChange={(e) => set('logoUrl', e.target.value)}
                 className={inputCls}
@@ -150,9 +144,8 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
             </div>
           </div>
 
-          <Field id="settings-phone" icon={<Phone className="h-3.5 w-3.5" />} label={t.phone}>
+          <Field icon={<Phone className="h-3.5 w-3.5" />} label={t.phone}>
             <input
-              id="settings-phone"
               value={form.phone}
               onChange={(e) => set('phone', e.target.value)}
               className={inputCls}
@@ -161,9 +154,8 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
             />
           </Field>
 
-          <Field id="settings-email" icon={<Mail className="h-3.5 w-3.5" />} label={t.email}>
+          <Field icon={<Mail className="h-3.5 w-3.5" />} label={t.email}>
             <input
-              id="settings-email"
               type="email"
               value={form.email}
               onChange={(e) => set('email', e.target.value)}
@@ -174,9 +166,8 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
           </Field>
 
           <div className="md:col-span-2">
-            <Field id="settings-address" icon={<MapPin className="h-3.5 w-3.5" />} label={t.address}>
+            <Field icon={<MapPin className="h-3.5 w-3.5" />} label={t.address}>
               <input
-                id="settings-address"
                 value={form.address}
                 onChange={(e) => set('address', e.target.value)}
                 className={inputCls}
@@ -196,28 +187,24 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
           <FeeField
-            id="settings-fee-monthly"
             label={t.monthly}
             value={form.subscriptionFeeMonthly}
             onChange={(v) => set('subscriptionFeeMonthly', v)}
             currency={t.currency}
           />
           <FeeField
-            id="settings-fee-quarterly"
             label={t.quarterly}
             value={form.subscriptionFeeQuarterly}
             onChange={(v) => set('subscriptionFeeQuarterly', v)}
             currency={t.currency}
           />
           <FeeField
-            id="settings-fee-semi-annual"
             label={t.semiAnnual}
             value={form.subscriptionFeeSemiAnnual ?? 0}
             onChange={(v) => set('subscriptionFeeSemiAnnual', v)}
             currency={t.currency}
           />
           <FeeField
-            id="settings-fee-yearly"
             label={t.yearly}
             value={form.subscriptionFeeYearly}
             onChange={(v) => set('subscriptionFeeYearly', v)}
@@ -237,17 +224,17 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
           subtitle={isAr ? 'البيانات التي ستظهر لولي الأمر عند دفع الاشتراك' : 'Transfer details shown to parents when paying subscriptions'}
         />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <Field id="settings-benefit-iban" label={isAr ? 'رقم IBAN' : 'IBAN'}>
-            <input id="settings-benefit-iban" value={form.benefitIban ?? ''} onChange={(e)=>set('benefitIban',e.target.value.replace(/\s+/g,'').toUpperCase())} className={inputCls} dir="ltr" placeholder="BH..." />
+          <Field label={isAr ? 'رقم IBAN' : 'IBAN'}>
+            <input value={form.benefitIban ?? ''} onChange={(e)=>set('benefitIban',e.target.value.replace(/\s+/g,'').toUpperCase())} className={inputCls} dir="ltr" placeholder="BH..." />
           </Field>
-          <Field id="settings-benefit-account-name" label={isAr ? 'اسم صاحب الحساب' : 'Account name'}>
-            <input id="settings-benefit-account-name" value={form.benefitAccountName ?? ''} onChange={(e)=>set('benefitAccountName',e.target.value)} className={inputCls} />
+          <Field label={isAr ? 'اسم صاحب الحساب' : 'Account name'}>
+            <input value={form.benefitAccountName ?? ''} onChange={(e)=>set('benefitAccountName',e.target.value)} className={inputCls} />
           </Field>
-          <Field id="settings-payment-instructions-ar" label={isAr ? 'تعليمات الدفع بالعربية' : 'Arabic payment instructions'}>
-            <textarea id="settings-payment-instructions-ar" value={form.paymentInstructionsAr ?? ''} onChange={(e)=>set('paymentInstructionsAr',e.target.value)} className={inputCls} rows={3} />
+          <Field label={isAr ? 'تعليمات الدفع بالعربية' : 'Arabic payment instructions'}>
+            <textarea value={form.paymentInstructionsAr ?? ''} onChange={(e)=>set('paymentInstructionsAr',e.target.value)} className={inputCls} rows={3} />
           </Field>
-          <Field id="settings-payment-instructions-en" label={isAr ? 'تعليمات الدفع بالإنجليزية' : 'English payment instructions'}>
-            <textarea id="settings-payment-instructions-en" value={form.paymentInstructionsEn ?? ''} onChange={(e)=>set('paymentInstructionsEn',e.target.value)} className={inputCls} rows={3} dir="ltr" />
+          <Field label={isAr ? 'تعليمات الدفع بالإنجليزية' : 'English payment instructions'}>
+            <textarea value={form.paymentInstructionsEn ?? ''} onChange={(e)=>set('paymentInstructionsEn',e.target.value)} className={inputCls} rows={3} dir="ltr" />
           </Field>
         </div>
 
@@ -255,7 +242,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
         <div className="flex justify-end pt-5 border-t border-slate-100 dark:border-slate-800">
           <button
             type="submit" disabled={saving}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Save className="h-4 w-4" />
             {t.save}
@@ -266,7 +253,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
       {/* ----------------------- Success toast ----------------------- */}
       {saved && (
         <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-2.5 px-5 py-3 rounded-xl bg-brand-600 text-white shadow-2xl shadow-brand-900/20 animate-fadeIn"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-2.5 px-5 py-3 rounded-xl bg-emerald-600 text-white shadow-2xl shadow-emerald-900/20 animate-fadeIn"
           role="status"
           aria-live="polite"
         >
@@ -294,7 +281,7 @@ function SectionHeader({
   subtitle?: string;
 }) {
   const colors: Record<string, string> = {
-    emerald: 'bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400',
+    emerald: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
     amber: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
   };
   return (
@@ -314,19 +301,17 @@ function SectionHeader({
 }
 
 function Field({
-  id,
   icon,
   label,
   children,
 }: {
-  id: string;
   icon?: React.ReactNode;
   label: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label htmlFor={id} className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+      <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
         {icon && <span className="text-slate-400">{icon}</span>}
         {label}
       </label>
@@ -336,13 +321,11 @@ function Field({
 }
 
 function FeeField({
-  id,
   label,
   value,
   onChange,
   currency,
 }: {
-  id: string;
   label: string;
   value: number;
   onChange: (v: number) => void;
@@ -350,12 +333,11 @@ function FeeField({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
         {label}
       </label>
       <div className="relative">
         <input
-          id={id}
           type="number"
           min={0}
           step={0.5}

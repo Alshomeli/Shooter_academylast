@@ -1,4 +1,6 @@
-grant insert, update on public.player_evaluations to authenticated;
+grant insert, update on public.player_evaluations to authenticated
+
+
 
 create policy player_evaluations_insert_authorized
 on public.player_evaluations
@@ -18,7 +20,9 @@ with check (
       )
     )
   )
-);
+)
+
+
 
 create policy player_evaluations_update_authorized
 on public.player_evaluations
@@ -40,7 +44,9 @@ with check (
     and coach_id = internal.current_staff_id()
     and internal.is_coach_of_team(team_id)
   )
-);
+)
+
+
 
 create or replace function public.save_player_evaluation(
   p_evaluation_id uuid,
@@ -117,7 +123,9 @@ begin
 
   return p_evaluation_id;
 end;
-$$;
+$$
+
+
 
 create or replace function public.publish_player_evaluation(p_evaluation_id uuid)
 returns public.player_evaluations
@@ -151,4 +159,4 @@ begin
 
   return v_eval;
 end;
-$$;
+$$

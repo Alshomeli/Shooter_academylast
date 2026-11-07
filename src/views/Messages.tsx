@@ -6,7 +6,6 @@ import {
 import type { Player, Team, Subscription, Lang, Role } from '@/types';
 import { PageHeader, Badge, EmptyState, inputCls } from '@/components/ui';
 import { tr } from '@/lib/i18n';
-import { normalizeWhatsAppPhone } from '@/lib/whatsapp-phone';
 
 interface MessagesProps {
   players: Player[];
@@ -31,7 +30,7 @@ const BUSINESS_WHATSAPP_DISPLAY = '0097332287776';
 const BUSINESS_WHATSAPP_LINK = '97332287776';
 
 function cleanPhone(phone: string): string {
-  return normalizeWhatsAppPhone(phone);
+  return phone.replace(/[^0-9]/g, '');
 }
 
 export function Messages({ players, teams, subscriptions, lang }: MessagesProps) {
@@ -179,18 +178,18 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
               onClick={() => setMessageType(mt.value)}
               className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all cursor-pointer text-center ${
                 active
-                  ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 shadow-md'
-                  : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-brand-300'
+                  ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-md'
+                  : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-300'
               }`}
             >
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                 active
-                  ? 'bg-brand-600 text-white'
+                  ? 'bg-emerald-600 text-white'
                   : `bg-${mt.color}-100 dark:bg-${mt.color}-900/30 text-${mt.color}-600 dark:text-${mt.color}-400`
               }`}>
                 <Icon className="h-5 w-5" />
               </div>
-              <span className={`text-xs font-bold ${active ? 'text-brand-700 dark:text-brand-300' : 'text-slate-600 dark:text-slate-300'}`}>
+              <span className={`text-xs font-bold ${active ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-300'}`}>
                 {isAr ? mt.label : mt.labelEn}
               </span>
             </button>
@@ -250,8 +249,8 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
                 onClick={() => setRecipientMode(mode.value)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
                   active
-                    ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
-                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand-400'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -287,7 +286,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={isAr ? 'ابحث باسم اللاعب أو ولي الأمر...' : 'Search by player or parent name...'}
-                className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 pr-10 pl-4 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
+                className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 pr-10 pl-4 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
@@ -300,8 +299,8 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
                     onClick={() => setSelectedPlayerId(p.id)}
                     className={`flex items-center gap-2 p-2.5 rounded-xl border text-right transition cursor-pointer ${
                       isSelected
-                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
-                        : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-brand-300'
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                        : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-emerald-300'
                     }`}
                   >
                     <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-sm shrink-0">
@@ -311,7 +310,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
                       <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{p.name}</p>
                       <p className="text-[10px] text-slate-400 truncate">{p.parentName}</p>
                     </div>
-                    {isSent && <CheckCircle2 className="h-4 w-4 text-brand-500 shrink-0" aria-label={isAr ? 'تم فتح قناة الإرسال' : 'Sending channel opened'} />}
+                    {isSent && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" aria-label={isAr ? 'تم فتح قناة الإرسال' : 'Sending channel opened'} />}
                   </button>
                 );
               })}
@@ -339,18 +338,18 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
       {/* Action bar */}
       {recipients.length > 0 ? (
         <div className="sticky bottom-4 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-brand-50 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-900/40 px-3 py-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/40 px-3 py-2.5">
             <div>
-              <p className="text-xs font-black text-brand-800 dark:text-brand-200">
+              <p className="text-xs font-black text-emerald-800 dark:text-emerald-200">
                 {isAr ? 'واتساب الأعمال للإشعارات الجماعية' : 'Business WhatsApp for bulk notifications'}
               </p>
-              <p className="text-xs text-brand-700 dark:text-brand-300" dir="ltr">{BUSINESS_WHATSAPP_DISPLAY}</p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300" dir="ltr">{BUSINESS_WHATSAPP_DISPLAY}</p>
             </div>
             <a
               href={`https://wa.me/${BUSINESS_WHATSAPP_LINK}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg bg-brand-600 hover:bg-brand-500 text-white px-3 py-2 text-xs font-bold transition"
+              className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 text-xs font-bold transition"
             >
               {isAr ? 'فتح واتساب الأعمال' : 'Open Business WhatsApp'}
             </a>
@@ -363,7 +362,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
               </p>
               <button
                 onClick={handleBulkWhatsApp}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold transition cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition cursor-pointer shadow-sm"
               >
                 <Send className="h-4 w-4" />
                 {isAr ? 'فتح أول مستلم في واتساب' : 'Open first recipient in WhatsApp'}
@@ -390,7 +389,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
                       {player.parentName} · {teamName} · <span dir="ltr">{player.parentPhone}</span>
                     </p>
                   </div>
-                  {isSent && <CheckCircle2 className="h-4 w-4 text-brand-500 shrink-0" />}
+                  {isSent && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => handleCopyMessage(player)}
@@ -410,7 +409,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
                     )}
                     <button
                       onClick={() => handleSendWhatsApp(player)}
-                      className="p-1.5 rounded-lg bg-brand-100 dark:bg-brand-900/30 text-brand-600 hover:bg-brand-200 dark:hover:bg-brand-900/50 transition cursor-pointer"
+                      className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition cursor-pointer"
                       title={isAr ? 'واتساب' : 'WhatsApp'}
                     >
                       <MessageCircle className="h-3.5 w-3.5" />

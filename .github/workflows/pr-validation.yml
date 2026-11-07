@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feature/family-receipt-intake-no-merge-20261018
   pull_request:
     branches:
       - main
@@ -38,9 +37,6 @@ jobs:
 
       - name: Test
         run: npm test
-
-      - name: Isolated family payment PostgreSQL checks
-        run: npm run test:isolated
 
       - name: Typecheck
         run: npm run typecheck

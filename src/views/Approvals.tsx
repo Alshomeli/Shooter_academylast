@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ShieldCheck, CheckCircle, XCircle, Clock, UserPlus, Search, AlertCircle, Loader2,
 } from 'lucide-react';
@@ -31,11 +31,11 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
   const [reviewTarget, setReviewTarget] = useState<{ id: string; action: 'needs_info' | 'rejected' } | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
 
-  const loadApplications = useCallback(async () => {
+  const loadApplications = async () => {
     if (activeRole !== 'manager') return;
     try { setApplications(await getStaffApplications()); setApplicationError(''); }
     catch { setApplicationError(isAr ? 'تعذر تحميل طلبات الانضمام.' : 'Could not load staff applications.'); }
-  }, [activeRole, isAr]);
+  };
 
   useEffect(() => {
     void loadApplications();
@@ -43,7 +43,7 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
     const timer = setInterval(refreshVisible, 60000);
     window.addEventListener('focus', refreshVisible);
     return () => { clearInterval(timer); window.removeEventListener('focus', refreshVisible); };
-  }, [loadApplications]);
+  }, [activeRole, lang]);
 
   if (activeRole !== 'manager') {
     return (
@@ -172,7 +172,7 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
               </div>
               {app.status === 'pending' && (
                 <div className="flex flex-wrap gap-2">
-                  <button disabled={processingId === app.id} onClick={() => void handleApplicationApproval(app.id)} className="flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-black text-white shadow-sm hover:bg-brand-500 disabled:opacity-50"><CheckCircle className="h-4 w-4" />{isAr ? 'قبول وتفعيل الحساب' : 'Approve & activate account'}</button>
+                  <button disabled={processingId === app.id} onClick={() => void handleApplicationApproval(app.id)} className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-black text-white shadow-sm hover:bg-emerald-500 disabled:opacity-50"><CheckCircle className="h-4 w-4" />{isAr ? 'قبول وتفعيل الحساب' : 'Approve & activate account'}</button>
                   <button disabled={!!processingId} onClick={() => { setReviewTarget({ id: app.id, action: 'needs_info' }); setReviewNotes(''); }} className="rounded-lg bg-amber-100 px-3 py-2 text-xs font-bold text-amber-800">{isAr ? 'طلب تعديل' : 'Request changes'}</button>
                   <button disabled={!!processingId} onClick={() => { setReviewTarget({ id: app.id, action: 'rejected' }); setReviewNotes(''); }} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{isAr ? 'رفض' : 'Reject'}</button>
                 </div>
@@ -203,7 +203,7 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
-            <CheckCircle className="h-4 w-4 text-brand-500" />
+            <CheckCircle className="h-4 w-4 text-emerald-500" />
             <span className="text-xs font-bold text-slate-500">{t.active}</span>
           </div>
           <p className="text-2xl font-black text-slate-900 dark:text-white">{activeStaff.length}</p>
@@ -226,7 +226,7 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.searchStaff}
-            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
+            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
           />
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -238,7 +238,7 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
                 onClick={() => setFilter(f)}
                 className={`px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
                   filter === f
-                    ? 'bg-brand-600 text-white'
+                    ? 'bg-emerald-600 text-white'
                     : 'bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
@@ -264,7 +264,7 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
                   member.status === 'pending'
                     ? 'bg-gradient-to-br from-amber-500 to-amber-600'
                     : member.status === 'active'
-                      ? 'bg-gradient-to-br from-brand-500 to-brand-600'
+                      ? 'bg-gradient-to-br from-emerald-500 to-emerald-600'
                       : 'bg-gradient-to-br from-slate-400 to-slate-500'
                 }`}>
                   {member.status === 'pending' ? <UserPlus className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
@@ -289,7 +289,7 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
                     <button
                       onClick={() => setActionTarget({ id: member.id, action: 'approve' })}
                       disabled={processingId === member.id}
-                      className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold text-white bg-brand-600 hover:bg-brand-500 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {processingId === member.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />} {t.approve}
                     </button>

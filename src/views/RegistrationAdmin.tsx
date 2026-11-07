@@ -1,5 +1,3 @@
-import { supabase } from '@/lib/supabase';
-import { PreplatformCoverage } from '@/components/PreplatformCoverage';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   ClipboardList, Search, Eye, Clock, CheckCircle2, XCircle,
@@ -9,8 +7,6 @@ import {
 import type { Lang, Role, Team, Player, RegistrationApplication, RegistrationStatus } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard } from '@/components/ui';
 import { tr } from '@/lib/i18n';
-import { BASE_MONTHLY_FEE_BHD } from '@/lib/family-payment';
-import { readChildFeeOverrides, saveManagerChildFee } from '@/lib/family-payment-db';
 import {
   fetchAllApplications, reviewApplication, approveApplication,
   finalizePlayer, getSignedUrl, errorMessage, deleteRegistrationApplication,
@@ -42,7 +38,6 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
   const [apps, setApps] = useState<RegistrationApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [actionNotice, setActionNotice] = useState('');
   const [selectedApp, setSelectedApp] = useState<RegistrationApplication | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -60,20 +55,14 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
   // Photo URLs
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
 
-  const loadApps = useCallback(async (afterSaved = false) => {
+  const loadApps = useCallback(async () => {
     if (activeRole !== 'manager') return [];
     setLoading(true);
     try {
       const data = await fetchAllApplications();
       setApps(data); setError('');
       return data;
-    } catch (e) {
-      if (afterSaved) {
-        setError('');
-        setActionNotice(lang === 'ar' ? 'تم حفظ القرار، لكن تعذر تحديث القائمة. حدّث الصفحة لعرض الحالة الجديدة؛ لا حاجة لإعادة القرار.' : 'Decision saved, but the list could not refresh. Refresh the page to see the new status; do not repeat the action.');
-      } else setError(errorMessage(e, lang === 'ar'));
-      return null;
-    }
+    } catch (e) { setError(errorMessage(e, lang === 'ar')); return null; }
     finally { setLoading(false); }
   }, [activeRole, lang]);
 
@@ -137,19 +126,16 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
   /* ---- Actions ---- */
   const handleAction = async (type: string, appId: string) => {
     if (actionLoading || activeRole !== 'manager') return;
-    setActionLoading(true); setError(''); setActionNotice('');
+    setActionLoading(true); setError('');
     try {
       if ((type === 'needs_info' || type === 'rejected') && !reviewNotes.trim()) throw new Error(isAr ? 'اكتب سبب القرار لولي الأمر.' : 'Add a reason for the parent.');
       if (type === 'approved') await approveApplication(appId);
       else if (type === 'under_review' || type === 'needs_info' || type === 'rejected') await reviewApplication(appId, type, reviewNotes.trim());
       else throw new Error('Unknown registration action.');
-      setActionNotice(isAr ? 'تم حفظ القرار بنجاح.' : 'Decision saved successfully.');
-      setReviewNotes(''); setConfirmAction(null);
-      const updated = await loadApps(true);
+      const updated = await loadApps();
       if (updated && selectedApp?.id === appId) setSelectedApp(updated.find(a => a.id === appId) || null);
       setReviewNotes(''); setConfirmAction(null);
-      try { await onRefresh(); }
-      catch { setActionNotice(isAr ? 'تم حفظ القرار، لكن تعذر تحديث بيانات الشاشة. حدّث الصفحة دون إعادة القرار.' : 'Decision saved, but screen data could not refresh. Refresh without repeating the action.'); }
+      await onRefresh();
     } catch (e) { setError(errorMessage(e, isAr)); throw e; }
     finally { setActionLoading(false); }
   };
@@ -200,7 +186,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
     );
   }
 
-  const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
+  const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
 
   return (
     <div className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
@@ -218,7 +204,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
         <StatCard icon={<XCircle className="h-5 w-5" />} label={t.regStatusRejected} value={counts.rejected} color="red" />
       </div>
 
-      <button onClick={() => void loadApps()} disabled={loading} className="text-sm font-bold text-brand-600">{isAr ? 'تحديث الطلبات' : 'Refresh applications'}</button>
+      <button onClick={() => void loadApps()} disabled={loading} className="text-sm font-bold text-emerald-600">{isAr ? 'تحديث الطلبات' : 'Refresh applications'}</button>
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-48">
@@ -248,12 +234,11 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
         <label className="text-xs text-slate-500">{isAr ? 'من تاريخ' : 'From'}<input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inputCls} /></label>
         <label className="text-xs text-slate-500">{isAr ? 'إلى تاريخ' : 'To'}<input type="date" min={dateFrom} value={dateTo} onChange={e => setDateTo(e.target.value)} className={inputCls} /></label>
       </div>
-      {actionNotice && <p role="status" className="text-sm text-slate-600 dark:text-slate-300 font-bold">{actionNotice}</p>}
       {error && <p role="alert" className="text-xs text-red-500 font-bold">{error}</p>}
 
       {/* List */}
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-brand-500" /></div>
+        <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-emerald-500" /></div>
       ) : filtered.length === 0 ? (
         <EmptyState icon={<ClipboardList className="h-8 w-8" />} title={t.regNoApplications} />
       ) : (
@@ -295,7 +280,6 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
         <Modal open onClose={() => { if (!actionLoading) setSelectedApp(null); }} title={t.regApplicationDetails} size="xl">
           {error && <p role="alert" className="text-sm text-red-600 mb-3">{error}</p>}
           <AppDetail
-            onRefresh={onRefresh}
             app={selectedApp}
             lang={lang}
             teams={teams}
@@ -356,9 +340,8 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
 
 function AppDetail({
   app, lang, teams, players, photoUrls, assignData, actionLoading, reviewNotes, setReviewNotes,
-  onAction, onDelete, onFinalize, onAssignChange, onRefresh,
+  onAction, onDelete, onFinalize, onAssignChange,
 }: {
-  onRefresh: () => Promise<void>;
   app: RegistrationApplication;
   lang: Lang;
   teams: Team[];
@@ -376,72 +359,7 @@ function AppDetail({
   const t = tr(lang);
   const isAr = lang === 'ar';
 
-  const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
-
-  const [monthlyFees, setMonthlyFees] = useState<Record<string, number>>({});
-  const [feeError, setFeeError] = useState('');
-  const [savingFee, setSavingFee] = useState<string | null>(null);
-  const [feeNotice, setFeeNotice] = useState('');
-  const [exemptionReasons, setExemptionReasons] = useState<Record<string, string>>({});
-  useEffect(() => {
-    let alive = true;
-    setFeeError(''); setFeeNotice('');
-    readChildFeeOverrides(app.children.map(child => child.id))
-      .then(fees => { if (alive) setMonthlyFees(fees); })
-      .catch(error => { if (alive) setFeeError(error instanceof Error ? error.message : String(error)); });
-    return () => { alive = false; };
-  }, [app.id, app.children]);
-  const saveFee = async (childId: string) => {
-    setFeeError(''); setFeeNotice(''); setSavingFee(childId);
-    try {
-      await saveManagerChildFee(childId, monthlyFees[childId] ?? BASE_MONTHLY_FEE_BHD);
-      setFeeNotice(isAr ? 'تم حفظ الرسوم لهذا اللاعب.' : 'Player monthly fee saved.');
-    } catch (error) { setFeeError(error instanceof Error ? error.message : String(error)); }
-    finally { setSavingFee(null); }
-  };
-
-  const issueFee = async (childId: string) => {
-    if (savingFee) return;
-    setFeeError(''); setFeeNotice(''); setSavingFee(childId);
-    try {
-      const fee = monthlyFees[childId];
-      if (fee === undefined) throw new Error(isAr ? 'احفظ قرار الرسوم لهذا اللاعب أولاً.' : 'Save this player fee decision first.');
-      await saveManagerChildFee(childId, fee);
-      const { error } = await supabase.rpc('issue_registration_subscription', {
-        p_child_id: childId,
-        p_exemption_reason: fee === 0 ? (exemptionReasons[childId] || '').trim() : null,
-      });
-      if (error) throw error;
-      setFeeNotice(fee === 0 ? (isAr ? 'تم إصدار الإعفاء وتفعيل اللاعب.' : 'Exemption issued and player activated.') : (isAr ? 'تم إصدار طلب الدفع وإشعار ولي الأمر.' : 'Payment request issued and parent notified.'));
-      await onRefresh();
-    } catch (error) { setFeeError(error instanceof Error ? error.message : String(error)); }
-    finally { setSavingFee(null); }
-  };
-
-  const approveAndIssue = async () => {
-    if (savingFee || actionLoading) return;
-    setFeeError(''); setFeeNotice(''); setSavingFee('all');
-    try {
-      const decisions: Record<string, {amount: number; reason: string | null}> = {};
-      for (const child of app.children) {
-        const amount = monthlyFees[child.id] ?? BASE_MONTHLY_FEE_BHD;
-        if (!Number.isFinite(amount) || amount < 0 || amount > 25 || Math.round(amount * 1000) !== amount * 1000)
-          throw new Error(isAr ? 'راجع مبلغ كل لاعب (0 إلى 25 د.ب).' : 'Check each player fee (BHD 0 to 25).');
-        const reason = (exemptionReasons[child.id] || '').trim();
-        if (amount === 0 && reason.length < 3)
-          throw new Error(isAr ? 'سبب الإعفاء مطلوب لكل لاعب معفى.' : 'Exemption reason is required for each exempt player.');
-        decisions[child.id] = { amount, reason: amount === 0 ? reason : null };
-      }
-      const { error } = await supabase.rpc('approve_registration_with_subscriptions', {
-        p_application_id: app.id,
-        p_decisions: decisions,
-      });
-      if (error) throw error;
-      setFeeNotice(isAr ? 'تم اعتماد التسجيل وإصدار اشتراك لكل لاعب، بما فيهم المعفون.' : 'Registration approved and subscriptions issued for all children, including exemptions.');
-      await onRefresh();
-    } catch (error) { setFeeError(error instanceof Error ? error.message : String(error)); }
-    finally { setSavingFee(null); }
-  };
+  const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
 
   const regTypeLabel = app.registrationType === 'initial_onboarding' ? t.regTypeOnboardingShort : t.regTypeNewShort;
   const cfg = STATUS_CONFIGS[app.status];
@@ -489,7 +407,6 @@ function AppDetail({
         </dl>
       </Section>
 
-      {(feeError || feeNotice) && <p role="status" className="text-sm text-amber-700">{feeError || feeNotice}</p>}
       {/* Children */}
       <Section title={t.regChildrenInfo} icon={<Users className="h-4 w-4" />}>
         {app.children.map((child) => {
@@ -499,7 +416,7 @@ function AppDetail({
           const assign = child.playerId ? assignData[child.playerId] : undefined;
           const activated = players.some(p => p.id === child.playerId && p.status === 'active' && p.teamId);
           const birthYear = child.birthDate?.slice(0, 4);
-          const birthTeam = teams.find((tm) => tm.status !== 'inactive' && tm.categoryKind !== 'goalkeeper' && birthYear && new RegExp(`(^|[^0-9])${birthYear}([^0-9]|$)`).test(tm.name));
+          const birthTeam = teams.find((tm) => birthYear && new RegExp(`(^|[^0-9])${birthYear}([^0-9]|$)`).test(tm.name));
           const selectedTeam = birthTeam || (assign?.teamId ? teams.find((tm) => tm.id === assign.teamId) : undefined);
 
           return (
@@ -522,23 +439,11 @@ function AppDetail({
                 </div>
               </div>
 
-              <div id={`registration-fee-${child.id}`} className="flex flex-wrap items-end gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-slate-900">
-                <label className="text-xs font-bold">
-                  {isAr ? 'الرسوم الشهرية المعتمدة (د.ب)' : 'Approved monthly fee (BHD)'}
-                  <input type="number" min="0" max="25" step="0.001" className="mt-1 block w-28 rounded border bg-white p-2 text-sm" value={monthlyFees[child.id] ?? BASE_MONTHLY_FEE_BHD} onChange={e => setMonthlyFees(previous => ({ ...previous, [child.id]: Number(e.target.value) }))} />
-                </label>
-                <button type="button" disabled={savingFee !== null} onClick={() => void saveFee(child.id)} className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
-                  {savingFee === child.id ? (isAr ? 'جارٍ الحفظ…' : 'Saving…') : (isAr ? 'حفظ رسوم اللاعب' : 'Save player fee')}
-                </button>
-                <div className="flex flex-col gap-2"><label className="text-xs font-bold">{isAr ? 'سبب الإعفاء (مطلوب للمبلغ صفر)' : 'Exemption reason (required for zero amount)'}<input type="text" maxLength={1000} value={exemptionReasons[child.id] || ''} onChange={e => setExemptionReasons(v => ({ ...v, [child.id]: e.target.value }))} className="mt-1 block w-full rounded border bg-white p-2 text-sm" /></label>{app.status === 'approved' && child.playerId && <button type="button" disabled={savingFee !== null} onClick={() => void issueFee(child.id)} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{isAr ? 'إصدار الاشتراك (للطلبات المعتمدة سابقاً)' : 'Issue subscription for previously approved registration'}</button>}</div>
-                <p className="text-xs text-amber-900">{isAr ? 'احفظ الرسوم لكل لاعب، ثم أصدر طلب الدفع بعد قبول التسجيل. المبلغ صفر يتطلب سبب إعفاء.' : 'Save each player fee, then issue the payment request after approval. Zero requires an exemption reason.'}</p>
-              </div>
-              {app.status === 'approved' && child.playerId && <PreplatformCoverage playerId={child.playerId} lang={lang} onSaved={onRefresh} />}
               {/* Child documents */}
               {childDocs.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {childDocs.map((doc) => (
-                    <a key={doc.id} href={photoUrls[doc.storagePath]} target="_blank" rel="noreferrer" aria-disabled={!photoUrls[doc.storagePath]} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-brand-600 underline">
+                    <a key={doc.id} href={photoUrls[doc.storagePath]} target="_blank" rel="noreferrer" aria-disabled={!photoUrls[doc.storagePath]} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-emerald-600 underline">
                       <FileText className="h-3 w-3" /> {docTypeLabel(doc.documentType)}
                     </a>
                   ))}
@@ -548,8 +453,8 @@ function AppDetail({
               {/* Assignment UI for approved apps */}
               {activated && <Badge color="emerald">{isAr ? 'تم توزيع اللاعب وتفعيله' : 'Player assigned and activated'}</Badge>}
               {app.status === 'approved' && child.playerId && !activated && (
-                <div className="p-3 rounded-lg bg-brand-50 dark:bg-brand-900/10 border border-brand-200 dark:border-brand-900/30 space-y-3">
-                  <h4 className="text-xs font-black text-brand-700 dark:text-brand-400 flex items-center gap-1.5">
+                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 space-y-3">
+                  <h4 className="text-xs font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
                     <Trophy className="h-3.5 w-3.5" /> {t.regAssignTeam}
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -590,7 +495,7 @@ function AppDetail({
                   <button
                     onClick={() => onFinalize(child.playerId!)}
                     disabled={actionLoading || !selectedTeam}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-brand-600 hover:bg-brand-500 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Shield className="h-3.5 w-3.5" />}
                     {isAr ? 'تفعيل وإسناد للفئة' : 'Activate and assign category'}
@@ -609,10 +514,10 @@ function AppDetail({
         </div>
       )}
 
-      {/* Registration decision and separate payment-request action. */}
-      {(app.status === 'pending' || app.status === 'under_review' || app.status === 'needs_info' || app.status === 'approved') && (
+      {/* Action buttons */}
+      {(app.status === 'pending' || app.status === 'under_review' || app.status === 'needs_info') && (
         <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-          {app.status !== 'approved' && <div>
+          <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.regReviewNotes}</label>
             <textarea
               value={reviewNotes}
@@ -621,7 +526,7 @@ function AppDetail({
               rows={2}
               placeholder={isAr ? 'أضف ملاحظات المراجعة (اختياري)...' : 'Add review notes (optional)...'}
             />
-          </div>}
+          </div>
           <div className="flex flex-wrap gap-2">
             {app.status === 'pending' && (
               <ActionBtn onClick={() => onAction('under_review')} loading={actionLoading} color="blue" icon={<Eye className="h-3.5 w-3.5" />}>
@@ -630,34 +535,17 @@ function AppDetail({
             )}
             {(app.status === 'pending' || app.status === 'under_review') && (
               <ActionBtn onClick={() => onAction('needs_info')} loading={actionLoading} color="amber" icon={<AlertTriangle className="h-3.5 w-3.5" />}>
-                {isAr ? 'طلب استكمال بيانات التسجيل' : 'Request missing registration details'}
+                {t.regRequestInfo}
               </ActionBtn>
             )}
             {(app.status === 'pending' || app.status === 'under_review') && (
-              <button type="button" disabled={savingFee !== null || actionLoading} onClick={() => void approveAndIssue()} className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
-                {savingFee === 'all' ? (isAr ? 'جارٍ اعتماد جميع الاشتراكات…' : 'Approving subscriptions…') : (isAr ? 'اعتماد التسجيل والاشتراكات' : 'Approve registration and subscriptions')}
-              </button>
+              <ActionBtn onClick={() => onAction('approved')} loading={actionLoading} color="emerald" icon={<CheckCircle2 className="h-3.5 w-3.5" />}>
+                {t.regApprove}
+              </ActionBtn>
             )}
-            {app.status !== 'approved' && <ActionBtn onClick={() => onAction('rejected')} loading={actionLoading} color="red" icon={<XCircle className="h-3.5 w-3.5" />}>
+            <ActionBtn onClick={() => onAction('rejected')} loading={actionLoading} color="red" icon={<XCircle className="h-3.5 w-3.5" />}>
               {t.regReject}
-            </ActionBtn>}
-            <button type="button" disabled={savingFee !== null || actionLoading}
-              onClick={() => {
-                if (app.status !== 'approved') {
-                  setFeeError(isAr ? 'يجب الموافقة على تسجيل اللاعب أولاً، ثم إصدار طلب دفع الاشتراك.' : 'Approve registration before issuing a subscription payment request.');
-                  return;
-                }
-                const approvedChildren = app.children.filter(child => !!child.playerId);
-                if (approvedChildren.length === 1 && monthlyFees[approvedChildren[0].id] !== undefined && monthlyFees[approvedChildren[0].id] > 0) {
-                  void issueFee(approvedChildren[0].id);
-                } else {
-                  document.getElementById('registration-fee-' + approvedChildren[0]?.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  setFeeNotice(isAr ? 'حدّد المبلغ لكل لاعب ثم اضغط إصدار طلب الدفع بجانب اسمه. المبلغ صفر هو إعفاء وليس طلب دفع.' : 'Select each player fee and issue their request individually. Zero means exemption, not a payment request.');
-                }
-              }}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
-              {isAr ? 'طلب دفع الاشتراك' : 'Request subscription payment'}
-            </button>
+            </ActionBtn>
           </div>
         </div>
       )}
@@ -706,7 +594,7 @@ function ActionBtn({ onClick, loading, color, icon, children }: {
   const colors: Record<string, string> = {
     blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 hover:bg-blue-100',
     amber: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100',
-    emerald: 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 hover:bg-brand-100',
+    emerald: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100',
     red: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100',
   };
   return (

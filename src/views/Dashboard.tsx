@@ -142,11 +142,11 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
 
       {(activeRole === 'manager' || activeRole === 'coach') && <TelegramLinkCard lang={lang} />}
 
-      {activeRole === 'coach' && <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-brand-950 p-5 sm:p-6 text-white shadow-xl shadow-slate-300/30 dark:shadow-none">
-        <div className="absolute -top-20 -end-10 h-48 w-48 rounded-full bg-brand-400/15 blur-3xl" />
+      {activeRole === 'coach' && <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-5 sm:p-6 text-white shadow-xl shadow-slate-300/30 dark:shadow-none">
+        <div className="absolute -top-20 -end-10 h-48 w-48 rounded-full bg-emerald-400/15 blur-3xl" />
         <div className="relative flex flex-wrap items-start justify-between gap-5">
-          <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-300">{isAr ? 'مركز المدرب' : 'Coach workspace'}</p><h2 className="mt-2 text-xl sm:text-2xl font-black">{isAr ? 'ابدأ من أهم ما يحتاجه فريقك اليوم' : 'Start with what your team needs today'}</h2><p className="mt-1 max-w-2xl text-sm text-slate-300">{isAr ? 'تابع الحضور، جهّز المباريات، وراجع تطور اللاعبين من لوحة واحدة.' : 'Track attendance, prepare matches, and review player development from one focused workspace.'}</p></div>
-          <div className="flex gap-2"><button onClick={() => setCurrentTab('attendance')} className="rounded-xl bg-brand-500 px-3 py-2 text-xs font-black text-white transition hover:bg-brand-400">{isAr ? 'تسجيل الحضور' : 'Record attendance'}</button><button onClick={() => setCurrentTab('evaluations')} className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-black text-white transition hover:bg-white/20">{isAr ? 'التقييمات' : 'Evaluations'}</button></div>
+          <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">{isAr ? 'مركز المدرب' : 'Coach workspace'}</p><h2 className="mt-2 text-xl sm:text-2xl font-black">{isAr ? 'ابدأ من أهم ما يحتاجه فريقك اليوم' : 'Start with what your team needs today'}</h2><p className="mt-1 max-w-2xl text-sm text-slate-300">{isAr ? 'تابع الحضور، جهّز المباريات، وراجع تطور اللاعبين من لوحة واحدة.' : 'Track attendance, prepare matches, and review player development from one focused workspace.'}</p></div>
+          <div className="flex gap-2"><button onClick={() => setCurrentTab('attendance')} className="rounded-xl bg-emerald-500 px-3 py-2 text-xs font-black text-white transition hover:bg-emerald-400">{isAr ? 'تسجيل الحضور' : 'Record attendance'}</button><button onClick={() => setCurrentTab('evaluations')} className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-black text-white transition hover:bg-white/20">{isAr ? 'التقييمات' : 'Evaluations'}</button></div>
         </div>
         <div className="relative mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"><div className="rounded-2xl border border-white/10 bg-white/10 p-3"><p className="text-[11px] text-slate-300">{isAr ? 'اللاعبون النشطون' : 'Active players'}</p><p className="mt-1 text-2xl font-black">{stats.activePlayers}</p></div><div className="rounded-2xl border border-white/10 bg-white/10 p-3"><p className="text-[11px] text-slate-300">{isAr ? 'نسبة الفوز' : 'Win rate'}</p><p className="mt-1 text-2xl font-black">{stats.winRate}%</p></div><div className="rounded-2xl border border-white/10 bg-white/10 p-3"><p className="text-[11px] text-slate-300">{isAr ? 'مباريات مجدولة' : 'Scheduled matches'}</p><p className="mt-1 text-2xl font-black">{stats.scheduled}</p></div><div className="rounded-2xl border border-white/10 bg-white/10 p-3"><p className="text-[11px] text-slate-300">{isAr ? 'إعادة تقييم قريبة' : 'Upcoming reviews'}</p><p className="mt-1 text-2xl font-black">{reassessmentReminders.length}</p></div></div>
       </section>}
@@ -161,7 +161,6 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={<Users className="h-5 w-5" />} label={t.activePlayers} value={stats.activePlayers} sublabel={`${t.activePlayersSub} ${stats.totalTeams} ${t.teamsLabel}`} color="emerald" onClick={() => setCurrentTab('players')} />
         {canSeeFinance && <StatCard icon={<Wallet className="h-5 w-5" />} label={t.netProfit} value={`${stats.netProfit.toLocaleString()} ${t.currency}`} sublabel={`${t.revenueLabel} ${stats.totalRevenue.toLocaleString()}`} color="blue" onClick={() => setCurrentTab('subscriptions')} />}
-        {canSeeFinance && <StatCard icon={<Receipt className="h-5 w-5" />} label={isAr ? 'الدعم المرتجع بعد الدفع' : 'Post-payment support refunds'} value={`${transactions.filter(tx => tx.category === 'subscription_support').reduce((sum, tx) => sum + tx.amount, 0).toFixed(3)} BHD`} sublabel={isAr ? 'مخصوم من الصافي؛ الإعفاء بلا حركة مالية' : 'Deducted from net; exemptions have no cash movement'} color="amber" />}
         {canSeeTechnical && <StatCard icon={<Trophy className="h-5 w-5" />} label={t.winRate} value={`${stats.winRate}%`} sublabel={`${stats.wins} ${t.wins} · ${stats.losses} ${t.losses}`} color="amber" onClick={() => setCurrentTab('schedules')} />}
         {canSeeSubscriptions && <StatCard icon={<Activity className="h-5 w-5" />} label={t.paidSubsLabel} value={`${stats.paidSubs}/${stats.paidSubs + stats.unpaidSubs}`} sublabel={`${stats.unpaidSubs} ${t.unpaidSubsLabel}`} color="red" onClick={() => setCurrentTab('subscriptions')} />}
       </div>
@@ -183,9 +182,9 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
               <h3 className="text-sm font-black text-slate-900 dark:text-white">{t.monthlyRevenue}</h3>
               <p className="text-[11px] text-slate-400 mt-0.5">{t.monthlyRevenueHint}</p>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 dark:bg-brand-900/20">
-              <TrendingUp className="h-4 w-4 text-brand-600" />
-              <span className="text-xs font-black text-brand-600">{stats.totalRevenue.toLocaleString()} {t.currency}</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+              <span className="text-xs font-black text-emerald-600">{stats.totalRevenue.toLocaleString()} {t.currency}</span>
             </div>
           </div>
           <LineChart data={revenueByMonth} color="#10b981" height={200} />
@@ -230,12 +229,12 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-black text-slate-900 dark:text-white">{t.recentMatches}</h3>
-            <button onClick={() => setCurrentTab('schedules')} className="text-[11px] font-bold text-brand-600 hover:text-brand-700 cursor-pointer">{t.viewAll}</button>
+            <button onClick={() => setCurrentTab('schedules')} className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer">{t.viewAll}</button>
           </div>
           <div className="space-y-3">
             {recentMatches.map((m) => {
               const team = teams.find((tm) => tm.id === m.teamId);
-              const resultColor = m.result === 'win' ? 'bg-brand-500' : m.result === 'loss' ? 'bg-red-500' : m.result === 'draw' ? 'bg-amber-500' : 'bg-slate-400';
+              const resultColor = m.result === 'win' ? 'bg-emerald-500' : m.result === 'loss' ? 'bg-red-500' : m.result === 'draw' ? 'bg-amber-500' : 'bg-slate-400';
               const resultLabel = statusLabel(m.result, lang);
               return (
                 <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
@@ -268,7 +267,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
               <h3 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'إعادة تقييم اللاعبين' : 'Player reassessments'}</h3>
               <p className="text-[10px] text-slate-400 mt-0.5">{isAr ? 'المستحق والقادم خلال 14 يومًا' : 'Due and upcoming within 14 days'}</p>
             </div>
-            <button onClick={() => setCurrentTab('evaluations')} className="text-[11px] font-bold text-brand-600 hover:text-brand-700 cursor-pointer">{t.viewAll}</button>
+            <button onClick={() => setCurrentTab('evaluations')} className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer">{t.viewAll}</button>
           </div>
           {reassessmentReminders.length === 0 ? (
             <div className="py-6 text-center">
@@ -303,9 +302,9 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
               <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400">{t.expiring}</p>
               <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{reminders.filter((r) => r.status === 'expiring').length}</p>
             </div>
-            <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-900/20">
-              <p className="text-[11px] font-bold text-brand-600 dark:text-brand-400">{t.dueAmounts}</p>
-              <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{reminders.filter(r => r.subscription.status === 'unpaid').reduce((s, r) => s + r.subscription.amount, 0)} {t.currency}</p>
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+              <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">{t.dueAmounts}</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{reminders.reduce((s, r) => s + r.subscription.amount, 0)} {t.currency}</p>
             </div>
             <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20">
               <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400">{t.collectionRate}</p>
@@ -320,7 +319,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
       {/* Quick actions */}
       <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 text-white shadow-lg">
         <div className="flex items-center gap-2 mb-4">
-          <ShieldCheck className="h-5 w-5 text-brand-400" />
+          <ShieldCheck className="h-5 w-5 text-emerald-400" />
           <h3 className="text-sm font-black">{t.quickActions}</h3>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -337,7 +336,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
                 onClick={() => setCurrentTab(action.tab)}
                 className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer text-right"
               >
-                <Icon className="h-4 w-4 text-brand-400 shrink-0" />
+                <Icon className="h-4 w-4 text-emerald-400 shrink-0" />
                 <span className="text-xs font-bold">{action.label}</span>
               </button>
             );

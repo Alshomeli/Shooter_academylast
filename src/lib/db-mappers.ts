@@ -1,4 +1,3 @@
-import { templateSummary, goalkeeperTotal } from './evaluation-template';
 import type {
   Staff, Team, Player, Parent, Subscription, Attendance,
   Match, Training, Transaction, Tournament, PlayerEvaluation,
@@ -8,7 +7,6 @@ import type {
 /* ---------- Row types (snake_case from Postgres) ---------- */
 
 interface StaffRow {
-  coach_kind?: Staff['coachKind']; supervising_coach_id?: string | null;
   id: string; name: string; email: string; phone: string; role: string;
   salary?: number; private_fields_loaded?: boolean; row_version?: number; specialization: string; status: string; joined_date: string;
   avatar_url: string; national_id?: string | null; licenses: string[] | null;
@@ -16,9 +14,7 @@ interface StaffRow {
   tactical_style: string | null; notes: string | null; user_id: string | null;
 }
 interface TeamRow {
-  category_kind?: Team['categoryKind']; status?: Team['status'];
-  goalkeeper_coach_id?: string | null;
-  id: string; name: string; age_group: string; coach_id: string | null;
+  id: string; name: string; age_group: string; coach_id: string;
   training_days: string[]; training_time: string; pitch_number: string;
 }
 interface PlayerRow {
@@ -34,7 +30,6 @@ interface ParentRow {
   status: string; notes: string; joined_date: string;
 }
 interface SubscriptionRow {
-  exemption_reason?: string | null;
   id: string; player_id: string; plan_type: string; amount: number;
   start_date: string; end_date: string; status: string;
   payment_method: string | null; paid_at: string | null;
@@ -61,10 +56,6 @@ interface TournamentRow {
   start_date: string; end_date: string; teams_count: number; logo_emoji: string;
 }
 interface EvaluationRow {
-  template_version?: number; height_cm?: number | null; weight_kg?: number | null;
-  nutrition_plan?: string | null; evaluator_name?: string | null; general_rating?: string | null;
-  evaluator_signature?: string | null; coach_signature?: string | null; total_score?: number | null;
-  evaluation_type?: PlayerEvaluation['evaluationType']; team_name?: string | null;
   id: string; player_id: string; team_id: string | null; coach_id: string | null;
   evaluation_date: string; period_type: string;
   technical_score: number | null; tactical_score: number | null;
@@ -98,7 +89,6 @@ interface NotificationRow {
 /* ---------- Row -> domain (snake_case to camelCase) ---------- */
 
 export const mapStaff = (r: StaffRow): Staff => ({
-  coachKind: r.coach_kind || 'team', supervisingCoachId: r.supervising_coach_id || undefined,
   id: r.id, version: r.row_version, privateFieldsLoaded: r.private_fields_loaded, name: r.name, email: r.email, phone: r.phone, role: r.role as Staff['role'],
   salary: Number(r.salary) || 0, specialization: r.specialization, status: r.status as Staff['status'],
   joinedDate: r.joined_date, avatarUrl: r.avatar_url, nationalId: r.national_id ?? undefined,
@@ -108,8 +98,7 @@ export const mapStaff = (r: StaffRow): Staff => ({
 });
 
 export const mapTeam = (r: TeamRow): Team => ({
-  categoryKind: r.category_kind || 'team', status: r.status || 'active',
-  id: r.id, name: r.name, ageGroup: r.age_group, coachId: r.coach_id ?? '', goalkeeperCoachId: r.goalkeeper_coach_id ?? undefined,
+  id: r.id, name: r.name, ageGroup: r.age_group, coachId: r.coach_id,
   trainingDays: r.training_days ?? [], trainingTime: r.training_time, pitchNumber: r.pitch_number,
 });
 
@@ -129,7 +118,6 @@ export const mapParent = (r: ParentRow): Parent => ({
 });
 
 export const mapSubscription = (r: SubscriptionRow): Subscription => ({
-  exemptionReason: r.exemption_reason ?? undefined,
   id: r.id, playerId: r.player_id, planType: (r.plan_type === 'yearly' ? 'annual' : r.plan_type) as Subscription['planType'],
   amount: Number(r.amount), startDate: r.start_date, endDate: r.end_date,
   status: r.status as Subscription['status'], paymentMethod: r.payment_method ?? undefined,
@@ -165,21 +153,13 @@ export const mapTournament = (r: TournamentRow): Tournament => ({
   logoEmoji: r.logo_emoji,
 });
 
-export const mapEvaluation = (r: EvaluationRow): PlayerEvaluation => {
-  const summary = r.template_version === 2 ? templateSummary(r.evaluation_type || 'outfield', r.detailed_scores || {}) : null;
-  const summaryValues = summary ? Object.values(summary) : [];
-  const total = r.evaluation_type === 'goalkeeper' ? goalkeeperTotal(r.detailed_scores || {}) : null;
-  return ({
-  templateVersion: r.template_version || 1, heightCm: r.height_cm == null ? null : Number(r.height_cm), weightKg: r.weight_kg == null ? null : Number(r.weight_kg),
-  nutritionPlan: r.nutrition_plan || '', evaluatorName: r.evaluator_name || '', generalRating: r.general_rating || '',
-  evaluatorSignature: r.evaluator_signature || '', coachSignature: r.coach_signature || '', totalScore: r.total_score == null ? total : Number(r.total_score),
-  evaluationType: r.evaluation_type || 'outfield', teamName: r.team_name || '',
+export const mapEvaluation = (r: EvaluationRow): PlayerEvaluation => ({
   id: r.id, playerId: r.player_id, teamId: r.team_id ?? '',
   coachId: r.coach_id ?? '', evaluationDate: r.evaluation_date,
   periodType: r.period_type as PlayerEvaluation['periodType'],
-  technicalScore: summary?.technical ?? r.technical_score, tacticalScore: summary?.tactical ?? r.tactical_score,
-  physicalScore: summary?.physical ?? r.physical_score, mentalScore: summary?.mental ?? r.mental_score,
-  disciplineScore: summary?.discipline ?? r.discipline_score, overallScore: summary ? (r.evaluation_type === 'goalkeeper' ? (total == null ? null : total / 10) : (summaryValues.every(v => v != null) ? summaryValues.reduce<number>((sum,v) => sum + v!, 0) / 5 : null)) : (r.overall_score == null ? null : Number(r.overall_score)),
+  technicalScore: r.technical_score, tacticalScore: r.tactical_score,
+  physicalScore: r.physical_score, mentalScore: r.mental_score,
+  disciplineScore: r.discipline_score, overallScore: r.overall_score,
   strengths: r.strengths ?? '', developmentAreas: r.development_areas ?? '',
   coachNotes: r.coach_notes ?? '', coachRecommendation: r.coach_recommendation ?? '',
   detailedScores: r.detailed_scores ?? {}, developmentPriorities: r.development_priorities ?? [],
@@ -188,7 +168,6 @@ export const mapEvaluation = (r: EvaluationRow): PlayerEvaluation => {
   status: r.status as PlayerEvaluation['status'],
   publishedAt: r.published_at, createdAt: r.created_at, updatedAt: r.updated_at,
 });
-};
 
 export const mapSettings = (r: SettingsRow): Settings => ({
   id: r.id, version: r.row_version, subscriptionFeeSemiAnnual: Number(r.subscription_fee_semi_annual ?? 0), name: r.name, logoUrl: r.logo_url, phone: r.phone, email: r.email,
@@ -212,8 +191,6 @@ export const mapNotification = (r: NotificationRow): Notification => ({
 /* ---------- Domain -> row (camelCase to snake_case) ---------- */
 
 export const staffToRow = (s: Staff): StaffRow => ({
-  coach_kind: s.role === 'coach' ? s.coachKind || 'team' : 'team',
-  supervising_coach_id: s.role === 'coach' && s.coachKind === 'assistant' ? s.supervisingCoachId || null : null,
   id: s.id, name: s.name, email: s.email, phone: s.phone, role: s.role,
   ...(s.privateFieldsLoaded === false ? {} : { salary: s.salary }), specialization: s.specialization, status: s.status,
   joined_date: s.joinedDate, avatar_url: s.avatarUrl, ...(s.privateFieldsLoaded === false ? {} : { national_id: s.nationalId ?? null }),
@@ -223,8 +200,7 @@ export const staffToRow = (s: Staff): StaffRow => ({
 });
 
 export const teamToRow = (t: Team): TeamRow => ({
-  category_kind: t.categoryKind || 'team', status: t.status || 'active',
-  id: t.id, name: t.name, age_group: t.ageGroup, coach_id: t.coachId || null, goalkeeper_coach_id: t.goalkeeperCoachId || null,
+  id: t.id, name: t.name, age_group: t.ageGroup, coach_id: t.coachId,
   training_days: t.trainingDays, training_time: t.trainingTime, pitch_number: t.pitchNumber,
 });
 
@@ -243,11 +219,9 @@ export const parentToRow = (p: Parent): ParentRow => ({
 });
 
 export const subscriptionToRow = (s: Subscription): SubscriptionRow => ({
-  ...(s.exemptionReason !== undefined ? { exemption_reason: s.exemptionReason } : {}),
   id: s.id, player_id: s.playerId, plan_type: s.planType, amount: s.amount,
   start_date: s.startDate, end_date: s.endDate, status: s.status,
-  payment_method: (s.status === 'paid' || s.status === 'cancelled') ? s.paymentMethod ?? null : null,
-  paid_at: (s.status === 'paid' || s.status === 'cancelled') ? s.paidAt ?? null : null,
+  payment_method: s.status === 'paid' ? s.paymentMethod ?? null : null, paid_at: s.status === 'paid' ? s.paidAt ?? null : null,
 });
 
 export const attendanceToRow = (a: Attendance): AttendanceRow => ({
@@ -299,4 +273,3 @@ export const notificationToRow = (n: Notification): NotificationRow => ({
 });
 
 export type { StaffRow, TeamRow, PlayerRow, ParentRow, SubscriptionRow, AttendanceRow, MatchRow, TrainingRow, TransactionRow, TournamentRow, EvaluationRow, SettingsRow, AuditLogRow, NotificationRow };
-

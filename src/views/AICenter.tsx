@@ -82,7 +82,7 @@ const PERSONA_COLORS: Record<Persona['color'], {
   ring: string; bg: string; text: string; iconBg: string;
   border: string; activeBorder: string; activeShadow: string;
 }> = {
-  emerald: { ring: 'ring-brand-500/30', bg: 'bg-brand-50 dark:bg-brand-900/20', text: 'text-brand-600 dark:text-brand-400', iconBg: 'from-brand-500 to-brand-600', border: 'border-slate-200 dark:border-slate-800', activeBorder: 'border-brand-500', activeShadow: 'shadow-brand-200/50' },
+  emerald: { ring: 'ring-emerald-500/30', bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-600 dark:text-emerald-400', iconBg: 'from-emerald-500 to-emerald-600', border: 'border-slate-200 dark:border-slate-800', activeBorder: 'border-emerald-500', activeShadow: 'shadow-emerald-200/50' },
   blue: { ring: 'ring-blue-500/30', bg: 'bg-blue-50 dark:bg-blue-900/20', text: 'text-blue-600 dark:text-blue-400', iconBg: 'from-blue-500 to-blue-600', border: 'border-slate-200 dark:border-slate-800', activeBorder: 'border-blue-500', activeShadow: 'shadow-blue-200/50' },
   amber: { ring: 'ring-amber-500/30', bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-600 dark:text-amber-400', iconBg: 'from-amber-500 to-amber-600', border: 'border-slate-200 dark:border-slate-800', activeBorder: 'border-amber-500', activeShadow: 'shadow-amber-200/50' },
   red: { ring: 'ring-red-500/30', bg: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-600 dark:text-red-400', iconBg: 'from-red-500 to-red-600', border: 'border-slate-200 dark:border-slate-800', activeBorder: 'border-red-500', activeShadow: 'shadow-red-200/50' },
@@ -438,7 +438,7 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
 
       <ChatGPTIntegrationStatus lang={lang} />
 
-      <AIOperationsPanel activeRole={activeRole} lang={lang} subscriptions={subscriptions} players={players} evaluations={evaluations} trainings={trainings} matches={matches} onCompleted={onRefresh} />
+      <AIOperationsPanel activeRole={activeRole} lang={lang} subscriptions={subscriptions} players={players} evaluations={evaluations} trainings={trainings} onCompleted={onRefresh} />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         <aside className="lg:col-span-1 space-y-3">
@@ -483,11 +483,11 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
             <div className="flex items-center gap-3 min-w-0">
               <div className={`relative shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br ${personaStyle.iconBg} flex items-center justify-center text-white shadow`}>
                 <PersonaIcon className="h-5 w-5" />
-                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-brand-400 border-2 border-white dark:border-slate-900" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white dark:border-slate-900" />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-black text-slate-900 dark:text-white truncate">{persona.name}</p>
-                <p className="text-[11px] text-brand-500 font-bold flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-brand-500 inline-block" />متصل الآن</p>
+                <p className="text-[11px] text-emerald-500 font-bold flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />متصل الآن</p>
               </div>
             </div>
             <span className={`hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${personaStyle.bg} ${personaStyle.text}`}><Zap className="h-3 w-3" />Shooter AI</span>
@@ -502,7 +502,7 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS[activePersona].map((s) => (
                 <button key={s} onClick={() => handleSend(s)} disabled={isTyping}
-                  className="px-3 py-1.5 rounded-full text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-brand-100 dark:hover:bg-brand-900/30 hover:text-brand-700 dark:hover:text-brand-400 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">{s}</button>
+                  className="px-3 py-1.5 rounded-full text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:text-emerald-700 dark:hover:text-emerald-400 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">{s}</button>
               ))}
             </div>
           </div>
@@ -512,11 +512,11 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
               <div className="flex-1 relative">
                 <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }} disabled={isTyping}
                   placeholder="اكتب رسالتك إلى المساعد الذكي..."
-                  className="w-full px-4 py-3 pr-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-brand-500 focus:bg-white dark:focus:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition disabled:opacity-60" />
+                  className="w-full px-4 py-3 pr-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition disabled:opacity-60" />
                 <Sparkles className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 dark:text-slate-600" />
               </div>
               <button onClick={() => handleSend()} disabled={!input.trim() || isTyping}
-                className="shrink-0 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg hover:shadow-brand-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100" aria-label="إرسال">
+                className="shrink-0 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg hover:shadow-emerald-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100" aria-label="إرسال">
                 <Send className="h-5 w-5" />
               </button>
             </div>
@@ -535,7 +535,7 @@ function MessageBubble({ message, personaColor }: { message: ChatMessage; person
       <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white shadow ${isAI ? `bg-gradient-to-br ${styles.iconBg}` : 'bg-slate-400 dark:bg-slate-600'}`}>
         {isAI ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
       </div>
-      <div className={`max-w-[80%] sm:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-line shadow-sm ${isAI ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-bl-md border border-slate-100 dark:border-slate-700' : 'bg-brand-500 text-white rounded-br-md'}`}>
+      <div className={`max-w-[80%] sm:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-line shadow-sm ${isAI ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-bl-md border border-slate-100 dark:border-slate-700' : 'bg-emerald-500 text-white rounded-br-md'}`}>
         {message.text}
       </div>
     </div>
@@ -594,14 +594,14 @@ function AIInsights({ players, subscriptions, transactions, matches, trainings, 
 
   const alertStyles = {
     warning: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30 text-amber-700 dark:text-amber-400',
-    success: 'bg-brand-50 dark:bg-brand-900/20 border-brand-200 dark:border-brand-800/30 text-brand-700 dark:text-brand-400',
+    success: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/30 text-emerald-700 dark:text-emerald-400',
     info: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/30 text-blue-700 dark:text-blue-400',
   };
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
       <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 text-white flex items-center justify-center"><Brain className="h-4 w-4" /></div>
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center"><Brain className="h-4 w-4" /></div>
         <div><h3 className="text-sm font-black text-slate-900 dark:text-white">رؤى ذكية فورية</h3><p className="text-[11px] text-slate-400">تحليل آلي لبيانات الأكاديمية</p></div>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">
@@ -625,7 +625,7 @@ function AIInsights({ players, subscriptions, transactions, matches, trainings, 
 }
 
 function InsightCard({ icon: Icon, label, value, unit, color }: { icon: typeof Activity; label: string; value: string; unit?: string; color: 'emerald' | 'red' | 'amber' | 'blue' }) {
-  const colors = { emerald: 'text-brand-600 dark:text-brand-400', red: 'text-red-600 dark:text-red-400', amber: 'text-amber-600 dark:text-amber-400', blue: 'text-blue-600 dark:text-blue-400' };
+  const colors = { emerald: 'text-emerald-600 dark:text-emerald-400', red: 'text-red-600 dark:text-red-400', amber: 'text-amber-600 dark:text-amber-400', blue: 'text-blue-600 dark:text-blue-400' };
   return (
     <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
       <div className="flex items-center gap-1.5 mb-1"><Icon className={`h-3.5 w-3.5 ${colors[color]}`} /><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{label}</span></div>
