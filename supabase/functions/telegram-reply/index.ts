@@ -354,6 +354,8 @@ async function handleCoachTrainingCallback(callbackQuery: TelegramCallbackQuery)
   if (chatType !== "private" || !callbackQuery.data?.startsWith("training:complete:")) return false;
 
   const telegramChatId = callbackQuery.from?.id ?? chatId;
+  // Preserve the existing manager allowlist path; only linked coaches use this handler.
+  if (await isAuthorizedManagerChat(chatId)) return false;
   const identity = await fetchTelegramIdentity(telegramChatId);
   if (identity?.role !== "coach" || !identity.staff_id) {
     await answerCallbackQuery(callbackQuery.id, "غير مصرح لهذا الإجراء.");
