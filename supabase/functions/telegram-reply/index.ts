@@ -50,7 +50,7 @@ async function isAuthorizedManagerChat(chatId: number): Promise<boolean> {
   return (await ensureBootstrap()).chats.has(hash);
 }
 
-type TelegramIdentity = { role?: "manager" | "coach"; user_id?: string; staff_id?: string };
+type TelegramIdentity = { role?: "manager" | "coach" | "parent"; user_id?: string; staff_id?: string; parent_id?: string };
 type LinkedIdentity = { role?: "manager" | "coach" | "parent"; user_id?: string; staff_id?: string; parent_id?: string };
 
 async function fetchTelegramIdentity(chatId: number): Promise<LinkedIdentity | null> {
