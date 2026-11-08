@@ -348,6 +348,40 @@ async function handleManagerCallback(callbackQuery: TelegramCallbackQuery): Prom
   }
 }
 
+async function handleCoachTrainingCallback(callbackQuery: TelegramCallbackQuery): Promise<boolean> {
+  const chatId = callbackQuery.message?.chat.id ?? callbackQuery.from?.id ?? 0;
+  const chatType = callbackQuery.message?.chat.type ?? "private";
+  if (chatType !== "private" || !callbackQuery.data?.startsWith("training:complete:")) return false;
+
+  const coachId = callbackQuery.from?.id;
+  const identity = coachId ? await fetchTelegramIdentity(coachId) : null;
+  if (identity?.role !== "coach" || !identity.user_id) {
+    await answerCallbackQuery(callbackQuery.id, "غير مصرح لهذا الإجراء.");
+    return true;
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const training = await callRpc<{ team_id: string }>("telegram_ensure_today_trainings", {
+    p_coach_id: identity.user_id,
+    p_date: today,
+  });
+  if (!training?.team_id) {
+    await answerCallbackQuery(callbackQuery.id, "لا توجد حصة مرتبطة بحسابك اليوم.");
+    return true;
+  }
+
+  const completed = await callRpc<boolean>("telegram_complete_training", {
+    coach_id: identity.user_id,
+    team_id: training.team_id,
+    p_date: today,
+  });
+  await answerCallbackQuery(callbackQuery.id, completed ? "تم إنهاء الحصة." : "تعذر إنهاء الحصة.");
+  if (completed) {
+    await editMessageText(chatId, callbackQuery.message?.message_id ?? 0, "تم إنهاء الحصة.");
+  }
+  return true;
+}
+
 async function handleCoachCommand(chatId: number, coachId: string, inputText: string): Promise<void> {
   const q = clean(inputText);
   const today = new Date().toISOString().slice(0, 10);
@@ -391,7 +425,8 @@ Deno.serve(async (req) => {
 
   const callbackQuery = payload.callback_query as TelegramCallbackQuery | undefined;
   if (callbackQuery) {
-    await handleManagerCallback(callbackQuery);
+    const handledByCoach = await handleCoachTrainingCallback(callbackQuery);
+    if (!handledByCoach) await handleManagerCallback(callbackQuery);
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
 
