@@ -353,32 +353,53 @@ async function handleCoachTrainingCallback(callbackQuery: TelegramCallbackQuery)
   const chatType = callbackQuery.message?.chat.type ?? "private";
   if (chatType !== "private" || !callbackQuery.data?.startsWith("training:complete:")) return false;
 
-  const coachId = callbackQuery.from?.id;
-  const identity = coachId ? await fetchTelegramIdentity(coachId) : null;
+  const telegramChatId = callbackQuery.from?.id ?? chatId;
+  const identity = await fetchTelegramIdentity(telegramChatId);
   if (identity?.role !== "coach" || !identity.user_id) {
     await answerCallbackQuery(callbackQuery.id, "غير مصرح لهذا الإجراء.");
     return true;
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const training = await callRpc<{ team_id: string }>("telegram_ensure_today_trainings", {
-    p_coach_id: identity.user_id,
-    p_date: today,
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bahrain" });
+  // Materialize recurring sessions using the actual RPC contract (p_chat_id).
+  await callRpc<number>("telegram_ensure_today_trainings", { p_chat_id: telegramChatId });
+
+  const teams = await read("teams", {
+    coach_id: `eq.${identity.user_id}`,
+    select: "id",
   });
-  if (!training?.team_id) {
-    await answerCallbackQuery(callbackQuery.id, "لا توجد حصة مرتبطة بحسابك اليوم.");
+  const teamIds = teams.map((team) => String(team.id ?? "")).filter(Boolean);
+  if (!teamIds.length) {
+    await answerCallbackQuery(callbackQuery.id, "لا توجد فرق مرتبطة بحسابك.");
     return true;
   }
 
-  const completed = await callRpc<boolean>("telegram_complete_training", {
-    coach_id: identity.user_id,
-    team_id: training.team_id,
-    p_date: today,
+  const trainings = await read("trainings", {
+    team_id: `in.(${teamIds.join(",")})`,
+    session_date: `eq.${today}`,
+    select: "id,team_id",
   });
-  await answerCallbackQuery(callbackQuery.id, completed ? "تم إنهاء الحصة." : "تعذر إنهاء الحصة.");
-  if (completed) {
-    await editMessageText(chatId, callbackQuery.message?.message_id ?? 0, "تم إنهاء الحصة.");
+  if (!trainings.length) {
+    await answerCallbackQuery(callbackQuery.id, "لا توجد حصة مسجلة لك اليوم.");
+    return true;
   }
+
+  let completedCount = 0;
+  for (const training of trainings) {
+    const completed = await callRpc<boolean>("telegram_complete_training", {
+      p_chat_id: telegramChatId,
+      p_training_id: String(training.id),
+    });
+    if (completed === true) completedCount += 1;
+  }
+
+  const resultText = completedCount === trainings.length
+    ? "تم إنهاء الحصة بنجاح."
+    : completedCount > 0
+      ? `تم إنهاء ${completedCount} من ${trainings.length} حصص. راجع الحضور أو صلاحيات الفريق للحصص المتبقية.`
+      : "تعذر إنهاء الحصة. تأكد من تسجيل حضور جميع اللاعبين.";
+  await answerCallbackQuery(callbackQuery.id, resultText);
+  await editMessageText(chatId, callbackQuery.message?.message_id ?? 0, resultText);
   return true;
 }
 
