@@ -32,7 +32,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
   const MONTHS = monthsArray(lang);
   const canSeeFinance = activeRole === 'manager' || activeRole === 'accountant';
   const canRecordPayments = activeRole === 'manager' || activeRole === 'accountant';
-  const canSeeSubscriptions = activeRole === 'manager' || activeRole === 'accountant' || activeRole === 'receptionist';
+  const canSeeSubscriptions = activeRole === 'manager' || activeRole === 'accountant';
   const canSeeTechnical = activeRole === 'manager' || activeRole === 'coach';
   const canSeeStaff = activeRole === 'manager';
   const canSeeEvaluations = activeRole === 'manager' || activeRole === 'coach';
