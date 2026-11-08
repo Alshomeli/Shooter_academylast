@@ -187,3 +187,23 @@ test('Telegram role menus expose bounded operational shortcuts', () => {
   assert.match(source, /ملخص اليوم/);
   assert.match(source, /إثباتات الدفع/);
 });
+
+test("Coach text commands use the actual chat-scoped RPC contracts", () => {
+  assert.match(source, /telegram_ensure_today_trainings", \{ p_chat_id: chatId \}/);
+  assert.match(source, /telegram_complete_training", \{ p_chat_id: chatId, p_training_id: String\(training\.id\) \}/);
+  assert.doesNotMatch(source, /p_coach_id:|coach_id: coachId|p_date: today/);
+});
+
+test("Parent Telegram menu reads only children linked to the verified parent identity", () => {
+  assert.match(source, /role\?: "manager" \| "coach" \| "parent"; user_id\?: string; staff_id\?: string; parent_id\?: string/);
+  assert.match(source, /identity\?\.role !== "parent" \|\| !identity\.parent_id/);
+  assert.match(source, /parent_id: "eq\." \+ identity\.parent_id/);
+  assert.match(source, /select: "id,name,status"/);
+  assert.doesNotMatch(source, /select: "[^"]*(amount|paid_at|payment_proof)/i);
+  assert.match(source, /callback_data: "parent:children"/);
+});
+
+test("Parent callbacks are handled before manager-only callbacks", () => {
+  assert.match(source, /handleParentCallback\(callbackQuery\)/);
+  assert.ok(source.indexOf("handleParentCallback(callbackQuery)") < source.indexOf("handleManagerCallback(callbackQuery)"));
+});
