@@ -42,10 +42,11 @@ async function isAuthorizedManagerChat(chatId: number): Promise<boolean> {
   if (MANAGER_CHAT_IDS.has(chatId)) return true;
 
   const hashed = await sha256Hex(raw);
-  return [...MANAGER_CHAT_IDS].some((id) => {
-    const candidate = String(id);
-    return constantTimeEqual(candidate, raw) || constantTimeEqual(await sha256Hex(candidate), hashed);
-  });
+  const candidates = [...MANAGER_CHAT_IDS].map((id) => String(id));
+  const candidateHashes = await Promise.all(candidates.map((candidate) => sha256Hex(candidate)));
+  return candidates.some((candidate, i) =>
+    constantTimeEqual(candidate, raw) || constantTimeEqual(candidateHashes[i], hashed)
+  );
 }
 
 async function isAuthorizedWebhookSecret(value: string | null): Promise<boolean> {

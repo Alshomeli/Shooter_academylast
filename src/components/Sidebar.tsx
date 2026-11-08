@@ -212,6 +212,9 @@ export function Sidebar({
             <LogOut className="h-3.5 w-3.5" />
             {t.logout}
           </button>
+          <p className="text-center text-[9px] font-semibold tracking-wide text-slate-500 select-none" dir="ltr">
+            SHOOTER ACADEMY — Created &amp; Developed by KATSU
+          </p>
         </div>
       </aside>
     </>

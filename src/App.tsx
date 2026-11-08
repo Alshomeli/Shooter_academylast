@@ -6,6 +6,7 @@ import { db, prefs, signOut, isRegistering } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { tr } from '@/lib/i18n';
+import { friendlyError } from '@/lib/friendly-error';
 import { getInitialTab, getPostLoginTab, getTabUrl } from '@/lib/navigation';
 import { LegalPage } from '@/views/LegalPage';
 import type {
@@ -323,7 +324,7 @@ export default function App() {
       });
     } catch (err) {
       console.error('[load]', err);
-      if (stillCurrent()) setLoadError(err instanceof Error ? err.message : JSON.stringify(err));
+      if (stillCurrent()) setLoadError(friendlyError(err, lang === 'ar'));
     } finally {
       if (stillCurrent()) setLoading(false);
       // A different identity may have started another request while this one

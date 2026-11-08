@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ClipboardCheck, Loader2, LogOut, Send } from 'lucide-react';
 import { FormField, inputCls } from '@/components/ui';
+import { friendlyError } from '@/lib/friendly-error';
 import { getMyStaffApplication, saveStaffApplication, submitStaffApplication } from '@/lib/staff-registration';
 import type { CurrentUser, Lang, StaffApplication } from '@/types';
 import { supabase } from '@/lib/supabase';
@@ -79,7 +80,7 @@ export function StaffRegistration({ user, lang, onLogout, onApproved }: {
       }
       window.location.replace('/?staff_submitted=1');
     } catch (err) {
-      setError(err instanceof Error ? err.message : text('تعذر إرسال الطلب.', 'Could not submit the application.'));
+      setError(friendlyError(err, ar));
     } finally { setBusy(false); }
   };
 
