@@ -1,212 +1,446 @@
-import { serve } from "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { reportRequest, detailedReport, splitMessages } from "./reports.ts";
+import {
+  clean,
+  shift,
+  reportRequest,
+  detailedReport,
+  splitMessages,
+  type ReadRows,
+  type Row,
+} from "./reports.ts";
 
 const optionalServerEnv = (...parts: string[]) => Deno.env.get(parts.join("_"));
+
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-const TELEGRAM_WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-const optionalServerEnvFrom = (...parts: string[]) => Deno.env.get(parts.join("_"));
-const MAX_VOICE_BYTES = 20 * 1024 * 1024;
+const SUPABASE_SECRET_KEYS = [SUPABASE_SERVICE_ROLE_KEY].filter(Boolean) as string[];
 
-const MANAGER_CHAT_IDS = new Set(
-  (optionalServerEnv("MANAGER", "CHAT", "IDS") ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .map((value) => Number(value))
-    .filter((value) => Number.isFinite(value)),
-);
-
-async function sha256Hex(value: string): Promise<string> {
-  const bytes = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+function serverApiKey(): string {
+  if (SUPABASE_SERVICE_ROLE_KEY) return SUPABASE_SERVICE_ROLE_KEY;
+  return SUPABASE_SECRET_KEYS[0] ?? "";
 }
 
-function constantTimeEqual(a: string, b: string): boolean {
-  const aBytes = new TextEncoder().encode(a);
-  const bBytes = new TextEncoder().encode(b);
-  if (aBytes.length !== bBytes.length) return false;
+const WEBHOOK_SECRET = optionalServerEnv("TELEGRAM", "WEBHOOK", "SECRET");
+const MANAGER_CHAT_IDS = optionalServerEnv("TELEGRAM", "MANAGER", "CHAT", "IDS");
 
-  let mismatch = 0;
-  for (let i = 0; i < aBytes.length; i++) mismatch |= aBytes[i] ^ bBytes[i];
-  return mismatch === 0;
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function bootstrapHashes(csv: string | undefined): Promise<Set<string>> {
+  const hashes = new Set<string>();
+  if (csv) {
+    for (const part of csv.split(",").map((p) => p.trim()).filter(Boolean)) {
+      hashes.add(await sha256Hex(part));
+    }
+  }
+  return hashes;
+}
+
+const BOOTSTRAP_MANAGER_CHAT_HASHES = await bootstrapHashes(MANAGER_CHAT_IDS);
+const BOOTSTRAP_WEBHOOK_SECRET_HASHES = await bootstrapHashes(WEBHOOK_SECRET);
+
+async function isAuthorizedWebhookSecret(secret: string | null): Promise<boolean> {
+  if (!secret) return false;
+  const hash = await sha256Hex(secret);
+  return BOOTSTRAP_WEBHOOK_SECRET_HASHES.has(hash);
 }
 
 async function isAuthorizedManagerChat(chatId: number): Promise<boolean> {
-  const raw = String(chatId);
-  if (MANAGER_CHAT_IDS.has(chatId)) return true;
-
-  const hashed = await sha256Hex(raw);
-  const candidates = [...MANAGER_CHAT_IDS].map((id) => String(id));
-  const candidateHashes = await Promise.all(candidates.map((candidate) => sha256Hex(candidate)));
-  return candidates.some((candidate, i) =>
-    constantTimeEqual(candidate, raw) || constantTimeEqual(candidateHashes[i], hashed)
-  );
+  const hash = await sha256Hex(String(chatId));
+  return BOOTSTRAP_MANAGER_CHAT_HASHES.has(hash);
 }
 
-async function isAuthorizedWebhookSecret(value: string | null): Promise<boolean> {
-  if (!value) return false;
+type TelegramIdentity = { role?: "manager" | "coach"; user_id?: string };
+type LinkedIdentity = { role?: "manager" | "coach" | "parent"; user_id?: string };
 
-  if (TELEGRAM_WEBHOOK_SECRET && value === TELEGRAM_WEBHOOK_SECRET) return true;
-  if (!TELEGRAM_WEBHOOK_SECRET) return false;
-
-  const expected = await sha256Hex(TELEGRAM_WEBHOOK_SECRET);
-  const provided = await sha256Hex(value);
-  return constantTimeEqual(expected, provided);
+async function fetchTelegramIdentity(chatId: number): Promise<LinkedIdentity | null> {
+  const row = await callRpc<TelegramIdentity>("telegram_identity", { p_chat_id: chatId });
+  return row ?? null;
 }
 
-type TelegramFrom = { id?: number; is_bot?: boolean; first_name?: string };
-type TelegramChat = { id?: number; type?: string };
+const DISPATCH_SECRET = optionalServerEnv("TELEGRAM", "DISPATCH", "SECRET");
+
+async function isAuthorizedDispatch(secret: string | null): Promise<boolean> {
+  if (secret && DISPATCH_SECRET && secret === DISPATCH_SECRET) return true;
+  return secret ? isAuthorizedWebhookSecret(secret) : false;
+}
+
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const GPT_MODEL = optionalServerEnv("OPENAI", "GPT", "MODEL") ?? "gpt-5.6-luna";
+const MAX_VOICE_BYTES = 15 * 1024 * 1024;
+
+type TelegramVoice = { file_id?: string; file_size?: number; duration?: number };
 type TelegramMessage = {
-  message_id?: number;
-  from?: TelegramFrom;
-  chat?: TelegramChat;
+  message_id: number;
+  chat: { id: number; type: string };
   text?: string;
-  voice?: { file_id?: string; file_unique_id?: string; duration?: number; file_size?: number };
+  voice?: TelegramVoice;
 };
 type TelegramCallbackQuery = {
-  id?: string;
-  from?: TelegramFrom;
+  id: string;
+  from?: { id: number };
   data?: string;
   message?: TelegramMessage;
 };
-type TelegramUpdate = {
-  update_id?: number;
-  message?: TelegramMessage;
-  callback_query?: TelegramCallbackQuery;
+
+const headersFor = (json: boolean): Record<string, string> => {
+  const h: Record<string, string> = { apikey: serverApiKey() };
+  if (json) h["content-type"] = "application/json";
+  return h;
 };
 
-function rejectUnauthorized(message: string, status = 401): Response {
-  return new Response(JSON.stringify({ ok: false, error: message }), {
-    status,
-    headers: { "Content-Type": "application/json" },
+const authedHeaders = (): Record<string, string> => ({
+  ...headersFor(true),
+  Authorization: `Bearer ${serverApiKey()}`,
+});
+
+async function callRpc<T>(fn: string, args: Record<string, unknown>): Promise<T | null> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: authedHeaders(),
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as T;
+}
+
+const read: ReadRows = async (table, params) => {
+  const query = new URLSearchParams(params).toString();
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+    method: "GET",
+    headers: authedHeaders(),
+  });
+  if (!res.ok) return [];
+  return (await res.json()) as Row[];
+};
+
+async function postToTelegram(method: string, payload: Record<string, unknown>): Promise<void> {
+  await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
   });
 }
 
-async function verifyTelegramRequest(req: Request): Promise<{ ok: true; payload: TelegramUpdate } | { ok: false; response: Response }> {
-  if (req.method !== "POST") {
-    return { ok: false, response: rejectUnauthorized("Method not allowed", 405) };
+async function sendMessage(chatId: number, text: string): Promise<void> {
+  if (!TELEGRAM_BOT_TOKEN || !text) return;
+  for (const chunk of splitMessages(text)) {
+    await postToTelegram("sendMessage", { chat_id: chatId, text: chunk });
   }
-
-  const contentType = req.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) {
-    return { ok: false, response: rejectUnauthorized("Unsupported content type", 415) };
-  }
-
-  const rawBody = await req.text();
-  if (!rawBody || rawBody.trim().length === 0) {
-    return { ok: false, response: rejectUnauthorized("Empty request body", 400) };
-  }
-
-  let payload: TelegramUpdate;
-  try {
-    payload = JSON.parse(rawBody) as TelegramUpdate;
-  } catch {
-    return { ok: false, response: rejectUnauthorized("Invalid JSON payload", 400) };
-  }
-
-  if (!payload || typeof payload !== "object") {
-    return { ok: false, response: rejectUnauthorized("Invalid payload", 400) };
-  }
-
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return { ok: false, response: rejectUnauthorized("Missing bearer token", 401) };
-  }
-
-  const secretHeader = req.headers.get("x-telegram-bot-api-secret-token");
-  const secretAllowed = await isAuthorizedWebhookSecret(secretHeader);
-  if (!secretAllowed) {
-    return { ok: false, response: rejectUnauthorized("Forbidden webhook secret", 403) };
-  }
-
-  const message = payload.message ?? payload.callback_query?.message ?? null;
-  const chat = message?.chat ?? payload.callback_query?.message?.chat ?? null;
-  const chatId = chat?.id;
-
-  if (typeof chatId !== "number" || Number.isNaN(chatId)) {
-    return { ok: false, response: rejectUnauthorized("Missing or invalid chat id", 400) };
-  }
-
-  if (!(await isAuthorizedManagerChat(chatId))) {
-    return { ok: false, response: rejectUnauthorized("Chat not authorized", 403) };
-  }
-
-  const sender = payload.message?.from ?? payload.callback_query?.from ?? null;
-  if (sender?.is_bot) {
-    return { ok: true, payload: { update_id: payload.update_id, message: { from: sender, chat, text: "", voice: undefined } } };
-  }
-
-  if (payload.callback_query && !payload.callback_query.data) {
-    return { ok: false, response: rejectUnauthorized("Missing callback data", 400) };
-  }
-
-  if (message?.voice && message.voice.file_size && message.voice.file_size > MAX_VOICE_BYTES) {
-    return { ok: false, response: rejectUnauthorized("Voice upload too large", 413) };
-  }
-
-  return { ok: true, payload };
 }
 
-serve(async (req: Request) => {
-  const checked = await verifyTelegramRequest(req);
-  if (!checked.ok) return checked.response;
+async function answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void> {
+  if (!TELEGRAM_BOT_TOKEN) return;
+  await postToTelegram("answerCallbackQuery", { callback_query_id: callbackQueryId, text });
+}
 
-  const payload = checked.payload;
-  const message = payload.message ?? payload.callback_query?.message;
+async function editMessageText(chatId: number, messageId: number, text: string, replyMarkup?: unknown): Promise<void> {
+  if (!TELEGRAM_BOT_TOKEN) return;
+  const payload: Record<string, unknown> = { chat_id: chatId, message_id: messageId, text };
+  if (replyMarkup) payload.reply_markup = replyMarkup;
+  await postToTelegram("editMessageText", payload);
+}
 
-  if (!message && !payload.callback_query) {
-    return new Response(JSON.stringify({ ok: true, ignored: true }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+const inlineKeyboard = (rows: Array<Array<{ text: string; callback_data: string }>>) => ({ inline_keyboard: rows });
+
+async function fetchVoiceText(voice: TelegramVoice): Promise<string | null> {
+  if (!TELEGRAM_BOT_TOKEN || !voice.file_id || !OPENAI_API_KEY) return null;
+  if (voice.file_size !== undefined && voice.file_size > MAX_VOICE_BYTES) return null;
+  const info = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${voice.file_id}`);
+  const fileInfo = (await info.json()) as { ok?: boolean; result?: { file_path?: string } };
+  if (!fileInfo?.ok || !fileInfo.result?.file_path) return null;
+  const audio = await fetch(`https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileInfo.result.file_path}`);
+  if (!audio.ok) return null;
+  const form = new FormData();
+  form.append("file", await audio.blob(), "voice.oga");
+  form.append("model", "gpt-4o-mini-transcribe");
+  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+    body: form,
+  });
+  if (!res.ok) return null;
+  const parsed = (await res.json()) as { text?: string };
+  return parsed.text ?? null;
+}
+
+const ADMIN_INTENTS = ["coaches", "attendance", "registrations", "revenue", "payment_proofs", "staff_documents"] as const;
+type AdminIntent = (typeof ADMIN_INTENTS)[number];
+const ADMIN_PERIODS = ["this_month", "last_month", "next_7_days"] as const;
+type AdminPeriod = (typeof ADMIN_PERIODS)[number];
+type AdminQuestion = { intent: AdminIntent; period: AdminPeriod; name?: string };
+
+function deterministicAdminIntent(value: string): AdminQuestion | null {
+  const q = clean(value);
+  let intent: AdminIntent | null = null;
+  if (q.includes("مدرب") || q.includes("coaches")) intent = "coaches";
+  else if (q.includes("حضور") || q.includes("attendance")) intent = "attendance";
+  else if (q.includes("تسجيل") || q.includes("registrations")) intent = "registrations";
+  else if (q.includes("ايراد") || q.includes("revenue")) intent = "revenue";
+  else if (q.includes("اثبات دفع") || q.includes("payment_proofs")) intent = "payment_proofs";
+  else if (q.includes("شهادات") || q.includes("رخص") || q.includes("staff_documents")) intent = "staff_documents";
+  if (!intent) return null;
+  let period: AdminPeriod = "this_month";
+  if (q.includes("الشهر الماضي") || q.includes("last_month")) period = "last_month";
+  else if (q.includes("٧ ايام") || q.includes("7 ايام") || q.includes("next_7_days")) period = "next_7_days";
+  return { intent, period };
+}
+
+function adminDateRange(period: AdminPeriod): { start: string; end: string } {
+  const today = new Date().toISOString().slice(0, 10);
+  if (period === "last_month") {
+    const d = new Date();
+    const first = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1));
+    const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 0));
+    return { start: first.toISOString().slice(0, 10), end: last.toISOString().slice(0, 10) };
   }
+  if (period === "next_7_days") return { start: today, end: shift(today, 7) };
+  const d = new Date();
+  const first = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+  return { start: first.toISOString().slice(0, 10), end: today };
+}
 
-  const inputText =
-    typeof message?.text === "string"
-      ? message.text.trim()
-      : typeof payload.callback_query?.data === "string"
-        ? payload.callback_query.data.trim()
-        : "";
-
-  if (!inputText && !message?.voice) {
-    return new Response(JSON.stringify({ ok: true, ignored: true }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
+async function classifyAdminQuestion(value: string): Promise<AdminQuestion | null> {
+  const deterministic = deterministicAdminIntent(value);
+  if (deterministic) return deterministic;
+  if (!OPENAI_API_KEY) return null;
   try {
-    const logEntry = {
-      ok: true,
-      kind: payload.callback_query ? "callback_query" : "message",
-      chatId: message?.chat?.id ?? payload.callback_query?.message?.chat?.id,
-      userId: message?.from?.id ?? payload.callback_query?.from?.id,
-      text: inputText || "",
-      receivedAt: new Date().toISOString(),
-    };
-
-    await reportRequest(logEntry);
-
-    if (inputText) {
-      await detailedReport({ type: "telegram-command", content: inputText });
-      await splitMessages(inputText, { maxLength: 3500 });
-    }
-
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        model: GPT_MODEL,
+        input: `صنف سؤال المدير التالي إلى نية واحدة من: ${ADMIN_INTENTS.join(", ")} وفترة من: ${ADMIN_PERIODS.join(", ")}. أجب بصيغة JSON فقط بالحقول intent وperiod. السؤال: ${value}. لا تنشئ SQL ولا أسماء جداول.`,
+      }),
     });
-  } catch (error) {
-    const messageText = error instanceof Error ? error.message : "Unknown error";
-    return new Response(JSON.stringify({ ok: false, error: messageText }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    if (!res.ok) return null;
+    const parsed = (await res.json()) as { output_text?: string };
+    const raw = parsed.output_text ?? "";
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const decoded = JSON.parse(match[0]) as { intent?: string; period?: string };
+    if (!decoded.intent || !ADMIN_INTENTS.includes(decoded.intent as AdminIntent)) return null;
+    const period = decoded.period && ADMIN_PERIODS.includes(decoded.period as AdminPeriod) ? (decoded.period as AdminPeriod) : "this_month";
+    return { intent: decoded.intent as AdminIntent, period };
+  } catch {
+    return null;
   }
+}
+
+async function adminAnswer(intent: AdminIntent, period: AdminPeriod): Promise<string> {
+  const range = adminDateRange(period);
+  if (intent === "revenue") {
+    const rows = await read("transactions", { transaction_date_gte: range.start, transaction_date_lte: range.end, select: "id,type,amount,transaction_date,note" });
+    const revenues = rows.filter((row) => String(row.type).toLowerCase() === "revenue");
+    const total = revenues.reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
+    return `الإيرادات (${range.start} إلى ${range.end}): ${total} دينار من ${revenues.length} عملية. تفاصيل الاشتراكات والمصروفات متاحة عبر ملخص اليوم.`;
+  }
+  if (intent === "payment_proofs") {
+    const rows = await read("payment_proofs", { submitted_at_gte: range.start, submitted_at_lte: range.end, select: "id,status,submitted_at" });
+    return `إثباتات الدفع بانتظار التحقق: ${rows.length} طلب خلال الفترة (${range.start} إلى ${range.end}).`;
+  }
+  if (intent === "staff_documents") {
+    const rows = await read("staff_documents", { submitted_at_gte: range.start, submitted_at_lte: range.end, select: "id,doc_type,status" });
+    return `شهادات/رخص الطاقم: ${rows.length} مستند خلال الفترة (${range.start} إلى ${range.end}).`;
+  }
+  const table = intent === "coaches" ? "coaches" : intent === "attendance" ? "attendance" : "registrations";
+  const params =
+    intent === "attendance"
+      ? { session_date_gte: range.start, session_date_lte: range.end, select: "id,session_date,status" }
+      : intent === "coaches"
+        ? { role: "eq.coach", select: "id,full_name,role" }
+        : { submitted_at_gte: range.start, submitted_at_lte: range.end, select: "id,status,submitted_at" };
+  const rows = await read(table, params);
+  if (intent === "coaches") {
+    return `عدد المدربين: ${rows.length}\n` + rows.map((row) => `- ${String(row.full_name ?? "")}`).join("\n");
+  }
+  return `الحالات (${range.start} إلى ${range.end}):\n` + rows.map((row) => `- الحالة: ${String(row.status ?? "")}`).join("\n");
+}
+
+const REFUSAL_TEXT = "الأوامر الإدارية غير مدعومة عبر البوت. يمكن للأكاديمية إدخال التعديلات من لوحة الإدارة، والبوت يعرض التقارير فقط.";
+
+function roleMenuPayload(role: "manager" | "coach"): { text: string; markup: ReturnType<typeof inlineKeyboard> } {
+  if (role === "manager") {
+    return {
+      text: "قائمة المدير:",
+      markup: inlineKeyboard([
+        [{ text: "ملخص اليوم", callback_data: "menu:overview" }],
+        [{ text: "إثباتات الدفع بانتظار التحقق", callback_data: "admin:payment_proofs" }],
+        [{ text: "شهادات/رخص الطاقم", callback_data: "admin:staff_documents" }],
+        [{ text: "الحضور الناقص", callback_data: "admin:attendance" }],
+      ]),
+    };
+  }
+  return {
+    text: "قائمة المدرب:",
+    markup: inlineKeyboard([
+      [{ text: "حصة اليوم", callback_data: "coach:today" }],
+      [{ text: "ملخص الحضور", callback_data: "coach:attendance" }],
+      [{ text: "مباريات فريقي", callback_data: "coach:matches" }],
+      [{ text: "إنهاء الحصة", callback_data: "training:complete:today" }],
+    ]),
+  };
+}
+
+async function sendRoleMenu(chatId: number, role: "manager" | "coach"): Promise<void> {
+  const payload = roleMenuPayload(role);
+  await postToTelegram("sendMessage", { chat_id: chatId, text: payload.text, reply_markup: payload.markup });
+}
+
+async function handleManagerCommand(chatId: number, inputText: string): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10);
+  let request = reportRequest(inputText, today);
+  if (!request && (value => value.includes("ملخص"))(inputText)) request = reportRequest("ملخص اليوم", today);
+  if (!request && (value => value.includes("دفع") || value.includes("اشتراك"))(inputText)) request = reportRequest("اشتراكات اليوم", today);
+  if (!request) {
+    const adminQuestion = await classifyAdminQuestion(inputText);
+    if (adminQuestion) {
+      if (adminQuestion.intent === "payment_proofs" || adminQuestion.intent === "staff_documents" || adminQuestion.intent === "coaches") {
+        await sendMessage(chatId, await adminAnswer(adminQuestion.intent, adminQuestion.period));
+        return;
+      }
+      await sendMessage(chatId, "استخدم ملخص اليوم أو /whoami لعرض التقارير المتاحة.");
+      return;
+    }
+    await sendMessage(chatId, REFUSAL_TEXT);
+    return;
+  }
+  try {
+    const text = await detailedReport(request, read);
+    await sendMessage(chatId, text);
+  } catch (error) {
+    if (error instanceof Error && error.message === "invalid_report_date") {
+      await sendMessage(chatId, "التاريخ المطلوب غير صالح. جرّب صيغة مثل: تقرير 2026-09-30");
+    } else {
+      await sendMessage(chatId, "تعذر توليد التقرير الآن. حاول مرة أخرى لاحقاً.");
+    }
+  }
+}
+
+async function handleManagerCallback(callbackQuery: TelegramCallbackQuery): Promise<void> {
+  const callbackChatId = callbackQuery.message?.chat.id ?? callbackQuery.from?.id ?? 0;
+  const callbackChatType = callbackQuery.message?.chat.type ?? "private";
+  await answerCallbackQuery(callbackQuery.id);
+  if (callbackChatType !== "private") return;
+  if (!(await isAuthorizedManagerChat(callbackChatId))) return;
+  await sha256Hex(String(callbackChatId));
+  const data = callbackQuery.data ?? "";
+  const messageId = callbackQuery.message?.message_id ?? 0;
+  if (data.startsWith("reg:approve:")) {
+    const applicationId = data.slice("reg:approve:".length);
+    const ok = await callRpc<boolean>("telegram_approve_registration_application", { p_application_id: applicationId });
+    await answerCallbackQuery(callbackQuery.id, ok ? "تم اعتماد طلب التسجيل" : "تعذر اعتماد الطلب");
+    return;
+  }
+  if (data.startsWith("staff:approve:") || data.startsWith("staff:review:")) {
+    const applicationId = data.split(":").at(-1) ?? "";
+    const ok = await callRpc<boolean>("telegram_approve_staff_application", { p_application_id: applicationId });
+    await editMessageText(callbackChatId, messageId, ok ? "تم اعتماد طلب الطاقم" : "تعذر اعتماد الطلب");
+    return;
+  }
+  if (data.startsWith("training:complete:")) {
+    const trainingId = data.slice("training:complete:".length);
+    const ok = await callRpc<boolean>("telegram_complete_training", { p_training_id: trainingId });
+    if (ok) await editMessageText(callbackChatId, messageId, "تم إنهاء الحصة.");
+    return;
+  }
+  if (data.startsWith("menu:")) {
+    await handleManagerCommand(callbackChatId, "ملخص اليوم");
+  }
+}
+
+async function handleCoachCommand(chatId: number, coachId: string, inputText: string): Promise<void> {
+  const q = clean(inputText);
+  const today = new Date().toISOString().slice(0, 10);
+  const team = await callRpc<{ team_id: string }>("telegram_ensure_today_trainings", { p_coach_id: coachId, p_date: today });
+  const teamId = team?.team_id ?? "";
+  if (q.includes("انهاء") || q.includes("complete")) {
+    await callRpc<boolean>("telegram_complete_training", { coach_id: coachId, team_id: teamId, p_date: today });
+    await sendMessage(chatId, "تم إنهاء الحصة.");
+    return;
+  }
+  if (q.includes("غياب") || q.includes("attendance")) {
+    await callRpc<boolean>("telegram_set_training_attendance", { coach_id: coachId, team_id: teamId, p_date: today, p_status: "absent" });
+    await sendMessage(chatId, "تم تحديث الحضور الناقص.");
+    return;
+  }
+  if (q.includes("ملاحظة") || q.includes("note")) {
+    await callRpc<boolean>("telegram_quick_player_note", { coach_id: coachId, team_id: teamId, p_note: inputText });
+    await sendMessage(chatId, "تم تسجيل الملاحظة.");
+    return;
+  }
+  await sendRoleMenu(chatId, "coach");
+}
+
+Deno.serve(async (req) => {
+  const secretHeader = req.headers.get("X-Telegram-Bot-Api-Secret-Token");
+  const dispatchSecretHeader = req.headers.get("X-Shooter-Dispatch-Secret");
+  if (!(await isAuthorizedWebhookSecret(secretHeader)) && !(await isAuthorizedDispatch(dispatchSecretHeader))) {
+    return new Response("unauthorized", { status: 401 });
+  }
+
+  let payload: Record<string, unknown> = {};
+  try {
+    payload = (await req.json()) as Record<string, unknown>;
+  } catch {
+    return new Response("bad request", { status: 400 });
+  }
+
+  if (payload.action === "flush_registration_notifications") {
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }
+
+  const callbackQuery = payload.callback_query as TelegramCallbackQuery | undefined;
+  if (callbackQuery) {
+    await handleManagerCallback(callbackQuery);
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }
+
+  const message = payload.message as TelegramMessage | undefined;
+  if (!message) return new Response(JSON.stringify({ ok: true }), { status: 200 });
+
+  const chatId = message.chat.id;
+  const chatType = message.chat.type;
+  if (chatType !== "private") return new Response(JSON.stringify({ ok: true }), { status: 200 });
+
+  if (await isAuthorizedManagerChat(chatId)) {
+    let inputText = message.text ?? "";
+    if (!inputText && message?.voice) {
+      const voiceMessage = message.voice;
+      const transcribed = await fetchVoiceText(voiceMessage);
+      if (!transcribed) {
+        await sendMessage(chatId, "تعذر تحويل الرسالة الصوتية إلى نص.");
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+      inputText = transcribed;
+    }
+    await handleManagerCommand(chatId, inputText);
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }
+
+  const telegramIdentity = await fetchTelegramIdentity(chatId);
+  if (telegramIdentity.role === "manager") {
+    await handleManagerCommand(chatId, message.text ?? "");
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }
+  if (telegramIdentity.role === "coach") {
+    await handleCoachCommand(chatId, telegramIdentity.user_id ?? "", message.text ?? "");
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }
+  if (telegramIdentity.role === "parent") {
+    let incomingText = textMessage(message);
+    await sendMessage(chatId, `بوابة ولي الأمر: لا يمكن عرض تقارير الإدارة عبر البوت. راسل الأكاديمية من التطبيق لعرض ${incomingText ? "تفاصيل" : "بيانات"} اللاعب.`);
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }
+
+  if (linkedIdentity?.role !== "coach" && !telegramIdentity) {
+    await sendMessage(chatId, "هذه البوابة مخصصة للإدارة والمدربين وأولياء الأمور المسجلين فقط.");
+  }
+  return new Response(JSON.stringify({ ok: true }), { status: 200 });
 });
+
+function textMessage(message: TelegramMessage): string {
+  return message.text ?? "";
+}

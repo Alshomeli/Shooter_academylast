@@ -1,0 +1,37 @@
+{
+  "projectId": "69423574",
+  "functions": {
+    "ai-management-assistant": {
+      "hasChanged": false,
+      "hash": "a0c2536247b37afc975f00776c33dc44e86700880df3a101dcb23817bf14bc37"
+    },
+    "ai-operations-gateway": {
+      "hasChanged": false,
+      "hash": "5feb6cc41940ebe6b9d90cfacb0b6b2f8befcff1c2a7cf95a4f21ed72d06ef04"
+    },
+    "chatgpt-mcp": {
+      "hasChanged": false,
+      "hash": "2c60d56f102cd1f6dcb8313f7e98231204271fad8553ed3edeac16b903b306cd"
+    },
+    "delete-player-file": {
+      "hasChanged": false,
+      "hash": "d8d074443b74ca9b8e2dbb5513dbc94dd27d6d409d49fc3fcc79851dff7c05ea"
+    },
+    "parent-account-invite": {
+      "hasChanged": false,
+      "hash": "82700b61088c64f530f837d8ffba302e048f8111f9db9eefcfc19128ee189a26"
+    },
+    "parent-register": {
+      "hasChanged": false,
+      "hash": "232cdcf083606cf2965917cf5dc4ba31f88c98c4c48dca67b2bf236fe2d93f5a"
+    },
+    "setup-academy": {
+      "hasChanged": false,
+      "hash": "6bcb6f29a86a7c82a539f45543b56d89e560c97662e83bf8c719cf5074628f92"
+    },
+    "telegram-reply": {
+      "hasChanged": false,
+      "hash": "c36ccedba2ee26b5994408d36af196924cc15458392505a5cc3f144f8c5c0d1f"
+    }
+  }
+}
