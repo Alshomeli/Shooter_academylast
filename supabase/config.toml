@@ -12,7 +12,7 @@ authorization_url_path = "/oauth/consent"
 allow_dynamic_registration = true
 
 [functions.telegram-reply]
-verify_jwt = true
+verify_jwt = false
 
 [functions.parent-account-invite]
 verify_jwt = true

@@ -1,12 +1,4 @@
-import {
-  clean,
-  shift,
-  reportRequest,
-  detailedReport,
-  splitMessages,
-  type ReadRows,
-  type Row,
-} from "./reports.ts";
+import { clean, shift, reportRequest, detailedReport, splitMessages, type ReadRows, type Row } from "./reports.ts";
 
 const optionalServerEnv = (...parts: string[]) => Deno.env.get(parts.join("_"));
 
@@ -38,18 +30,24 @@ async function bootstrapHashes(csv: string | undefined): Promise<Set<string>> {
   return hashes;
 }
 
-const BOOTSTRAP_MANAGER_CHAT_HASHES = await bootstrapHashes(MANAGER_CHAT_IDS);
-const BOOTSTRAP_WEBHOOK_SECRET_HASHES = await bootstrapHashes(WEBHOOK_SECRET);
+let BOOTSTRAP_MANAGER_CHAT_HASHES: Set<string> | null = null;
+let BOOTSTRAP_WEBHOOK_SECRET_HASHES: Set<string> | null = null;
+
+async function ensureBootstrap(): Promise<{ chats: Set<string>; secrets: Set<string> }> {
+  if (!BOOTSTRAP_MANAGER_CHAT_HASHES) BOOTSTRAP_MANAGER_CHAT_HASHES = await bootstrapHashes(MANAGER_CHAT_IDS);
+  if (!BOOTSTRAP_WEBHOOK_SECRET_HASHES) BOOTSTRAP_WEBHOOK_SECRET_HASHES = await bootstrapHashes(WEBHOOK_SECRET);
+  return { chats: BOOTSTRAP_MANAGER_CHAT_HASHES, secrets: BOOTSTRAP_WEBHOOK_SECRET_HASHES };
+}
 
 async function isAuthorizedWebhookSecret(secret: string | null): Promise<boolean> {
   if (!secret) return false;
   const hash = await sha256Hex(secret);
-  return BOOTSTRAP_WEBHOOK_SECRET_HASHES.has(hash);
+  return (await ensureBootstrap()).secrets.has(hash);
 }
 
 async function isAuthorizedManagerChat(chatId: number): Promise<boolean> {
   const hash = await sha256Hex(String(chatId));
-  return BOOTSTRAP_MANAGER_CHAT_HASHES.has(hash);
+  return (await ensureBootstrap()).chats.has(hash);
 }
 
 type TelegramIdentity = { role?: "manager" | "coach"; user_id?: string };
@@ -57,7 +55,7 @@ type LinkedIdentity = { role?: "manager" | "coach" | "parent"; user_id?: string 
 
 async function fetchTelegramIdentity(chatId: number): Promise<LinkedIdentity | null> {
   const row = await callRpc<TelegramIdentity>("telegram_identity", { p_chat_id: chatId });
-  return row ?? null;
+  return row && row.role ? row : null;
 }
 
 const DISPATCH_SECRET = optionalServerEnv("TELEGRAM", "DISPATCH", "SECRET");
@@ -103,7 +101,8 @@ async function callRpc<T>(fn: string, args: Record<string, unknown>): Promise<T 
     body: JSON.stringify(args),
   });
   if (!res.ok) return null;
-  return (await res.json()) as T;
+  const json = await res.json();
+  return (Array.isArray(json) ? (json[0] ?? null) : json) as T | null;
 }
 
 const read: ReadRows = async (table, params) => {
@@ -145,7 +144,7 @@ async function editMessageText(chatId: number, messageId: number, text: string, 
 
 const inlineKeyboard = (rows: Array<Array<{ text: string; callback_data: string }>>) => ({ inline_keyboard: rows });
 
-async function fetchVoiceText(voice: TelegramVoice): Promise<string | null> {
+async function telegramVoiceToText(voice: TelegramVoice): Promise<string | null> {
   if (!TELEGRAM_BOT_TOKEN || !voice.file_id || !OPENAI_API_KEY) return null;
   if (voice.file_size !== undefined && voice.file_size > MAX_VOICE_BYTES) return null;
   const info = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${voice.file_id}`);
@@ -229,19 +228,21 @@ async function classifyAdminQuestion(value: string): Promise<AdminQuestion | nul
   }
 }
 
-async function adminAnswer(intent: AdminIntent, period: AdminPeriod): Promise<string> {
-  const range = adminDateRange(period);
-  if (intent === "revenue") {
+async function adminAnswer(parsedQuestion: { intent: AdminIntent; period: AdminPeriod }): Promise<string> {
+  const intent = parsedQuestion.intent;
+  const range = adminDateRange(parsedQuestion.period);
+  if (parsedQuestion.intent === "revenue") {
     const rows = await read("transactions", { transaction_date_gte: range.start, transaction_date_lte: range.end, select: "id,type,amount,transaction_date,note" });
     const revenues = rows.filter((row) => String(row.type).toLowerCase() === "revenue");
     const total = revenues.reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
-    return `الإيرادات (${range.start} إلى ${range.end}): ${total} دينار من ${revenues.length} عملية. تفاصيل الاشتراكات والمصروفات متاحة عبر ملخص اليوم.`;
+    const subs = await read("subscriptions", { select: "id,status" });
+    return `الإيرادات (${range.start} إلى ${range.end}): ${total} دينار من ${revenues.length} عملية. عدد الاشتراكات المسجلة: ${subs.length}.`;
   }
-  if (intent === "payment_proofs") {
+  if (parsedQuestion.intent === "payment_proofs") {
     const rows = await read("payment_proofs", { submitted_at_gte: range.start, submitted_at_lte: range.end, select: "id,status,submitted_at" });
     return `إثباتات الدفع بانتظار التحقق: ${rows.length} طلب خلال الفترة (${range.start} إلى ${range.end}).`;
   }
-  if (intent === "staff_documents") {
+  if (parsedQuestion.intent === "staff_documents") {
     const rows = await read("staff_documents", { submitted_at_gte: range.start, submitted_at_lte: range.end, select: "id,doc_type,status" });
     return `شهادات/رخص الطاقم: ${rows.length} مستند خلال الفترة (${range.start} إلى ${range.end}).`;
   }
@@ -297,11 +298,7 @@ async function handleManagerCommand(chatId: number, inputText: string): Promise<
   if (!request) {
     const adminQuestion = await classifyAdminQuestion(inputText);
     if (adminQuestion) {
-      if (adminQuestion.intent === "payment_proofs" || adminQuestion.intent === "staff_documents" || adminQuestion.intent === "coaches") {
-        await sendMessage(chatId, await adminAnswer(adminQuestion.intent, adminQuestion.period));
-        return;
-      }
-      await sendMessage(chatId, "استخدم ملخص اليوم أو /whoami لعرض التقارير المتاحة.");
+      await sendMessage(chatId, await adminAnswer(adminQuestion));
       return;
     }
     await sendMessage(chatId, REFUSAL_TEXT);
@@ -405,11 +402,16 @@ Deno.serve(async (req) => {
   const chatType = message.chat.type;
   if (chatType !== "private") return new Response(JSON.stringify({ ok: true }), { status: 200 });
 
+  if ((message.text ?? "").trim() === "/whoami") {
+    await sendMessage(chatId, `معرّف المحادثة: ${chatId}`);
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }
+
   if (await isAuthorizedManagerChat(chatId)) {
     let inputText = message.text ?? "";
     if (!inputText && message?.voice) {
       const voiceMessage = message.voice;
-      const transcribed = await fetchVoiceText(voiceMessage);
+      const transcribed = await telegramVoiceToText(voiceMessage);
       if (!transcribed) {
         await sendMessage(chatId, "تعذر تحويل الرسالة الصوتية إلى نص.");
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -421,23 +423,26 @@ Deno.serve(async (req) => {
   }
 
   const telegramIdentity = await fetchTelegramIdentity(chatId);
+  if (!telegramIdentity) {
+    await sendMessage(chatId, "هذه البوابة مخصصة للإدارة والمدربين وأولياء الأمور المسجلين فقط.");
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }
+  if (telegramIdentity.role === "parent") {
+    await sendMessage(chatId, "بوابة ولي الأمر: لا يمكن عرض تقارير الإدارة عبر البوت. راسل الأكاديمية من التطبيق لعرض بيانات اللاعب.");
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }
   if (telegramIdentity.role === "manager") {
     await handleManagerCommand(chatId, message.text ?? "");
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
-  if (telegramIdentity.role === "coach") {
-    await handleCoachCommand(chatId, telegramIdentity.user_id ?? "", message.text ?? "");
-    return new Response(JSON.stringify({ ok: true }), { status: 200 });
-  }
-  if (telegramIdentity.role === "parent") {
-    let incomingText = textMessage(message);
-    await sendMessage(chatId, `بوابة ولي الأمر: لا يمكن عرض تقارير الإدارة عبر البوت. راسل الأكاديمية من التطبيق لعرض ${incomingText ? "تفاصيل" : "بيانات"} اللاعب.`);
-    return new Response(JSON.stringify({ ok: true }), { status: 200 });
-  }
 
-  if (linkedIdentity?.role !== "coach" && !telegramIdentity) {
+  const linkedIdentity = telegramIdentity;
+  if (linkedIdentity?.role !== "coach") {
     await sendMessage(chatId, "هذه البوابة مخصصة للإدارة والمدربين وأولياء الأمور المسجلين فقط.");
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
+  let incomingText = textMessage(message);
+  await handleCoachCommand(chatId, linkedIdentity.user_id ?? "", incomingText);
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
 });
 
