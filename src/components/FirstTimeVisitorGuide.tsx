@@ -68,7 +68,7 @@ export function FirstTimeVisitorGuide({ lang }: { lang: Lang }) {
   const ar = lang === 'ar';
   const [active, setActive] = useState(false);
   const [index, setIndex] = useState(0);
-  const [rect, setRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const [rect, setRect] = useState<{ top: number; left: number; width: number; height: number; bottom: number } | null>(null);
 
   useEffect(() => {
     if (!loadDone()) {
@@ -82,7 +82,7 @@ export function FirstTimeVisitorGuide({ lang }: { lang: Lang }) {
     const el = document.getElementById(target);
     if (!el) { setRect(null); return; }
     const r = el.getBoundingClientRect();
-    setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+    setRect({ top: r.top, left: r.left, width: r.width, height: r.height, bottom: r.bottom });
   }, []);
 
   useEffect(() => {

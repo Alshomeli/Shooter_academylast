@@ -49,7 +49,7 @@ const ALLOWED_VIEWS_BY_ROLE: Record<Exclude<Role, 'parent'>, ViewId[]> = {
   manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings', 'site-content'],
   accountant: ['dashboard', 'subscriptions', 'reports', 'messages', 'ai-center'],
   coach: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'messages', 'ai-center'],
-  receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
+  receptionist: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
 };
 
 /* ── Error Boundary ── */
@@ -306,7 +306,7 @@ export default function App() {
       ] = await Promise.all([
         db.getSettings(),
         parent ? [] : db.getStaff(), db.getTeams(role === 'coach'), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
-        role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
+        (role === 'coach' || role === 'receptionist') ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
         db.getTrainings(), finance ? db.getTransactions() : [], (parent || role === 'coach') ? [] : db.getTournaments(),
         db.getEvaluations(), db.getNotifications(),
         // Audit history is needed only on the manager's audit-logs page.
