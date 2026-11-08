@@ -50,8 +50,8 @@ async function isAuthorizedManagerChat(chatId: number): Promise<boolean> {
   return (await ensureBootstrap()).chats.has(hash);
 }
 
-type TelegramIdentity = { role?: "manager" | "coach"; user_id?: string };
-type LinkedIdentity = { role?: "manager" | "coach" | "parent"; user_id?: string };
+type TelegramIdentity = { role?: "manager" | "coach"; user_id?: string; staff_id?: string };
+type LinkedIdentity = { role?: "manager" | "coach" | "parent"; user_id?: string; staff_id?: string };
 
 async function fetchTelegramIdentity(chatId: number): Promise<LinkedIdentity | null> {
   const row = await callRpc<TelegramIdentity>("telegram_identity", { p_chat_id: chatId });
@@ -355,7 +355,7 @@ async function handleCoachTrainingCallback(callbackQuery: TelegramCallbackQuery)
 
   const telegramChatId = callbackQuery.from?.id ?? chatId;
   const identity = await fetchTelegramIdentity(telegramChatId);
-  if (identity?.role !== "coach" || !identity.user_id) {
+  if (identity?.role !== "coach" || !identity.staff_id) {
     await answerCallbackQuery(callbackQuery.id, "غير مصرح لهذا الإجراء.");
     return true;
   }
@@ -365,7 +365,7 @@ async function handleCoachTrainingCallback(callbackQuery: TelegramCallbackQuery)
   await callRpc<number>("telegram_ensure_today_trainings", { p_chat_id: telegramChatId });
 
   const teams = await read("teams", {
-    coach_id: `eq.${identity.user_id}`,
+    coach_id: `eq.${identity.staff_id}`,
     select: "id",
   });
   const teamIds = teams.map((team) => String(team.id ?? "")).filter(Boolean);
