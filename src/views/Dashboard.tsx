@@ -158,7 +158,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
       </div>}
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] auto-rows-fr gap-4">
         <StatCard icon={<Users className="h-5 w-5" />} label={t.activePlayers} value={stats.activePlayers} sublabel={`${t.activePlayersSub} ${stats.totalTeams} ${t.teamsLabel}`} color="emerald" onClick={() => setCurrentTab('players')} />
         {canSeeFinance && <StatCard icon={<Wallet className="h-5 w-5" />} label={t.netProfit} value={`${stats.netProfit.toLocaleString()} ${t.currency}`} sublabel={`${t.revenueLabel} ${stats.totalRevenue.toLocaleString()}`} color="blue" onClick={() => setCurrentTab('subscriptions')} />}
         {canSeeFinance && <StatCard icon={<Receipt className="h-5 w-5" />} label={isAr ? 'الدعم المرتجع بعد الدفع' : 'Post-payment support refunds'} value={`${transactions.filter(tx => tx.category === 'subscription_support').reduce((sum, tx) => sum + tx.amount, 0).toFixed(3)} BHD`} sublabel={isAr ? 'مخصوم من الصافي؛ الإعفاء بلا حركة مالية' : 'Deducted from net; exemptions have no cash movement'} color="amber" />}
