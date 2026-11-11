@@ -1,4 +1,4 @@
-import { templateSummary, goalkeeperTotal } from './evaluation-template';
+import { templateSummary, goalkeeperTotal } from './evaluation-template.ts';
 import type {
   Staff, Team, Player, Parent, Subscription, Attendance,
   Match, Training, Transaction, Tournament, PlayerEvaluation,

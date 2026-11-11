@@ -1,4 +1,4 @@
-import { templateSummary, evaluationCriteria } from './evaluation-template';
+import { templateSummary, evaluationCriteria } from './evaluation-template.ts';
 import type { PlayerEvaluation } from '@/types';
 
 const GROUP_KEYS = {

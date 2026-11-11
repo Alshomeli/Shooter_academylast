@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabase.ts';
 export const familyPaymentsEnabled = import.meta.env.VITE_ENABLE_FAMILY_RECEIPTS === 'true';
 export interface FamilyReceiptQueueItem {
  id: string; parent_user_id: string; proof_path: string; transfer_date: string;

@@ -1,5 +1,5 @@
-import { familyPaymentsEnabled } from './family-receipt-queue';
-import {supabase} from './supabase';
+import { familyPaymentsEnabled } from './family-receipt-queue.ts';
+import {supabase} from './supabase.ts';
 
 /** Staging-only manager review adapter. Not wired into live pages. */
 export async function approveFamilyReceiptAfterBankVerification(

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabase.ts';
 
 export type ContentKind = 'news' | 'gallery' | 'video' | 'coach' | 'contact';
 export type ContentPayload = Record<string, string>;

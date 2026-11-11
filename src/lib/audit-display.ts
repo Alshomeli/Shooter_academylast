@@ -1,5 +1,5 @@
 import type { Lang } from '@/types';
-import { roleLabel } from './i18n';
+import { roleLabel } from './i18n.ts';
 
 type BilingualLabel = { ar: string; en: string };
 
