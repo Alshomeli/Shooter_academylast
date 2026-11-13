@@ -23,7 +23,7 @@ vm.runInNewContext(code, {
 const { RootErrorBoundary } = exports;
 
 test('root error boundary is eagerly imported and wraps the lazy route suspense', () => {
-  assert.match(main, /import \{ RootErrorBoundary \} from '\.\/components\/RootErrorBoundary'/);
+  assert.match(main, /import \{ RootErrorBoundary \} from '\.\/components\/RootErrorBoundary\.tsx'/);
   assert.match(main, /<RootErrorBoundary lang=\{initialLang\}>\s*<Suspense[\s\S]*<\/Suspense>\s*<\/RootErrorBoundary>/);
   for (const route of ['App', 'AcademyHome', 'OAuthConsent', 'LegalPage']) {
     assert.match(main, new RegExp(`const ${route} = lazy\\(`));
