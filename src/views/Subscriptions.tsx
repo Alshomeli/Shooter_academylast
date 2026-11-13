@@ -298,7 +298,7 @@ export function Subscriptions({
       </PageHeader>
 
       {canSeeFinance && <p className="text-sm text-slate-600 dark:text-slate-300">{isAr ? 'الرسوم المُعادة بسبب الإعفاء أو الانسحاب' : 'Fees refunded for exemption or withdrawal'}: {transactions.filter(tx => tx.category === 'subscription_support').reduce((sum, tx) => sum + tx.amount, 0).toFixed(3)} BHD · {isAr ? 'الإعفاءات لا تُسجّل كحركات مالية' : 'Exemptions create no financial transactions'}</p>}
-      {isManager && <details className="rounded-xl border p-3 dark:border-slate-700"><summary className="cursor-pointer font-bold">{isAr ? 'اعتماد اشتراك مدفوع قبل المنصة' : 'Approve pre-platform paid subscription'}</summary><select aria-label={isAr ? 'اللاعب' : 'Player'} value={coveragePlayer} onChange={e=>setCoveragePlayer(e.target.value)} className={inputCls}><option value="">{isAr ? 'اختر اللاعب' : 'Select player'}</option>{players.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>{coveragePlayer && <PreplatformCoverage key={coveragePlayer} playerId={coveragePlayer} lang={lang} onSaved={onRefresh}/>}</details>}
+      {isManager && <details className="rounded-xl border p-3 dark:border-slate-700"><summary className="cursor-pointer font-bold text-slate-900 dark:text-slate-100">{isAr ? 'اعتماد اشتراك مدفوع قبل المنصة' : 'Approve pre-platform paid subscription'}</summary><select aria-label={isAr ? 'اللاعب' : 'Player'} value={coveragePlayer} onChange={e=>setCoveragePlayer(e.target.value)} className={inputCls}><option value="">{isAr ? 'اختر اللاعب' : 'Select player'}</option>{players.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>{coveragePlayer && <PreplatformCoverage key={coveragePlayer} playerId={coveragePlayer} lang={lang} onSaved={onRefresh}/>}</details>}
       {/* ---------------- KPIs ---------------- */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {canSeeFinance && <StatCard
@@ -603,7 +603,7 @@ export function Subscriptions({
         {proofError && <p role="alert" className="rounded-xl bg-red-50 text-red-700 p-3 text-sm">{proofError}</p>}
         {familyPaymentsEnabled && isManager && familyQueue.map(receipt => <div key={receipt.id} className="rounded-xl border dark:border-slate-700 p-4 space-y-2">
           <p className="font-bold">{isAr?'إيصال عائلي':'Family receipt'} — {Number(receipt.expected_amount).toFixed(3)} BHD</p>
-          <p className="text-xs text-slate-500">{receipt.transfer_date} · {receipt.status}</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300">{receipt.transfer_date} · {receipt.status}</p>
           <button type="button" onClick={()=>void db.getPaymentProofUrl(receipt.proof_path).then(url=>window.open(url,'_blank','noopener,noreferrer')).catch(e=>setProofError(errorMessage(e,isAr)))}
             className="rounded-lg border p-2 text-sm">{isAr?'عرض الإيصال':'View receipt'}</button>
           {receipt.review_note && <p className="text-sm text-amber-700 dark:text-amber-300">{receipt.review_note}</p>}
@@ -635,11 +635,11 @@ export function Subscriptions({
         {paymentProofs.map((proof)=>{
           const player=playerOf(proof.playerId);
           return <div key={proof.id} className="bg-white dark:bg-slate-900 rounded-2xl border dark:border-slate-800 p-4 flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-48"><p className="font-black">{player?.name || t.unknownPlayer}</p><p className="text-xs text-slate-500">{proof.amount} {t.currency} · {proof.transferDate}</p>{proof.receiptNumber&&<p className="text-xs font-black text-brand-600 mt-1">{isAr?'رقم الإيصال':'Receipt'}: SA-{String(proof.receiptNumber).padStart(6,'0')}</p>}{proof.parentNote&&<p className="text-xs mt-1">{proof.parentNote}</p>}{proof.reviewedAt&&<p className="text-[10px] text-slate-400 mt-1">{isAr?'تمت المراجعة':'Reviewed'}: {new Date(proof.reviewedAt).toLocaleString(isAr?'ar-BH':'en-BH')}</p>}</div>
+            <div className="flex-1 min-w-48"><p className="font-black">{player?.name || t.unknownPlayer}</p><p className="text-xs text-slate-600 dark:text-slate-300">{proof.amount} {t.currency} · {proof.transferDate}</p>{proof.receiptNumber&&<p className="mt-1 text-xs font-black text-brand-600 dark:text-brand-300">{isAr?'رقم الإيصال':'Receipt'}: SA-{String(proof.receiptNumber).padStart(6,'0')}</p>}{proof.parentNote&&<p className="text-xs mt-1">{proof.parentNote}</p>}{proof.reviewedAt&&<p className="mt-1 text-[10px] text-slate-600 dark:text-slate-300">{isAr?'تمت المراجعة':'Reviewed'}: {new Date(proof.reviewedAt).toLocaleString(isAr?'ar-BH':'en-BH')}</p>}</div>
             <Badge color={proof.status==='approved'?'emerald':proof.status==='rejected'?'red':'amber'}>{proof.status==='pending'?(isAr?'بانتظار المراجعة':'Pending review'):proof.status==='approved'?(isAr?'معتمد':'Approved'):proof.status==='needs_info'?(isAr?'يحتاج استكمال':'Needs info'):(isAr?'مرفوض':'Rejected')}</Badge>
             <button onClick={()=>void openProof(proof)} className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold">{isAr?'عرض الإثبات':'View proof'}</button>
             {proof.status==='pending'&&<><button disabled={proofBusy===proof.id} onClick={()=>void approveProof(proof)} className="px-3 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold disabled:opacity-50">{isAr?'اعتماد':'Approve'}</button><button disabled={!!proofBusy} onClick={()=>{setProofReview(proof);setProofReviewStatus('needs_info');setProofReviewNote('')}} className="px-3 py-2 rounded-lg bg-amber-100 text-amber-800 text-xs font-bold disabled:opacity-50">{isAr?'مراجعة':'Review'}</button></>}
-            {proof.reviewNote&&<p className="w-full text-xs text-slate-500">{proof.reviewNote}</p>}
+            {proof.reviewNote&&<p className="w-full text-xs text-slate-600 dark:text-slate-300">{proof.reviewNote}</p>}
           </div>;
         })}
       </div>}
@@ -677,16 +677,16 @@ export function Subscriptions({
                       {/* Description + meta */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{tx.description}</p>
-                        {tx.playerId && <p className="text-xs text-slate-500">{tx.playerNameSnapshot || playerOf(tx.playerId)?.name || tx.playerId} · {tx.parentNameSnapshot || parents.find(p => p.id === playerOf(tx.playerId!)?.parentId)?.name || '—'}</p>}
+                        {tx.playerId && <p className="text-xs text-slate-600 dark:text-slate-300">{tx.playerNameSnapshot || playerOf(tx.playerId)?.name || tx.playerId} · {tx.parentNameSnapshot || parents.find(p => p.id === playerOf(tx.playerId!)?.parentId)?.name || '—'}</p>}
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           <Badge color={CATEGORY_COLORS[tx.category] || 'slate'}>
                             {categoryLabel(tx.category, lang)}
                           </Badge>
-                          <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                          <span className="flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300">
                             <Calendar className="h-3 w-3" />
                             <span dir="ltr">{tx.transactionDate}</span>
                           </span>
-                          <span className="text-[11px] text-slate-400 hidden sm:flex items-center gap-1">
+                          <span className="hidden items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300 sm:flex">
                             · {tx.recordedBy}
                           </span>
                         </div>
