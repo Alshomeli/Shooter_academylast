@@ -851,14 +851,14 @@ export default function App() {
                         </button>
                       )}
                     </div>
-                    <div className="max-h-80 overflow-y-auto">
+                    <div className="max-h-[60vh] sm:max-h-80 overflow-y-auto overscroll-contain">
                       {data.notifications.length === 0 ? (
                         <div className="py-8 text-center">
                           <Bell className="h-8 w-8 text-slate-300 mx-auto mb-2" />
                           <p className="text-xs text-slate-400 font-semibold">{t.noNotifications}</p>
                         </div>
                       ) : (
-                        data.notifications.slice(0, 10).map((n) => (
+                        data.notifications.map((n) => (
                           <div key={n.id} className={`px-4 py-3 border-b last:border-0 ${darkMode ? 'border-slate-800/50' : 'border-slate-50'} ${!n.read ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''}`}>
                             <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{n.title}</p>
                             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{n.message}</p>

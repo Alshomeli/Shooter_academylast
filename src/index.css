@@ -314,6 +314,14 @@ html:not(.dark) :is(.players-view,.player-detail) :is(.text-slate-400,.text-slat
 .shooter-sidebar .sidebar-footer{padding-bottom:max(12px,env(safe-area-inset-bottom));background:#10161e;position:relative;z-index:1}
 .shooter-sidebar .sidebar-nav{scrollbar-gutter:stable;touch-action:pan-y}
 .shooter-sidebar .sidebar-brand>button{flex-shrink:0}
+@media (max-width: 1023px) {
+  .shooter-sidebar .sidebar-nav { padding-top: 4px; }
+  .shooter-sidebar .sidebar-nav > div + div { margin-top: 8px; }
+  .shooter-sidebar .sidebar-nav h2 { margin-bottom: 4px; font-size: 12px; }
+  .shooter-sidebar .sidebar-nav button { padding-top: 7px; padding-bottom: 7px; }
+  .shooter-sidebar .sidebar-nav button span { white-space: normal; overflow: visible; line-height: 1.3; }
+  .shooter-sidebar .sidebar-footer { padding-top: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+}
 
 /* Parent portal: visible crest on hero and six evenly spaced social links. */
 .parent-arena .arena-hero { position: relative; isolation: isolate; }
