@@ -212,4 +212,3 @@ test("Parent callbacks are handled before manager-only callbacks", () => {
   assert.match(source, /handleParentCallback\(callbackQuery\)/);
   assert.ok(source.indexOf("handleParentCallback(callbackQuery)") < source.indexOf("handleManagerCallback(callbackQuery)"));
 });
-
