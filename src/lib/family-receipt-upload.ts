@@ -1,7 +1,7 @@
-import { familyPaymentsEnabled } from './family-receipt-queue';
-import { supabase } from './supabase';
-import { familyReceiptStoragePath, prepareFamilyReceiptIntake } from './family-receipt-intake';
-import type { FamilySubscriptionDue } from './family-payment-allocation';
+import { familyPaymentsEnabled } from './family-receipt-queue.ts';
+import { supabase } from './supabase.ts';
+import { familyReceiptStoragePath, prepareFamilyReceiptIntake } from './family-receipt-intake.ts';
+import type { FamilySubscriptionDue } from './family-payment-allocation.ts';
 
 /**
  * Staging-only integration. Do not wire this to production UI until SQL migrations

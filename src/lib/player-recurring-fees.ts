@@ -1,6 +1,6 @@
-import { supabase } from './supabase';
-import { BASE_MONTHLY_FEE_BHD } from './family-payment';
-import { familyPaymentsEnabled } from './family-receipt-queue';
+import { supabase } from './supabase.ts';
+import { BASE_MONTHLY_FEE_BHD } from './family-payment.ts';
+import { familyPaymentsEnabled } from './family-receipt-queue.ts';
 
 /** Read-only draft renewal pricing. Does not generate billing or post payments. */
 export async function getRenewalPrices(playerIds: string[]): Promise<Record<string,number>> {

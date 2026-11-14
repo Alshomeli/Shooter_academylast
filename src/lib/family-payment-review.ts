@@ -1,4 +1,4 @@
-import { createFamilyAllocation, type FamilySubscriptionDue } from './family-payment-allocation';
+import { createFamilyAllocation, type FamilySubscriptionDue } from './family-payment-allocation.ts';
 
 export type FamilyReceiptState = 'pending' | 'needs_info' | 'rejected' | 'approved';
 export interface FamilyReceiptReview {

@@ -1,8 +1,8 @@
 import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
-import { isPublicHome } from './lib/public-entry';
-import { RootErrorBoundary } from './components/RootErrorBoundary';
-import { prefs } from './lib/preferences';
+import { isPublicHome } from './lib/public-entry.ts';
+import { RootErrorBoundary } from './components/RootErrorBoundary.tsx';
+import { prefs } from './lib/preferences.ts';
 import './index.css';
 
 const App = lazy(() => import('./App.tsx'));

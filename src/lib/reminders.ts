@@ -1,6 +1,6 @@
 import type { Subscription, Player, Notification, Parent } from '@/types';
-import { academyToday } from './report-dates';
-import { normalizeWhatsAppPhone } from './whatsapp-phone';
+import { academyToday } from './report-dates.ts';
+import { normalizeWhatsAppPhone } from './whatsapp-phone.ts';
 
 /** Days before expiry to send a reminder */
 const REMINDER_DAYS = [7, 3, 1, 0];

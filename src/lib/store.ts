@@ -86,10 +86,12 @@ async function upsertRow<T>(table: string, row: Record<string, unknown>, mapper:
    through a privileged function and we merge them back in. */
 
 async function fetchStaffRows(): Promise<Record<string, unknown>[]> {
-  const { data, error } = await supabase.from('staff').select(TABLE_PUBLIC_COLUMNS.staff);
+  const [{ data, error }, { data: privateRows, error: privateError }] = await Promise.all([
+    supabase.from('staff').select(TABLE_PUBLIC_COLUMNS.staff),
+    supabase.rpc('get_staff_private'),
+  ]);
   if (error) throw error;
   const rows = (data || []) as unknown as Record<string, unknown>[];
-  const { data: privateRows, error: privateError } = await supabase.rpc('get_staff_private');
   if (privateError) throw privateError;
   const byId = new Map<string, { salary?: number; national_id?: string | null }>();
   for (const p of (privateRows || []) as { id: string; salary: number; national_id: string | null }[]) {
@@ -103,10 +105,12 @@ async function fetchStaffRows(): Promise<Record<string, unknown>[]> {
 
 
 async function fetchParentRows(): Promise<Parent[]> {
-  const { data, error } = await supabase.from('parents').select(TABLE_PUBLIC_COLUMNS.parents);
+  const [{ data, error }, { data: privateRows, error: privateError }] = await Promise.all([
+    supabase.from('parents').select(TABLE_PUBLIC_COLUMNS.parents),
+    supabase.rpc('get_parent_private'),
+  ]);
   if (error) throw error;
   const rows = (data || []) as unknown as Record<string, unknown>[];
-  const { data: privateRows, error: privateError } = await supabase.rpc('get_parent_private');
   if (privateError) throw privateError;
   const byId = new Map<string, { national_id?: string | null }>();
   for (const p of (privateRows || []) as { id: string; national_id: string | null }[]) {
@@ -119,10 +123,12 @@ async function fetchParentRows(): Promise<Parent[]> {
 }
 
 async function fetchPlayerRows(): Promise<Player[]> {
-  const { data, error } = await supabase.from('players').select(TABLE_PUBLIC_COLUMNS.players).is('archived_at', null);
+  const [{ data, error }, { data: privateRows, error: privateError }] = await Promise.all([
+    supabase.from('players').select(TABLE_PUBLIC_COLUMNS.players).is('archived_at', null),
+    supabase.rpc('get_player_private'),
+  ]);
   if (error) throw error;
   const rows = (data || []) as unknown as Record<string, unknown>[];
-  const { data: privateRows, error: privateError } = await supabase.rpc('get_player_private');
   if (privateError) throw privateError;
   const byId = new Map<string, { notes?: string | null }>();
   for (const p of (privateRows || []) as { id: string; notes: string | null }[]) {
@@ -166,30 +172,34 @@ export const db = {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error) throw error;
     if (!user) return null;
-    const { data: staff, error: staffError } = await supabase.from('staff')
-      .select('id,name,email,role,status,coach_kind').eq('user_id', user.id).maybeSingle();
+    const [{ data: staff, error: staffError }, { data: parent, error: parentError }] = await Promise.all([
+      supabase.from('staff').select('id,name,email,role,status,coach_kind').eq('user_id', user.id).maybeSingle(),
+      supabase.from('parents').select('id,name,email,status').eq('user_id', user.id).maybeSingle(),
+    ]);
     if (staffError) throw staffError;
+    if (parentError) throw parentError;
     if (staff) {
       if (staff.status === 'active') return { ...staff, coachKind: staff.coach_kind, authUserId: user.id } as CurrentUser;
       // A linked staff profile is an existing account even when disabled.
       // Do not route it back into onboarding as if it were a new applicant.
       return { ...staff, authUserId: user.id, accountDisabled: true } as CurrentUser;
     }
-    const { data: parent, error: parentError } = await supabase.from('parents')
-      .select('id,name,email,status').eq('user_id', user.id).maybeSingle();
-    if (parentError) throw parentError;
     if (parent) {
       if (parent.status === 'active') return { ...parent, role: 'parent', authUserId: user.id };
       return { ...parent, role: 'parent', authUserId: user.id, accountDisabled: true } as CurrentUser;
     }
 
-    const { data: staffApplication, error: staffApplicationError } = await supabase.from('staff_applications')
-      .select('requested_role,full_name,email,status')
-      .eq('applicant_user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const [{ data: staffApplication, error: staffApplicationError }, { data: parentApplication, error: applicationError }] = await Promise.all([
+      supabase.from('staff_applications')
+        .select('requested_role,full_name,email,status')
+        .eq('applicant_user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase.from('registration_applications').select('id').eq('applicant_user_id', user.id).limit(1).maybeSingle(),
+    ]);
     if (staffApplicationError && staffApplicationError.code !== '42P01') throw staffApplicationError;
+    if (applicationError) throw applicationError;
     if (staffApplication) {
       return {
         id: user.id,
@@ -202,9 +212,6 @@ export const db = {
       };
     }
 
-    const { data: parentApplication, error: applicationError } = await supabase.from('registration_applications')
-      .select('id').eq('applicant_user_id', user.id).limit(1).maybeSingle();
-    if (applicationError) throw applicationError;
     // Onboarding intent only selects an application form, never permissions.
     const onboardingMode = parentApplication ? 'parent' : resolveOnboardingMode(
       user.user_metadata?.onboarding_mode, window.location.search);
@@ -315,18 +322,11 @@ export const db = {
   },
 
   async uploadStaffDocument(staffId: string, file: File, title: string, documentType = 'certificate', expiryDate?: string, notes = ''): Promise<void> {
-    if (documentType === 'profile_photo') {
-      const { data: existing, error: existingError } = await supabase.from('staff_documents').select('id,file_path').eq('staff_id', staffId).eq('document_type', 'profile_photo');
-      if (existingError) throw existingError;
-      for (const previous of existing || []) {
-        // Remove database references first. A storage cleanup failure can then only
-        // leave an unreferenced object, never a live row pointing at a missing file.
-        const { error: deleteError } = await supabase.from('staff_documents').delete().eq('id', previous.id);
-        if (deleteError) throw deleteError;
-        const { error: removeError } = await supabase.storage.from('staff-documents').remove([previous.file_path]);
-        if (removeError) console.warn('Could not remove superseded staff document object', removeError.message);
-      }
-    }
+    // Keep existing profile photos until the replacement is safely uploaded and recorded.
+    const { data: previousPhotos, error: existingError } = documentType === 'profile_photo'
+      ? await supabase.from('staff_documents').select('id,file_path').eq('staff_id', staffId).eq('document_type', 'profile_photo')
+      : { data: null, error: null };
+    if (existingError) throw existingError;
     const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
     const path = `${staffId}/${documentType}/${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from('staff-documents').upload(path, file, { upsert: false, contentType: file.type });
@@ -338,6 +338,17 @@ export const db = {
     if (error) {
       await supabase.storage.from('staff-documents').remove([path]);
       throw error;
+    }
+    // Only retire older photos after the new photo has a durable database record.
+    // A cleanup failure leaves an extra photo rather than deleting the only valid one.
+    for (const previous of previousPhotos || []) {
+      const { error: deleteError } = await supabase.from('staff_documents').delete().eq('id', previous.id);
+      if (deleteError) {
+        console.warn('Could not remove superseded staff document record', deleteError.message);
+        continue;
+      }
+      const { error: removeError } = await supabase.storage.from('staff-documents').remove([previous.file_path]);
+      if (removeError) console.warn('Could not remove superseded staff document object', removeError.message);
     }
   },
 

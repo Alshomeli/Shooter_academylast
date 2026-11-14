@@ -6,7 +6,10 @@ import { webcrypto } from 'node:crypto';
 const reports = await readFile(new URL('../supabase/functions/telegram-reply/reports.ts',import.meta.url),'utf8');
 const entry = await readFile(new URL('../supabase/functions/telegram-reply/index.ts',import.meta.url),'utf8');
 const source = reports.replace(/^export /gm,'') + '\n' + entry.replace(/^import .*;\n/gm,'');
-const js = nodeModule.stripTypeScriptTypes ? nodeModule.stripTypeScriptTypes(source) : (await import('typescript')).default.transpileModule(source,{compilerOptions:{target:99,module:0}}).outputText;
+const typescript = (await import('typescript')).default;
+const js = typescript
+ ? typescript.transpileModule(source,{compilerOptions:{target:99,module:0,isolatedModules:true}}).outputText
+ : nodeModule.stripTypeScriptTypes(source);
 function runtime(identityRole){
  let handler;const calls=[];
  const env={TELEGRAM_BOT_TOKEN:'test-token',TELEGRAM_WEBHOOK_SECRET:'test-secret',TELEGRAM_MANAGER_CHAT_IDS:'42',SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test-key'};
@@ -17,8 +20,9 @@ function runtime(identityRole){
   const rows=table==='telegram_identity' && identityRole ? [{role:identityRole,user_id:'parent-user'}] : table==='matches'?[{id:'m',opponent:'المحرق',match_date:'2026-09-30',result:'scheduled'}]:[];
   return Response.json(rows,{headers:{'content-range':`0-0/${rows.length}`}});
  };
- new Function('Deno','fetch','crypto',js)({env:{get:k=>env[k]},serve:fn=>{handler=fn;}},fetch,webcrypto);
- const request=(chat=42,secret='test-secret',type='private',text='تفاصيل اليوم')=>new Request('https://example.test/function',{method:'POST',headers:{'X-Telegram-Bot-Api-Secret-Token':secret},body:JSON.stringify({message:{chat:{id:chat,type},text}})});
+ const denoLike={env:{get:k=>env[k]},serve:fn=>{handler=fn;}};// edge runtime provides `serve` as a global
+ new Function('Deno','fetch','crypto','serve',js)(denoLike,fetch,webcrypto,denoLike.serve);
+ const request=(chat=42,secret='test-secret',type='private',text='تفاصيل اليوم')=>new Request('https://example.test/function',{method:'POST',headers:{'content-type':'application/json','X-Telegram-Bot-Api-Secret-Token':secret},body:JSON.stringify({message:{chat:{id:chat,type},text}})});
  return {calls,request,run:req=>handler(req)};
 }
 test('wrong webhook secret cannot query records or send reports',async()=>{

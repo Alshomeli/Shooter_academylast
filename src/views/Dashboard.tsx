@@ -32,7 +32,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
   const MONTHS = monthsArray(lang);
   const canSeeFinance = activeRole === 'manager' || activeRole === 'accountant';
   const canRecordPayments = activeRole === 'manager' || activeRole === 'accountant';
-  const canSeeSubscriptions = activeRole === 'manager' || activeRole === 'accountant' || activeRole === 'receptionist';
+  const canSeeSubscriptions = activeRole === 'manager' || activeRole === 'accountant';
   const canSeeTechnical = activeRole === 'manager' || activeRole === 'coach';
   const canSeeStaff = activeRole === 'manager';
   const canSeeEvaluations = activeRole === 'manager' || activeRole === 'coach';
@@ -105,13 +105,23 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
     }));
   }, [players, lang]);
 
+  const [teamSort, setTeamSort] = useState('players-desc');
+  const [teamFilter, setTeamFilter] = useState('all');
   const teamPlayersData = useMemo(() => {
+    const collator = new Intl.Collator(lang, { numeric: true, sensitivity: 'base' });
     return teams.map((team) => ({
       label: team.name.replace(isAr ? 'فئة ' : 'Team ', ''),
       value: players.filter((p) => p.teamId === team.id).length,
       color: '#10b981',
-    }));
-  }, [teams, players, isAr]);
+    }))
+      .filter((team) => teamFilter === 'all' || (teamFilter === 'populated' ? team.value > 0 : team.value === 0))
+      .sort((a, b) => {
+        const sequential = collator.compare(a.label, b.label);
+        if (teamSort === 'players-desc') return b.value - a.value || sequential;
+        if (teamSort === 'players-asc') return a.value - b.value || sequential;
+        return teamSort === 'sequence-desc' ? -sequential : sequential;
+      });
+  }, [teams, players, isAr, lang, teamSort, teamFilter]);
 
   const revenueByMonth = useMemo(() => {
     const byMonth: Record<string, number> = {};
@@ -158,7 +168,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
       </div>}
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] auto-rows-fr gap-4">
         <StatCard icon={<Users className="h-5 w-5" />} label={t.activePlayers} value={stats.activePlayers} sublabel={`${t.activePlayersSub} ${stats.totalTeams} ${t.teamsLabel}`} color="emerald" onClick={() => setCurrentTab('players')} />
         {canSeeFinance && <StatCard icon={<Wallet className="h-5 w-5" />} label={t.netProfit} value={`${stats.netProfit.toLocaleString()} ${t.currency}`} sublabel={`${t.revenueLabel} ${stats.totalRevenue.toLocaleString()}`} color="blue" onClick={() => setCurrentTab('subscriptions')} />}
         {canSeeFinance && <StatCard icon={<Receipt className="h-5 w-5" />} label={isAr ? 'الدعم المرتجع بعد الدفع' : 'Post-payment support refunds'} value={`${transactions.filter(tx => tx.category === 'subscription_support').reduce((sum, tx) => sum + tx.amount, 0).toFixed(3)} BHD`} sublabel={isAr ? 'مخصوم من الصافي؛ الإعفاء بلا حركة مالية' : 'Deducted from net; exemptions have no cash movement'} color="amber" />}
@@ -208,7 +218,26 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
         {/* Team players bar chart */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
           <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">{t.playersPerTeam}</h3>
-          <BarChart data={teamPlayersData} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+            <label className="min-w-0 text-xs font-semibold text-slate-600 dark:text-slate-300">
+              {isAr ? 'ترتيب الفرق' : 'Sort teams'}
+              <select value={teamSort} onChange={(event) => setTeamSort(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="players-desc">{isAr ? 'اللاعبون: الأكثر إلى الأقل' : 'Players: most to fewest'}</option>
+                <option value="players-asc">{isAr ? 'اللاعبون: الأقل إلى الأكثر' : 'Players: fewest to most'}</option>
+                <option value="sequence-asc">{isAr ? 'تسلسلي حسب اسم الفريق: تصاعدي' : 'Team name / number: ascending'}</option>
+                <option value="sequence-desc">{isAr ? 'تسلسلي حسب اسم الفريق: تنازلي' : 'Team name / number: descending'}</option>
+              </select>
+            </label>
+            <label className="min-w-0 text-xs font-semibold text-slate-600 dark:text-slate-300">
+              {isAr ? 'عرض الفرق' : 'Show teams'}
+              <select value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="all">{isAr ? 'جميع الفرق' : 'All teams'}</option>
+                <option value="populated">{isAr ? 'فرق لديها لاعبون' : 'Teams with players'}</option>
+                <option value="empty">{isAr ? 'فرق بدون لاعبين' : 'Teams without players'}</option>
+              </select>
+            </label>
+          </div>
+          {teamPlayersData.length > 0 ? <BarChart data={teamPlayersData} /> : <p role="status" className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">{isAr ? 'لا توجد فرق مطابقة للفلتر.' : 'No teams match this filter.'}</p>}
         </div>
 
         {/* Match results donut */}

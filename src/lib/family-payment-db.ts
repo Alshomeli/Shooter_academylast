@@ -1,5 +1,5 @@
-import { supabase } from './supabase';
-import { priceChildren } from './family-payment';
+import { supabase } from './supabase.ts';
+import { priceChildren } from './family-payment.ts';
 export async function readChildFeeOverrides(childIds: string[]): Promise<Record<string, number>> {
   if (!childIds.length) return {};
   const { data, error } = await supabase.from('registration_child_fees')

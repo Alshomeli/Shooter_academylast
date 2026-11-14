@@ -6,6 +6,7 @@ import { db, prefs, signOut, isRegistering } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { tr } from '@/lib/i18n';
+import { friendlyError } from '@/lib/friendly-error';
 import { getInitialTab, getPostLoginTab, getTabUrl } from '@/lib/navigation';
 import { LegalPage } from '@/views/LegalPage';
 import type {
@@ -48,7 +49,7 @@ const ALLOWED_VIEWS_BY_ROLE: Record<Exclude<Role, 'parent'>, ViewId[]> = {
   manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings', 'site-content'],
   accountant: ['dashboard', 'subscriptions', 'reports', 'messages', 'ai-center'],
   coach: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'messages', 'ai-center'],
-  receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
+  receptionist: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
 };
 
 /* ── Error Boundary ── */
@@ -228,6 +229,7 @@ export default function App() {
   const [lang, setLang] = useState<Lang>('ar');
   const [darkMode, setDarkMode] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -305,7 +307,7 @@ export default function App() {
       ] = await Promise.all([
         db.getSettings(),
         parent ? [] : db.getStaff(), db.getTeams(role === 'coach'), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
-        role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
+        (role === 'coach' || role === 'receptionist') ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
         db.getTrainings(), finance ? db.getTransactions() : [], (parent || role === 'coach') ? [] : db.getTournaments(),
         db.getEvaluations(), db.getNotifications(),
         // Audit history is needed only on the manager's audit-logs page.
@@ -323,7 +325,7 @@ export default function App() {
       });
     } catch (err) {
       console.error('[load]', err);
-      if (stillCurrent()) setLoadError(err instanceof Error ? err.message : JSON.stringify(err));
+      if (stillCurrent()) setLoadError(friendlyError(err, lang === 'ar'));
     } finally {
       if (stillCurrent()) setLoading(false);
       // A different identity may have started another request while this one
@@ -509,6 +511,33 @@ export default function App() {
     setTimeout(() => setSyncError(null), 5000);
     loadAllData();
   }, [lang, loadAllData]);
+
+  const handleMarkAllRead = async () => {
+    const userId = currentUser?.authUserId;
+    if (!userId || markingAllRead) return;
+
+    const unreadIds = data.notifications.filter((notification) => !notification.read).map((notification) => notification.id);
+    if (unreadIds.length === 0) return;
+
+    setMarkingAllRead(true);
+    try {
+      await db.markNotificationsRead(unreadIds);
+      if (userRef.current !== userId) return;
+
+      const savedIds = new Set(unreadIds);
+      setData((previous) => ({
+        ...previous,
+        notifications: previous.notifications.map((notification) =>
+          savedIds.has(notification.id) ? { ...notification, read: true } : notification,
+        ),
+      }));
+      void loadAllDataRef.current();
+    } catch (error) {
+      if (userRef.current === userId) handleSyncError(error);
+    } finally {
+      setMarkingAllRead(false);
+    }
+  };
 
   const handleLogin = (user: CurrentUser) => {
     setCurrentUser(user);
@@ -838,26 +867,22 @@ export default function App() {
                       <h3 className="text-sm font-black text-slate-900 dark:text-white">{t.notifications}</h3>
                       {data.notifications.length > 0 && (
                         <button
-                          onClick={() => {
-                            const unreadIds = data.notifications.filter(n => !n.read).map(n => n.id);
-                            const read = data.notifications.map((n) => ({ ...n, read: true }));
-                            setData((p) => ({ ...p, notifications: read }));
-                            void db.markNotificationsRead(unreadIds).then(loadAllData).catch(handleSyncError);
-                          }}
-                          className="text-[11px] font-bold text-brand-600 hover:text-brand-700 cursor-pointer"
+                          onClick={handleMarkAllRead}
+                          disabled={markingAllRead || unreadCount === 0}
+                          className="text-[11px] font-bold text-brand-600 hover:text-brand-700 cursor-pointer disabled:cursor-default disabled:opacity-50"
                         >
                           {t.markAllRead}
                         </button>
                       )}
                     </div>
-                    <div className="max-h-80 overflow-y-auto">
+                    <div className="max-h-[60vh] sm:max-h-80 overflow-y-auto overscroll-contain">
                       {data.notifications.length === 0 ? (
                         <div className="py-8 text-center">
                           <Bell className="h-8 w-8 text-slate-300 mx-auto mb-2" />
                           <p className="text-xs text-slate-400 font-semibold">{t.noNotifications}</p>
                         </div>
                       ) : (
-                        data.notifications.slice(0, 10).map((n) => (
+                        data.notifications.map((n) => (
                           <div key={n.id} className={`px-4 py-3 border-b last:border-0 ${darkMode ? 'border-slate-800/50' : 'border-slate-50'} ${!n.read ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''}`}>
                             <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{n.title}</p>
                             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{n.message}</p>

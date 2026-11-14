@@ -1,4 +1,4 @@
-import { createFamilyAllocation, type FamilySubscriptionDue } from './family-payment-allocation';
+import { createFamilyAllocation, type FamilySubscriptionDue } from './family-payment-allocation.ts';
 
 /** Validate a YYYY-MM-DD calendar day without Date.parse normalization. */
 export function isValidBillingDay(day: string): boolean {
