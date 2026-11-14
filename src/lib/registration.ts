@@ -142,16 +142,6 @@ export async function fetchAllApplications(): Promise<RegistrationApplication[]>
   return (data || []).map(mapApplication);
 }
 
-export async function fetchApplicationById(id: string): Promise<RegistrationApplication | null> {
-  const { data, error } = await supabase
-    .from('registration_applications')
-    .select('*, registration_children(*), registration_documents(*)')
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw error;
-  return data ? mapApplication(data) : null;
-}
-
 export async function getSignedUrl(storagePath: string): Promise<string> {
   const { data, error } = await supabase.storage
     .from('player-documents')

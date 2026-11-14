@@ -288,11 +288,6 @@ export const settingsToRow = (s: Settings): SettingsRow => ({
   payment_instructions_ar: s.paymentInstructionsAr ?? '', payment_instructions_en: s.paymentInstructionsEn ?? '',
 });
 
-export const auditLogToRow = (a: AuditLog): AuditLogRow => ({
-  id: a.id, action: a.action, timestamp: a.timestamp, user_role: a.userRole,
-  user_name: a.userName, details: a.details,
-});
-
 export const notificationToRow = (n: Notification): NotificationRow => ({
   id: n.id, title: n.title, message: n.message, timestamp: n.timestamp,
   type: n.type, read: n.read,
