@@ -657,6 +657,7 @@ export function Subscriptions({
             <div className="space-y-2.5">
               {sortedTransactions.map((tx) => {
                 const isRevenue = tx.type === 'revenue';
+                const isNegative = !isRevenue || tx.amount < 0;
                 return (
                   <div
                     key={tx.id}
@@ -695,16 +696,15 @@ export function Subscriptions({
                       {/* Amount */}
                       <div
                         className={`text-sm font-black shrink-0 ${
-                          isRevenue ? 'text-brand-600 dark:text-brand-400' : 'text-red-600 dark:text-red-400'
+                          isNegative ? 'text-red-600 dark:text-red-400' : 'text-brand-600 dark:text-brand-400'
                         }`}
                       >
-                        {isRevenue ? '+' : '−'}
-                        {tx.amount.toLocaleString()}{' '}
+                        <bdi dir="ltr">{isNegative ? '−' : '+'}{Math.abs(tx.amount).toLocaleString()}</bdi>{' '}
                         <span className="text-xs font-bold opacity-70">{t.currency}</span>
                       </div>
 
                       {/* Delete */}
-                      {isManager && !tx.subscriptionId && tx.category !== 'subscription_support' && (
+                      {isManager && !tx.subscriptionId && tx.category !== 'subscription_support' && tx.category !== 'test_payment_correction' && (
                         <button
                           onClick={() => setDeleteTransId(tx.id)}
                           className="flex items-center justify-center p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer"
