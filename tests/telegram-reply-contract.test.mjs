@@ -163,12 +163,14 @@ test('Parent Telegram identity is supported without administrative operations', 
 });
 
 test('Coach daily operations stay scoped through server RPCs', () => {
-  assert.match(source, /telegram_set_training_attendance/);
-  assert.match(source, /telegram_complete_training/);
-  assert.match(source, /telegram_quick_player_note/);
-  assert.match(source, /telegram_ensure_today_trainings/);
-  assert.match(source, /coach_id:/);
-  assert.match(source, /team_id:/);
+  const handler = source.match(/^async function handleCoachTrainingCallback\([\s\S]*?^}/m)?.[0];
+  assert.ok(handler);
+  assert.match(handler, /fetchTelegramIdentity\(telegramChatId\)/);
+  assert.match(handler, /identity\?\.role !== "coach" \|\| !identity\.staff_id/);
+  assert.match(handler, /telegram_ensure_today_trainings", \{ p_chat_id: telegramChatId \}/);
+  assert.match(handler, /coach_id: `eq\.\$\{identity\.staff_id\}`/);
+  assert.match(handler, /team_id: `in\.\(\$\{teamIds\.join\(","\)\}\)`/);
+  assert.match(handler, /telegram_complete_training", \{\s*p_chat_id: telegramChatId,\s*p_training_id: String\(training\.id\)/);
 });
 
 test('Coach attendance UI supports correction and completion workflow', () => {
@@ -196,10 +198,13 @@ test("Coach text commands use the actual chat-scoped RPC contracts", () => {
 
 test("Parent Telegram menu reads only children linked to the verified parent identity", () => {
   assert.match(source, /role\?: "manager" \| "coach" \| "parent"; user_id\?: string; staff_id\?: string; parent_id\?: string/);
-  assert.match(source, /identity\?\.role !== "parent" \|\| !identity\.parent_id/);
-  assert.match(source, /parent_id: "eq\." \+ identity\.parent_id/);
-  assert.match(source, /select: "id,name,status"/);
-  assert.doesNotMatch(source, /select: "[^"]*(amount|paid_at|payment_proof)/i);
+  const handler = source.match(/^async function handleParentCallback\([\s\S]*?^}/m)?.[0];
+  assert.ok(handler);
+  assert.match(handler, /fetchTelegramIdentity\(chatId\)/);
+  assert.match(handler, /identity\?\.role !== "parent" \|\| !identity\.parent_id/);
+  assert.deepEqual([...handler.matchAll(/await read\("([^"]+)", \{([^}]+)\}/g)].map(([, table, params]) => [table, params.trim()]), [
+    ['players', 'parent_id: "eq." + identity.parent_id, archived_at: "is.null", select: "id,name,status", order: "name.asc"'],
+  ]);
   assert.match(source, /callback_data: "parent:children"/);
 });
 
@@ -207,3 +212,4 @@ test("Parent callbacks are handled before manager-only callbacks", () => {
   assert.match(source, /handleParentCallback\(callbackQuery\)/);
   assert.ok(source.indexOf("handleParentCallback(callbackQuery)") < source.indexOf("handleManagerCallback(callbackQuery)"));
 });
+
