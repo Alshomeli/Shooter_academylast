@@ -1,6 +1,5 @@
 import { getLoginScreen } from '@/lib/login-entry';
 import { PublicHomeLink } from '@/components/PublicHomeLink';
-import { FirstTimeVisitorGuide } from '@/components/FirstTimeVisitorGuide';
 import { useEffect, useState, type FormEvent } from 'react';
 import { AlertCircle, Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
 import { db, signIn, signUp, setRegistering } from '@/lib/store';
@@ -154,7 +153,6 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
         : text('تراجع الإدارة طلب تسجيل الأبناء قبل تفعيلهم.', 'The academy reviews children’s applications before activation.')}</p>}
       <div className="mt-6 flex justify-center"><PublicHomeLink lang={lang} darkMode={document.documentElement.classList.contains('dark')}/></div>
     </div>
-    <FirstTimeVisitorGuide lang={lang} />
   </main>;
 }
 
