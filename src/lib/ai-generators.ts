@@ -409,7 +409,7 @@ export function generatePositionEvaluation(c: AIContext, players: Player[]): str
   return [`📊 تقييم كفاية المراكز:`, '', ...lines, '', `الإجمالي: ${players.length} لاعب على ${c.teamsCount} فرق`].join('\n');
 }
 
-export function generateScheduleConflicts(c: AIContext, teams: Team[]): string {
+export function generateScheduleConflicts(teams: Team[]): string {
   const slotMap: Record<string, string[]> = {};
   teams.forEach((tm) => {
     tm.trainingDays.forEach((day) => {

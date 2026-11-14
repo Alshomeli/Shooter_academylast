@@ -322,7 +322,7 @@ function generateResponse(personaId: PersonaId, q: string, c: AIContext, teams: 
         teams.forEach((tm) => { const p = tm.pitchNumber || 'غير محدد'; (usage[p] ??= { teams: [], sessions: 0 }); usage[p].teams.push(tm.name); usage[p].sessions += c.trainings.filter((tr) => tr.teamId === tm.id).length; });
         return [`🏟️ تحليل استخدام الملاعب:`, ...Object.entries(usage).map(([p, i]) => `• ملعب ${p}: ${i.teams.length} فريق · ${i.sessions} جلسة — ${i.teams.join('، ')}`), '', `الملاعب المستخدمة: ${Object.keys(usage).length}`].join('\n');
       }
-      if (/(تعارض|تضارب|conflict)/.test(q)) return generateScheduleConflicts(c, teams);
+      if (/(تعارض|تضارب|conflict)/.test(q)) return generateScheduleConflicts(teams);
       if (/(جدول|تحليل الجدول|schedule)/.test(q)) {
         return [`📅 تحليل الجدول التدريبي:`, ...teams.map((tm) => `• ${tm.name}: ${c.trainings.filter((tr) => tr.teamId === tm.id).length} تدريب · ${c.matches.filter((m) => m.teamId === tm.id).length} مباراة · ${tm.trainingDays.length} أيام/أسبوع`), '', `إجمالي: ${c.totalSessions} جلسة على ${c.teamsCount} فرق`].join('\n');
       }
