@@ -1123,6 +1123,7 @@ export function categoryLabel(category: string, lang: Lang): string {
   const t = tr(lang);
   const map: Record<string, string> = {
     subscription_support: lang === 'ar' ? 'رسوم مُعادة — إعفاء أو انسحاب' : 'Fee refunds — exemption or withdrawal',
+    test_payment_correction: lang === 'ar' ? 'تصحيح دفعة تجريبية' : 'Test payment correction',
     subscription: t.catSubscription, salary: t.catSalary,
     equipment: t.catEquipment, rent: t.catRent, other: t.catOther,
   };
