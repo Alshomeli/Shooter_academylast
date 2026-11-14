@@ -50,8 +50,8 @@ async function isAuthorizedManagerChat(chatId: number): Promise<boolean> {
   return (await ensureBootstrap()).chats.has(hash);
 }
 
-type TelegramIdentity = { role?: "manager" | "coach"; user_id?: string };
-type LinkedIdentity = { role?: "manager" | "coach" | "parent"; user_id?: string };
+type TelegramIdentity = { role?: "manager" | "coach" | "parent"; user_id?: string; staff_id?: string; parent_id?: string };
+type LinkedIdentity = { role?: "manager" | "coach" | "parent"; user_id?: string; staff_id?: string; parent_id?: string };
 
 async function fetchTelegramIdentity(chatId: number): Promise<LinkedIdentity | null> {
   const row = await callRpc<TelegramIdentity>("telegram_identity", { p_chat_id: chatId });
@@ -262,7 +262,8 @@ async function adminAnswer(parsedQuestion: { intent: AdminIntent; period: AdminP
 
 const REFUSAL_TEXT = "الأوامر الإدارية غير مدعومة عبر البوت. يمكن للأكاديمية إدخال التعديلات من لوحة الإدارة، والبوت يعرض التقارير فقط.";
 
-function roleMenuPayload(role: "manager" | "coach"): { text: string; markup: ReturnType<typeof inlineKeyboard> } {
+function roleMenuPayload(role: "manager" | "coach" | "parent"): { text: string; markup: ReturnType<typeof inlineKeyboard> } {
+  if (role === "parent") return { text: "بوابة ولي الأمر:", markup: inlineKeyboard([[{ text: "عرض أبنائي", callback_data: "parent:children" }]]) };
   if (role === "manager") {
     return {
       text: "قائمة المدير:",
@@ -285,7 +286,7 @@ function roleMenuPayload(role: "manager" | "coach"): { text: string; markup: Ret
   };
 }
 
-async function sendRoleMenu(chatId: number, role: "manager" | "coach"): Promise<void> {
+async function sendRoleMenu(chatId: number, role: "manager" | "coach" | "parent"): Promise<void> {
   const payload = roleMenuPayload(role);
   await postToTelegram("sendMessage", { chat_id: chatId, text: payload.text, reply_markup: payload.markup });
 }
@@ -316,6 +317,18 @@ async function handleManagerCommand(chatId: number, inputText: string): Promise<
   }
 }
 
+async function handleParentCallback(callbackQuery: TelegramCallbackQuery): Promise<boolean> {
+  const chatId = callbackQuery.message?.chat.id ?? callbackQuery.from?.id ?? 0;
+  if (callbackQuery.message?.chat.type !== "private" || callbackQuery.data !== "parent:children") return false;
+  const identity = await fetchTelegramIdentity(chatId);
+  if (identity?.role !== "parent" || !identity.parent_id) { await answerCallbackQuery(callbackQuery.id, "تعذر التحقق من حساب ولي الأمر."); return true; }
+  const children = await read("players", { parent_id: "eq." + identity.parent_id, archived_at: "is.null", select: "id,name,status", order: "name.asc" });
+  if (!children.length) { await answerCallbackQuery(callbackQuery.id, "لا توجد سجلات أبناء مرتبطة بحسابك."); return true; }
+  const lines = children.map((child) => "• " + String(child.name ?? "لا يوجد اسم") + " — " + (String(child.status ?? "") === "active" ? "نشط" : "غير نشط"));
+  await answerCallbackQuery(callbackQuery.id, "تم جلب بيانات أبنائك.");
+  await sendMessage(chatId, "الأبناء المرتبطون بحسابك فقط:\n" + lines.join("\n"));
+  return true;
+}
 async function handleManagerCallback(callbackQuery: TelegramCallbackQuery): Promise<void> {
   const callbackChatId = callbackQuery.message?.chat.id ?? callbackQuery.from?.id ?? 0;
   const callbackChatType = callbackQuery.message?.chat.type ?? "private";
@@ -339,7 +352,7 @@ async function handleManagerCallback(callbackQuery: TelegramCallbackQuery): Prom
   }
   if (data.startsWith("training:complete:")) {
     const trainingId = data.slice("training:complete:".length);
-    const ok = await callRpc<boolean>("telegram_complete_training", { p_training_id: trainingId });
+    const ok = await callRpc<boolean>("telegram_complete_training", { p_chat_id: callbackChatId, p_training_id: trainingId });
     if (ok) await editMessageText(callbackChatId, messageId, "تم إنهاء الحصة.");
     return;
   }
@@ -348,26 +361,85 @@ async function handleManagerCallback(callbackQuery: TelegramCallbackQuery): Prom
   }
 }
 
-async function handleCoachCommand(chatId: number, coachId: string, inputText: string): Promise<void> {
+async function handleCoachTrainingCallback(callbackQuery: TelegramCallbackQuery): Promise<boolean> {
+  const chatId = callbackQuery.message?.chat.id ?? callbackQuery.from?.id ?? 0;
+  const chatType = callbackQuery.message?.chat.type ?? "private";
+  if (chatType !== "private" || !callbackQuery.data?.startsWith("training:complete:")) return false;
+
+  const telegramChatId = callbackQuery.from?.id ?? chatId;
+  // Preserve the existing manager allowlist path; only linked coaches use this handler.
+  if (await isAuthorizedManagerChat(chatId)) return false;
+  const identity = await fetchTelegramIdentity(telegramChatId);
+  if (identity?.role !== "coach" || !identity.staff_id) {
+    await answerCallbackQuery(callbackQuery.id, "غير مصرح لهذا الإجراء.");
+    return true;
+  }
+
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bahrain" });
+  // Materialize recurring sessions using the actual RPC contract (p_chat_id).
+  await callRpc<number>("telegram_ensure_today_trainings", { p_chat_id: telegramChatId });
+
+  const teams = await read("teams", {
+    coach_id: `eq.${identity.staff_id}`,
+    select: "id",
+  });
+  const teamIds = teams.map((team) => String(team.id ?? "")).filter(Boolean);
+  if (!teamIds.length) {
+    await answerCallbackQuery(callbackQuery.id, "لا توجد فرق مرتبطة بحسابك.");
+    return true;
+  }
+
+  const trainings = await read("trainings", {
+    team_id: `in.(${teamIds.join(",")})`,
+    session_date: `eq.${today}`,
+    select: "id,team_id",
+  });
+  if (!trainings.length) {
+    await answerCallbackQuery(callbackQuery.id, "لا توجد حصة مسجلة لك اليوم.");
+    return true;
+  }
+
+  let completedCount = 0;
+  for (const training of trainings) {
+    const completed = await callRpc<boolean>("telegram_complete_training", {
+      p_chat_id: telegramChatId,
+      p_training_id: String(training.id),
+    });
+    if (completed === true) completedCount += 1;
+  }
+
+  const resultText = completedCount === trainings.length
+    ? "تم إنهاء الحصة بنجاح."
+    : completedCount > 0
+      ? `تم إنهاء ${completedCount} من ${trainings.length} حصص. راجع الحضور أو صلاحيات الفريق للحصص المتبقية.`
+      : "تعذر إنهاء الحصة. تأكد من تسجيل حضور جميع اللاعبين.";
+  await answerCallbackQuery(callbackQuery.id, resultText);
+  await editMessageText(chatId, callbackQuery.message?.message_id ?? 0, resultText);
+  return true;
+}
+
+async function handleCoachCommand(chatId: number, inputText: string): Promise<void> {
   const q = clean(inputText);
-  const today = new Date().toISOString().slice(0, 10);
-  const team = await callRpc<{ team_id: string }>("telegram_ensure_today_trainings", { p_coach_id: coachId, p_date: today });
-  const teamId = team?.team_id ?? "";
-  if (q.includes("انهاء") || q.includes("complete")) {
-    await callRpc<boolean>("telegram_complete_training", { coach_id: coachId, team_id: teamId, p_date: today });
-    await sendMessage(chatId, "تم إنهاء الحصة.");
+  const identity = await fetchTelegramIdentity(chatId);
+  if (identity?.role !== "coach" || !identity.staff_id) { await sendMessage(chatId, "تعذر التحقق من صلاحية حساب المدرب."); return; }
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bahrain" });
+  await callRpc<number>("telegram_ensure_today_trainings", { p_chat_id: chatId });
+  const teams = await read("teams", { coach_id: "eq." + identity.staff_id, select: "id" });
+  const ids = teams.map((t) => String(t.id ?? "")).filter(Boolean);
+  if (!ids.length) { await sendMessage(chatId, "لا توجد فرق مرتبطة بحسابك."); return; }
+  const trainings = await read("trainings", { team_id: "in.(" + ids.join(",") + ")", session_date: "eq." + today, select: "id" });
+  if (q.includes("انهاء") || q.includes("اكمال") || q.includes("complete")) {
+    if (!trainings.length) { await sendMessage(chatId, "لا توجد حصة مسجلة لك اليوم."); return; }
+    let done = 0;
+    for (const training of trainings) {
+      const ok = await callRpc<boolean>("telegram_complete_training", { p_chat_id: chatId, p_training_id: String(training.id) });
+      if (ok === true) done++;
+    }
+    await sendMessage(chatId, done === trainings.length ? "تم إنهاء جميع حصص اليوم." : "تم إنهاء " + done + " من " + trainings.length + " حصص. تأكد من تسجيل حضور جميع اللاعبين.");
     return;
   }
-  if (q.includes("غياب") || q.includes("attendance")) {
-    await callRpc<boolean>("telegram_set_training_attendance", { coach_id: coachId, team_id: teamId, p_date: today, p_status: "absent" });
-    await sendMessage(chatId, "تم تحديث الحضور الناقص.");
-    return;
-  }
-  if (q.includes("ملاحظة") || q.includes("note")) {
-    await callRpc<boolean>("telegram_quick_player_note", { coach_id: coachId, team_id: teamId, p_note: inputText });
-    await sendMessage(chatId, "تم تسجيل الملاحظة.");
-    return;
-  }
+  if (q.includes("غياب") || q.includes("attendance")) { await sendMessage(chatId, "لتسجيل الغياب بأمان، استخدم شاشة الحضور داخل المنصة لاختيار الحصة واللاعب المحددين."); return; }
+  if (q.includes("ملاحظة") || q.includes("note")) { await sendMessage(chatId, "لتسجيل ملاحظة، استخدم تقييم اللاعب داخل المنصة حتى لا تُسجل على لاعب غير مقصود."); return; }
   await sendRoleMenu(chatId, "coach");
 }
 
@@ -391,7 +463,11 @@ Deno.serve(async (req) => {
 
   const callbackQuery = payload.callback_query as TelegramCallbackQuery | undefined;
   if (callbackQuery) {
-    await handleManagerCallback(callbackQuery);
+    const handledByParent = await handleParentCallback(callbackQuery);
+    if (!handledByParent) {
+      const handledByCoach = await handleCoachTrainingCallback(callbackQuery);
+      if (!handledByCoach) await handleManagerCallback(callbackQuery);
+    }
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
 
@@ -428,7 +504,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
   if (telegramIdentity.role === "parent") {
-    await sendMessage(chatId, "بوابة ولي الأمر: لا يمكن عرض تقارير الإدارة عبر البوت. راسل الأكاديمية من التطبيق لعرض بيانات اللاعب.");
+    await sendRoleMenu(chatId, "parent");
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
   if (telegramIdentity.role === "manager") {
@@ -442,7 +518,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   }
   let incomingText = textMessage(message);
-  await handleCoachCommand(chatId, linkedIdentity.user_id ?? "", incomingText);
+  await handleCoachCommand(chatId, incomingText);
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
 });
 
