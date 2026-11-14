@@ -491,7 +491,7 @@ export const db = {
     if (ids.length === 0) return;
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) throw userError || new Error('Authentication required');
-    const { error } = await supabase.from('notification_reads').upsert(ids.map(notification_id => ({ notification_id, user_id: user.id })), { onConflict: 'notification_id,user_id' });
+    const { error } = await supabase.from('notification_reads').upsert(ids.map(notification_id => ({ notification_id, user_id: user.id })), { onConflict: 'notification_id,user_id', ignoreDuplicates: true });
     if (error) throw error;
   },
   async saveNotification(n: Notification): Promise<Notification> { return upsertRow('notifications', notificationToRow({ ...n, read: false }) as unknown as Record<string, unknown>, mapNotification as never); },
