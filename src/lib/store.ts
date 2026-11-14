@@ -322,18 +322,11 @@ export const db = {
   },
 
   async uploadStaffDocument(staffId: string, file: File, title: string, documentType = 'certificate', expiryDate?: string, notes = ''): Promise<void> {
-    if (documentType === 'profile_photo') {
-      const { data: existing, error: existingError } = await supabase.from('staff_documents').select('id,file_path').eq('staff_id', staffId).eq('document_type', 'profile_photo');
-      if (existingError) throw existingError;
-      for (const previous of existing || []) {
-        // Remove database references first. A storage cleanup failure can then only
-        // leave an unreferenced object, never a live row pointing at a missing file.
-        const { error: deleteError } = await supabase.from('staff_documents').delete().eq('id', previous.id);
-        if (deleteError) throw deleteError;
-        const { error: removeError } = await supabase.storage.from('staff-documents').remove([previous.file_path]);
-        if (removeError) console.warn('Could not remove superseded staff document object', removeError.message);
-      }
-    }
+    // Keep existing profile photos until the replacement is safely uploaded and recorded.
+    const { data: previousPhotos, error: existingError } = documentType === 'profile_photo'
+      ? await supabase.from('staff_documents').select('id,file_path').eq('staff_id', staffId).eq('document_type', 'profile_photo')
+      : { data: null, error: null };
+    if (existingError) throw existingError;
     const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
     const path = `${staffId}/${documentType}/${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from('staff-documents').upload(path, file, { upsert: false, contentType: file.type });
@@ -345,6 +338,17 @@ export const db = {
     if (error) {
       await supabase.storage.from('staff-documents').remove([path]);
       throw error;
+    }
+    // Only retire older photos after the new photo has a durable database record.
+    // A cleanup failure leaves an extra photo rather than deleting the only valid one.
+    for (const previous of previousPhotos || []) {
+      const { error: deleteError } = await supabase.from('staff_documents').delete().eq('id', previous.id);
+      if (deleteError) {
+        console.warn('Could not remove superseded staff document record', deleteError.message);
+        continue;
+      }
+      const { error: removeError } = await supabase.storage.from('staff-documents').remove([previous.file_path]);
+      if (removeError) console.warn('Could not remove superseded staff document object', removeError.message);
     }
   },
 
