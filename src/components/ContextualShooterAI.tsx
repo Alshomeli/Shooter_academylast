@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Sparkles, X, Send, Loader2 } from 'lucide-react';
-import { askManagementAI, type ManagementAIPersona } from '@/lib/ai-assistant';
+import { askManagementAI, type ManagementAIPersona, type WebResearchSource } from '@/lib/ai-assistant';
 import type { Lang, Role, ViewId } from '@/types';
 
 const CONTEXTS: Partial<Record<ViewId, { persona: ManagementAIPersona; ar: string[]; en: string[] }>> = {
@@ -21,17 +21,21 @@ export function ContextualShooterAI({ page, role, lang }: { page: ViewId; role: 
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState('');
   const [reply, setReply] = useState('');
+  const [sources,setSources] = useState<WebResearchSource[]>([]);
+  const [researchInfo,setResearchInfo] = useState<{grounded:boolean;queries:string[];widget:string|null}|null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  useEffect(() => { setOpen(false); setQuestion(''); setReply(''); setError(''); }, [page, role]);
+  useEffect(() => { setOpen(false); setQuestion(''); setReply(''); setError(''); setSources([]); setResearchInfo(null); }, [page, role]);
   if (!allowed || !config) return null;
   const ar = lang === 'ar';
   const ask = async (prompt: string) => {
     if (!prompt.trim() || busy) return;
-    setBusy(true); setReply(''); setError('');
+    setBusy(true); setReply(''); setError(''); setSources([]); setResearchInfo(null);
     try {
       const result = await askManagementAI(config.persona, prompt.trim(), ar ? 'ar' : 'en');
       setReply(result.reply);
+      setSources(result.sources ?? []);
+      if(result.mode === 'research') setResearchInfo({grounded:!!result.grounded,queries:result.searchQueries??[],widget:result.searchEntryPoint??null});
     } catch {
       setError(ar ? 'تعذر تحليل البيانات. حاول مجددًا.' : 'Could not analyze the data. Try again.');
     } finally { setBusy(false); }
@@ -52,6 +56,12 @@ export function ContextualShooterAI({ page, role, lang }: { page: ViewId; role: 
       </form>
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {reply && <div aria-live="polite" className="whitespace-pre-wrap rounded-lg bg-slate-50 dark:bg-slate-800 p-3 text-sm leading-relaxed text-slate-800 dark:text-slate-100">{reply}</div>}
+      {researchInfo && <div className="text-xs space-y-1.5">
+        <p className="font-semibold">{researchInfo.grounded ? (ar?'مصادر البحث':'Research sources') : (ar?'لم تُرجع الخدمة مصادر مؤكدة':'No verified web sources were returned')}</p>
+        {sources.map(source=><a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" className="block text-brand-600 underline break-words">{source.title}</a>)}
+        {!!researchInfo.queries.length && <p className="opacity-70">{researchInfo.queries.join(' • ')}</p>}
+        {researchInfo.widget && <iframe title="Google Search suggestions" srcDoc={researchInfo.widget} sandbox="allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer" className="w-full min-h-20 border-0" />}
+      </div>}
     </div>}
   </section>;
 }
