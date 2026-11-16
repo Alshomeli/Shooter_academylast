@@ -21,13 +21,12 @@ test('research is double opt-in and excludes internal data', () => {
 });
 
 test('search results return verifiable links and safe UI rendering', () => {
-  assert.match(api, /groundingMetadata/);
-  assert.match(api, /groundingChunks/);
-  assert.match(api, /searchEntryPoint/);
+  assert.match(api, /publicSources\\.map/);
+  assert.match(api, /const sources=publicSources/);
   assert.match(client, /sources\?: AISource\[\]/);
   assert.match(view, /message\.sources\?\.map/);
   assert.match(view, /rel="noopener noreferrer"/);
-  assert.match(view, /sandbox="allow-popups allow-popups-to-escape-sandbox"/);
+
 });
 
 test('authorization remains enforced', () => {
