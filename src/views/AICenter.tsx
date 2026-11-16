@@ -11,7 +11,7 @@ import { ChatGPTIntegrationStatus } from '@/components/ChatGPTIntegrationStatus'
 import { tr } from '@/lib/i18n';
 import { fetchAllPlayerFiles, type UploadedFile } from '@/lib/uploads';
 import type { AIContext } from '@/views/ai-context';
-import { askManagementAI, type ManagementAIPersona } from '@/lib/ai-assistant';
+import { askManagementAI, type ManagementAIPersona, type AISource } from '@/lib/ai-assistant';
 import {
   generateNutritionAdvice, generateCommunicationTemplate,
   generatePositionEvaluation,
@@ -44,6 +44,8 @@ interface ChatMessage {
   id: string;
   role: 'ai' | 'user';
   text: string;
+  sources?: AISource[];
+  searchWidgetHtml?: string;
 }
 
 interface Persona {
@@ -363,6 +365,7 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [research, setResearch] = useState(false);
   const [documents, setDocuments] = useState<UploadedFile[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -405,8 +408,9 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
           activePersona as ManagementAIPersona,
           content,
           lang,
+          activePersona === 'training' && research,
         );
-        setMessages((prev) => [...prev, { id: uid(), role: 'ai', text: result.reply }]);
+        setMessages((prev) => [...prev, { id: uid(), role: 'ai', text: result.reply, sources: result.sources, searchWidgetHtml: result.searchWidgetHtml }]);
         return;
       }
 
@@ -507,6 +511,13 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
             </div>
           </div>
 
+          {activePersona === 'training' && (
+            <label className="flex items-center gap-2 px-4 pt-3 text-xs text-slate-600 dark:text-slate-300">
+              <input type="checkbox" checked={research} onChange={(e) => setResearch(e.target.checked)} disabled={isTyping}
+                className="accent-brand-500" />
+              {lang === 'ar' ? 'طلب البحث عن مراجع حديثة (يعمل فقط إذا فعّله المسؤول على الخادم)' : 'Request current web sources (requires server administrator enablement)'}
+            </label>
+          )}
           <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
@@ -537,6 +548,21 @@ function MessageBubble({ message, personaColor }: { message: ChatMessage; person
       </div>
       <div className={`max-w-[80%] sm:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-line shadow-sm ${isAI ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-bl-md border border-slate-100 dark:border-slate-700' : 'bg-brand-500 text-white rounded-br-md'}`}>
         {message.text}
+        {isAI && Boolean(message.sources?.length) && (
+          <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-600">
+            <p className="font-bold mb-1">المصادر / Sources</p>
+            <ul className="space-y-1">
+              {message.sources?.map((source, index) => (
+                <li key={source.url + index}><a className="underline break-all text-brand-600 dark:text-brand-400" href={source.url}
+                  target="_blank" rel="noopener noreferrer">{source.title}</a></li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {isAI && message.searchWidgetHtml && (
+          <iframe title="Google Search suggestions" sandbox="allow-popups allow-popups-to-escape-sandbox"
+            referrerPolicy="no-referrer" srcDoc={message.searchWidgetHtml} className="mt-2 w-full h-20 border-0" />
+        )}
       </div>
     </div>
   );
