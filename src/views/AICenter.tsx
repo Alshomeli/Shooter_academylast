@@ -45,8 +45,7 @@ interface ChatMessage {
   role: 'ai' | 'user';
   text: string;
   sources?: AISource[];
-  searchWidgetHtml?: string;
-}
+  }
 
 interface Persona {
   id: PersonaId;
@@ -410,7 +409,7 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
           lang,
           activePersona === 'training' && research,
         );
-        setMessages((prev) => [...prev, { id: uid(), role: 'ai', text: result.reply, sources: result.sources, searchWidgetHtml: result.searchWidgetHtml }]);
+        setMessages((prev) => [...prev, { id: uid(), role: 'ai', text: result.reply, sources: result.sources }]);
         return;
       }
 
@@ -515,7 +514,7 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
             <label className="flex items-center gap-2 px-4 pt-3 text-xs text-slate-600 dark:text-slate-300">
               <input type="checkbox" checked={research} onChange={(e) => setResearch(e.target.checked)} disabled={isTyping}
                 className="accent-brand-500" />
-              {lang === 'ar' ? 'طلب البحث عن مراجع حديثة (يعمل فقط إذا فعّله المسؤول على الخادم)' : 'Request current web sources (requires server administrator enablement)'}
+              {lang === 'ar' ? 'بحث Tavily المجاني عند توفره (يحتاج تفعيل المسؤول)' : 'Search Tavily sources (requires administrator enablement)'}
             </label>
           )}
           <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -558,10 +557,6 @@ function MessageBubble({ message, personaColor }: { message: ChatMessage; person
               ))}
             </ul>
           </div>
-        )}
-        {isAI && message.searchWidgetHtml && (
-          <iframe title="Google Search suggestions" sandbox="allow-popups allow-popups-to-escape-sandbox"
-            referrerPolicy="no-referrer" srcDoc={message.searchWidgetHtml} className="mt-2 w-full h-20 border-0" />
         )}
       </div>
     </div>
