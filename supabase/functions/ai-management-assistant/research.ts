@@ -7,7 +7,7 @@ export function isSafePublicResearchQuestion(q: string): boolean {
   // Avoid forwarding personal contact information or structured identifiers to a web tool.
   if (/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/.test(q)) return false;
   if (/(?:\+?\d[\d\s()-]{8,}\d)/.test(q)) return false;
-  if (/\b(?:national.?id|passport|رقم شخصي|رقم الهوية|جواز|هاتف اللاعب|اسم اللاعب|بيانات اللاعب)\b/i.test(q)) return false;
+  if (/(?:national.?id|passport|رقم شخصي|رقم الهوية|جواز|هاتف اللاعب|اسم اللاعب|بيانات اللاعب)/i.test(q)) return false;
   return true;
 }
 export function extractGrounding(p: any): {sources:Source[]; searchQueries:string[]; searchEntryPoint:string|null} {
