@@ -11,7 +11,7 @@ import { ChatGPTIntegrationStatus } from '@/components/ChatGPTIntegrationStatus'
 import { tr } from '@/lib/i18n';
 import { fetchAllPlayerFiles, type UploadedFile } from '@/lib/uploads';
 import type { AIContext } from '@/views/ai-context';
-import { askManagementAI, type ManagementAIPersona } from '@/lib/ai-assistant';
+import { askManagementAI, type ManagementAIPersona, type WebResearchSource } from '@/lib/ai-assistant';
 import {
   generateNutritionAdvice, generateCommunicationTemplate,
   generatePositionEvaluation,
@@ -44,6 +44,11 @@ interface ChatMessage {
   id: string;
   role: 'ai' | 'user';
   text: string;
+  sources?: WebResearchSource[];
+  searchQueries?: string[];
+  searchEntryPoint?: string | null;
+  grounded?: boolean;
+  research?: boolean;
 }
 
 interface Persona {
@@ -363,6 +368,7 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [webResearch, setWebResearch] = useState(false);
   const [documents, setDocuments] = useState<UploadedFile[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -376,7 +382,7 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
   const personaStyle = PERSONA_COLORS[persona.color];
   const PersonaIcon = persona.icon;
 
-  useEffect(() => { setMessages([{ id: uid(), role: 'ai', text: persona.welcome }]); }, [persona.welcome]);
+  useEffect(() => { setMessages([{ id: uid(), role: 'ai', text: persona.welcome }]); setWebResearch(false); }, [persona.welcome]);
   useEffect(() => { const el = scrollRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }); }, [messages, isTyping]);
   useEffect(() => {
     let active = true;
@@ -405,8 +411,13 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
           activePersona as ManagementAIPersona,
           content,
           lang,
+          { research: webResearch ? true : undefined },
         );
-        setMessages((prev) => [...prev, { id: uid(), role: 'ai', text: result.reply }]);
+        setMessages((prev) => [...prev, { id: uid(), role: 'ai', text: result.reply,
+          research: result.mode === 'research', grounded: result.grounded,
+          sources: result.sources, searchQueries: result.searchQueries,
+          searchEntryPoint: result.searchEntryPoint,
+        }]);
         return;
       }
 
@@ -507,6 +518,12 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
             </div>
           </div>
 
+          {LIVE_AI_PERSONAS.has(activePersona) && <label className="flex items-center gap-2 px-4 pt-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            <input type="checkbox" checked={webResearch} onChange={e=>setWebResearch(e.target.checked)} disabled={isTyping}
+              className="accent-brand-600" />
+            {lang === 'ar' ? 'بحث ويب حديث بمصادر عامة (دون بيانات لاعبين)' : 'Research current public web sources (no player data)'}
+            {activePersona === 'training' && <span className="text-[10px] text-brand-600">{lang==='ar'?'يعمل تلقائياً عند طلب خطة تدريب':'Auto for training plans'}</span>}
+          </label>}
           <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
@@ -537,6 +554,17 @@ function MessageBubble({ message, personaColor }: { message: ChatMessage; person
       </div>
       <div className={`max-w-[80%] sm:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-line shadow-sm ${isAI ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-bl-md border border-slate-100 dark:border-slate-700' : 'bg-brand-500 text-white rounded-br-md'}`}>
         {message.text}
+        {message.research && <div className="mt-3 border-t border-slate-200 dark:border-slate-700 pt-2 text-xs space-y-2">
+          <p className="font-bold">{message.grounded ? 'مصادر البحث' : 'لم يتم التحقق من مصادر ويب لهذه الإجابة؛ راجعها قبل التطبيق'}</p>
+          {!!message.sources?.length && <div className="space-y-1">{message.sources.map(source => (
+            <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer"
+              className="block text-brand-600 dark:text-brand-400 underline break-words">{source.title}</a>
+          ))}</div>}
+          {!!message.searchQueries?.length && <p className="text-[11px] opacity-70">عبارات البحث: {message.searchQueries.join(' • ')}</p>}
+          {message.searchEntryPoint && <iframe title="Google Search suggestions" srcDoc={message.searchEntryPoint}
+            sandbox="allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer"
+            className="w-full min-h-20 rounded-md border-0" />}
+        </div>}
       </div>
     </div>
   );
