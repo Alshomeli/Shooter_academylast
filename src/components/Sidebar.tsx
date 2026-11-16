@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import type { CurrentUser, Lang, Role, ViewId } from '@/types';
 import { tr } from '@/lib/i18n';
+import { academyLogoSource, handleAcademyLogoError } from '@/lib/branding';
 
 interface SidebarProps {
   currentTab: ViewId;
@@ -56,8 +57,7 @@ export function Sidebar({
   const isAr = lang === 'ar';
   const ROLE_OPTIONS = getRoleOptions(lang);
   const brandName = academyName?.trim() || t.academyShort;
-  const fallbackLogo = '/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy 2.png';
-  const selectedLogo = logoUrl && /^(https?:\/\/|data:image\/|\/)/i.test(logoUrl.trim()) ? logoUrl : fallbackLogo;
+  const selectedLogo = academyLogoSource(logoUrl);
 
   const navSections: NavSection[] = [
     {
@@ -121,9 +121,9 @@ export function Sidebar({
         <div className="flex min-h-0 flex-1 flex-col">
           {/* Logo header */}
           <div className="sidebar-brand relative p-3 border-b border-slate-800 flex items-center gap-3 bg-brand-950/20 text-right shrink-0">
-            <div className="relative group shrink-0 w-11 h-11 flex items-center justify-center">
+            <div className="relative group shrink-0 w-20 h-20 flex items-center justify-center">
               <div className="absolute -inset-1 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" style={{ backgroundColor: '#cbd5e1' }} />
-              <img src={selectedLogo} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="relative h-11 w-11 object-contain drop-shadow-lg" />
+              <img src={selectedLogo} onError={handleAcademyLogoError} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="relative h-full w-full object-contain drop-shadow-lg" />
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="font-black text-xs lg:text-sm text-slate-200 tracking-tight leading-tight">{brandName}</h1>
