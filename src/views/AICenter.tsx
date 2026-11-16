@@ -425,6 +425,13 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
       setMessages((prev) => [...prev, { id: uid(), role: 'ai', text: reply }]);
     } catch (error) {
       console.error('AI assistant request failed', error);
+      if (webResearch || ((activePersona === 'technical' || activePersona === 'training') && shouldUseWebResearch('training', content))) {
+        setMessages((prev) => [...prev, { id: uid(), role: 'ai',
+          text: lang === 'ar'
+            ? 'البحث في المصادر الحديثة غير متاح حالياً. لم يتم التحقق من أي مصادر على الإنترنت. حاول لاحقاً أو استخدم تحليل بيانات الأكاديمية.'
+            : 'Live web research is currently unavailable. No online sources were verified. Please try later or switch to academy data analysis.' }]);
+        return;
+      }
       const fallback = generateResponse(activePersona, content, ctx, teams, players, evaluations);
       const notice = lang === 'ar'
         ? 'تعذر الاتصال بخدمة الذكاء الاصطناعي الآن. هذه إجابة محلية من بيانات النظام:\n\n'
