@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { isSafePublicResearchQuestion, extractGrounding } from '../supabase/functions/ai-management-assistant/research.ts';
+import { isSafePublicResearchQuestion, extractGrounding, researchTraining } from '../supabase/functions/ai-management-assistant/research.ts';
 
 test('public coaching prompts and age ranges are accepted',()=>{
   assert.equal(isSafePublicResearchQuestion('اقترح تدريب هجوم للاعبين مواليد 2014-2015 لمدة 60 دقيقة'),true);
@@ -42,4 +42,27 @@ test('web research is opt-in except for suggested youth training plans',async()=
   assert.match(code,/shouldUseWebResearch/);
   assert.match(code,/RECORD_PATTERNS/);
   assert.match(code,/body: \{ persona, question, lang, mode \}/);
+});
+
+test('research calls Gemini with Google Search but without internal academy snapshots',async()=>{
+  const original=globalThis.fetch;
+  let request;
+  try {
+    globalThis.fetch=async (url,options)=>{
+      request={url,headers:options.headers,body:JSON.parse(options.body)};
+      return {ok:true,json:async()=>({candidates:[{
+        content:{parts:[{text:'60-minute U12 attacking training plan with three drills'}]},
+        groundingMetadata:{groundingChunks:[{web:{uri:'https://www.fifa.com/technical',title:'FIFA Training'}}],
+          webSearchQueries:['U12 football passing attack drills']},
+      }]})};
+    };
+    const result=await researchTraining('خطة تدريب هجوم لفئة 2014-2015', 'ar', 'fake-test-key', 'gemini-2.5-flash');
+    assert.equal(result.mode,'research');
+    assert.equal(result.grounded,true);
+    assert.equal(result.sources[0].title,'FIFA Training');
+    assert.deepEqual(request.body.tools,[{google_search:{}}]);
+    assert.equal(request.body.contents[0].parts[0].text,'خطة تدريب هجوم لفئة 2014-2015');
+    assert.equal(JSON.stringify(request.body).includes('subscriptions'),false);
+    assert.equal(JSON.stringify(request.body).includes('national_id'),false);
+  } finally {globalThis.fetch=original;}
 });
