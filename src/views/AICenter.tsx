@@ -11,7 +11,7 @@ import { ChatGPTIntegrationStatus } from '@/components/ChatGPTIntegrationStatus'
 import { tr } from '@/lib/i18n';
 import { fetchAllPlayerFiles, type UploadedFile } from '@/lib/uploads';
 import type { AIContext } from '@/views/ai-context';
-import { askManagementAI, type ManagementAIPersona, type WebResearchSource } from '@/lib/ai-assistant';
+import { askManagementAI, shouldUseWebResearch, type ManagementAIPersona, type WebResearchSource } from '@/lib/ai-assistant';
 import {
   generateNutritionAdvice, generateCommunicationTemplate,
   generatePositionEvaluation,
@@ -406,9 +406,9 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
     setIsTyping(true);
 
     try {
-      if (LIVE_AI_PERSONAS.has(activePersona)) {
+      if (LIVE_AI_PERSONAS.has(activePersona) || (activePersona === 'technical' && (webResearch || shouldUseWebResearch('training', content)))) {
         const result = await askManagementAI(
-          activePersona as ManagementAIPersona,
+          (activePersona === 'technical' ? 'training' : activePersona) as ManagementAIPersona,
           content,
           lang,
           { research: webResearch ? true : undefined },
@@ -518,11 +518,11 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
             </div>
           </div>
 
-          {LIVE_AI_PERSONAS.has(activePersona) && <label className="flex items-center gap-2 px-4 pt-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
+          {(LIVE_AI_PERSONAS.has(activePersona) || activePersona === 'technical') && <label className="flex items-center gap-2 px-4 pt-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
             <input type="checkbox" checked={webResearch} onChange={e=>setWebResearch(e.target.checked)} disabled={isTyping}
               className="accent-brand-600" />
             {lang === 'ar' ? 'بحث ويب حديث بمصادر عامة (دون بيانات لاعبين)' : 'Research current public web sources (no player data)'}
-            {activePersona === 'training' && <span className="text-[10px] text-brand-600">{lang==='ar'?'يعمل تلقائياً عند طلب خطة تدريب':'Auto for training plans'}</span>}
+            {(activePersona === 'training' || activePersona === 'technical') && <span className="text-[10px] text-brand-600">{lang==='ar'?'يعمل تلقائياً عند طلب خطة تدريب':'Auto for training plans'}</span>}
           </label>}
           <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
             <div className="flex items-center gap-2">
