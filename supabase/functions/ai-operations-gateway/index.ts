@@ -13,8 +13,16 @@ const OP_ROLES: Record<Operation, string[]> = {
   create_subscription: ["manager", "accountant", "receptionist"],
 };
 
+const ALLOWED_ORIGINS = new Set([
+  "https://shooter.academy",
+  "https://www.shooter.academy",
+  "https://shooter-academy-new-1vvk.bolt.host",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+]);
+
 const cors = (origin: string | null) => ({
-  "Access-Control-Allow-Origin": origin || "*",
+  "Access-Control-Allow-Origin": origin && ALLOWED_ORIGINS.has(origin) ? origin : "https://shooter.academy",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Vary": "Origin",
