@@ -6,7 +6,7 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const entry = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
 const publicConfig = readFileSync(new URL('../src/data/public-academy.ts', import.meta.url), 'utf8');
 const home = readFileSync(new URL('../src/views/AcademyHome.tsx', import.meta.url), 'utf8');
-const base = 'https://shooter-academy-new-1vvk.bolt.host/';
+const base = 'https://shooter.academy/';
 
 const match = html.match(/<script id="academy-organization-schema" type="application\/ld\+json">\s*([\s\S]*?)\s*<\/script>/);
 if (!match) throw new Error('Public Organization JSON-LD missing from initial response');
