@@ -152,7 +152,7 @@
 .ah-social a:hover{transform:translateY(-2px);box-shadow:0 6px 14px #05090e40}
 .ah-social a:focus-visible{outline:3px solid #f6c54d;outline-offset:3px}
 .ah-social .instagram{background:linear-gradient(45deg,#ffdc80 0%,#f77737 22%,#e1306c 48%,#c13584 70%,#833ab4 100%)}
-.ah-social .whatsapp{background:#25d366}
+.ah-social .whatsapp{background:#11793d}
 .ah-social .facebook{background:#1877f2}
 .ah-social .tiktok{background:#111318;border-color:#657180;box-shadow:2px 2px #fe2c55,-2px -2px #25f4ee}
 .ah-social svg{display:block;flex-shrink:0}
