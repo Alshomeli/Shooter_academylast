@@ -39,7 +39,7 @@ export function AcademyGallery({ photos = publicGallery, lang = 'ar' }: { photos
       const cover = album.photos[0];
       return <figure key={album.title}>
         <button type="button" onClick={() => open(index)} aria-label={lang === 'en' ? `Open album ${album.title}, ${album.photos.length} photos` : `عرض ألبوم ${album.title}، ${album.photos.length} صور`}>
-          <img src={cover.src} alt={cover.alt} loading="lazy" width="1200" height="860"/>
+          <img src={cover.src} alt={cover.alt} loading="lazy" decoding="async" width="1200" height="900"/>
           <span><Maximize2 size={16}/> {tr("عرض صور النشاط")} ({album.photos.length})</span>
         </button>
         <figcaption><h3>{album.title}</h3><p>{cover.caption}</p></figcaption>
