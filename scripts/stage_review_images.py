@@ -27,9 +27,9 @@ for src, dest in copies:
 page = ROOT / "src/views/AcademyHome.tsx"
 original = page.read_text(encoding="utf-8")
 logo_old = '<img src="/shooter-logo-transparent.png" width="54" height="60" alt={tr("شعار أكاديمية شوتر")}/>'
-logo_new = '<picture><source srcSet="/shooter-logo-transparent.webp" type="image/webp"/><img src="/shooter-logo-transparent.png" width="54" height="60" alt={tr("شعار أكاديمية شوتر")}/></picture>'
+logo_new = '<img src="/shooter-logo-transparent.webp" width="54" height="60" alt={tr("شعار أكاديمية شوتر")} onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = "/shooter-logo-transparent.png"; }}/>'
 banner_old = 'src="/images/1000391344.jpg" alt='
-banner_new = 'src="/images/1000391344.jpg" srcSet="/images/1000391344.webp 1280w, /images/1000391344.jpg 1918w" sizes="100vw" alt='
+banner_new = 'src="/images/1000391344.webp" alt='
 
 if original.count(logo_old) != 1 or original.count(banner_old) != 1:
     raise SystemExit("Homepage image markup changed: refusing to patch automatically")
