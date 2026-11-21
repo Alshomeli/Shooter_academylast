@@ -49,10 +49,47 @@ function maskEmail(email: string): string {
   return `${visible}•••@${domain}`;
 }
 
+// In-memory per-IP sliding-window rate limit. Defense in depth against
+// credential-stuffing floods on this manager-only invite endpoint. It resets
+// on cold start and is per-instance, so it is a first layer only — a
+// database-backed limiter is the durable follow-up (see PR description).
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 30;
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function rateLimit(ip: string): { ok: true } | { ok: false; retryAfter: number } {
+  const now = Date.now();
+  const bucket = rateBuckets.get(ip);
+  if (!bucket || bucket.resetAt <= now) {
+    rateBuckets.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { ok: true };
+  }
+  if (bucket.count >= RATE_LIMIT_MAX) {
+    return { ok: false, retryAfter: Math.ceil((bucket.resetAt - now) / 1000) };
+  }
+  bucket.count += 1;
+  return { ok: true };
+}
+
+function clientIp(req: Request): string {
+  const forwarded = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim();
+  if (forwarded) return forwarded;
+  return req.headers.get("x-real-ip") || "unknown";
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors(origin) });
   if (req.method !== "POST") return reply(origin, 405, { error: "method_not_allowed" });
+
+  const ip = clientIp(req);
+  const limit = rateLimit(ip);
+  if (!limit.ok) {
+    return new Response(JSON.stringify({ error: "rate_limited", retryAfter: limit.retryAfter }), {
+      status: 429,
+      headers: { ...cors(origin), "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "Retry-After": String(limit.retryAfter) },
+    });
+  }
 
   const authHeader = req.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) return reply(origin, 401, { error: "authentication_required" });
