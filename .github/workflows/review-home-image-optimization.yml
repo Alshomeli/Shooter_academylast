@@ -27,3 +27,5 @@ jobs:
           name: shooter-home-image-review
           path: .image-optimization-review/
           retention-days: 7
+          include-hidden-files: true
+          if-no-files-found: error
