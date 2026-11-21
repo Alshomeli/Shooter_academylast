@@ -2,12 +2,10 @@
 <html lang="ar" dir="rtl" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy 2.png" />
+    <link rel="icon" type="image/webp" href="/shooter-logo-transparent.webp" />
+    <!-- TODO(owner): replace with /favicon.png (64x64, <20KB) and /apple-touch-icon.png (180x180) once the binary assets are committed. -->
+    <!-- Security headers are delivered by public/_headers (HTTP response headers). Do not mirror them as <meta http-equiv>: browsers ignore them there. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
-    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
-    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Shooter Academy" />
@@ -79,14 +77,35 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200..900&display=swap" rel="stylesheet" />
+    <!-- TODO(owner): replace parent-hero.png (1.92MB) with a 1200x630 JPEG/WebP under 200KB (og-image.jpg). -->
     <meta property="og:image" content="https://shooter.academy/parent-hero.png">
+    <meta property="og:image:width" content="1983">
+    <meta property="og:image:height" content="793">
+    <meta property="og:image:alt" content="أكاديمية شوتر لكرة القدم | Shooter Academy">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="أكاديمية شوتر لكرة القدم | Shooter Academy">
     <meta name="twitter:description" content="أكاديمية شوتر لكرة القدم في البحرين. تطوير مهارات اللاعبين واللياقة البدنية وروح الفريق.">
     <meta name="twitter:image" content="https://shooter.academy/parent-hero.png">
 </head>
   <body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
-    <div id="root"></div>
+    <div id="root">
+      <!-- No-JS / pre-hydration fallback. React replaces this node on mount.
+           Keep it short, static and aligned with the rendered home page so that
+           crawlers that do not execute JavaScript still see one H1 and the core facts. -->
+      <div style="font-family:system-ui,-apple-system,'Segoe UI',Tahoma,sans-serif;max-width:44rem;margin:0 auto;padding:24px 20px;line-height:1.8;direction:rtl;text-align:right">
+        <h1 style="font-size:1.55rem;margin:0 0 10px">هنا تبدأ رحلتك الكروية — أكاديمية شوتر لكرة القدم (Shooter Academy)</h1>
+        <p style="margin:0 0 10px">أكاديمية شوتر لكرة القدم في المحرق، مملكة البحرين. تطوير مهارات اللاعبين واللياقة البدنية وإنهاء الهجمات، وروح الفريق.</p>
+        <p style="margin:0 0 10px">برامج التدريب: تطوير المهارة، اللياقة البدنية، وإنهاء الهجمات.</p>
+        <p style="margin:0 0 10px">للاستفسار عن المواعيد والرسوم والفئة العمرية: هاتف <a href="tel:+97332287776">+973 32287776</a> — بريد <a href="mailto:shooter.academy.bh@gmail.com">shooter.academy.bh@gmail.com</a></p>
+        <p style="margin:0">شارع 28، حالة النعيم 997، المحرق، البحرين.</p>
+        <p style="margin:10px 0 0"><a href="/?view=login">دخول منصة الأكاديمية</a></p>
+      </div>
+    </div>
+    <noscript>
+      <p style="font-family:system-ui,sans-serif;padding:12px 20px;direction:rtl;text-align:right">
+        لتفعيل الموقع الكامل يلزم تشغيل JavaScript. يمكنك التواصل معنا على +973 32287776 أو عبر واتساب.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
