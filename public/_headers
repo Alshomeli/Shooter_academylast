@@ -1,0 +1,16 @@
+# Security headers for the frontend. Netlify serves dist/_headers after a
+# `vite build` (public/* is copied into dist/). The frontend is currently
+# hosted behind Cloudflare on shooter.academy; these headers take effect when
+# the frontend is built and served from this repository, and the same headers
+# should be mirrored on the active hosting/CDN.
+#
+# CSP is shipped Report-Only on purpose: it cannot break the SPA, it only
+# surfaces violations so the policy can be tightened after observation.
+# The other headers are strict and safe (they never block first-party use).
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://shooter.academy https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self' data:; frame-ancestors 'self'; base-uri 'self'; form-action 'self'
