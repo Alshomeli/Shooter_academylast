@@ -7,13 +7,13 @@ const home = readFileSync(new URL('../src/views/AcademyHome.tsx', import.meta.ur
 const robots = readFileSync(new URL('../public/robots.txt', import.meta.url), 'utf8');
 const sitemap = readFileSync(new URL('../public/sitemap.xml', import.meta.url), 'utf8');
 const notes = readFileSync(new URL('../docs/google-search-and-domain-transition-2026-10-15.md', import.meta.url), 'utf8');
-const official = 'https://shooter-academy-new-1vvk.bolt.host/';
+const official = 'https://shooter.academy/';
 
-test('official homepage has one static canonical at the Bolt host', () => {
+test('official homepage has one static canonical at the verified custom domain', () => {
   assert.equal((index.match(/rel="canonical"/g)||[]).length,1);
   assert.ok(index.includes('rel="canonical" href="' + official + '"'));
-  assert.match(index, /meta property="og:url" content="https:\/\/shooter-academy-new-1vvk\.bolt\.host\//);
-  assert.ok(!index.includes('rel="canonical" href="https://shooter.academy/'));
+  assert.match(index, /meta property="og:url" content="https:\/\/shooter\.academy\//);
+  assert.ok(!index.includes('shooter-academy-new-1vvk.bolt.host'));
 });
 
 test('shared app entry does not force indexing of authentication or legal routes', () => {
@@ -48,7 +48,7 @@ test('English/Arabic public page updates its share metadata with user-provided v
   assert.ok(notes.includes('HTML tag verification'));
 });
 
-test('public sitemap advertised without ever blocking the whole Bolt website', () => {
+test('public sitemap advertised on the verified custom domain without blocking public pages', () => {
   assert.match(robots, /User-agent: \*/);
   assert.match(robots, /Allow: \//);
   assert.ok(robots.includes('Sitemap: '+official+'sitemap.xml'));

@@ -59,7 +59,7 @@ test('English homepage has discoverable canonical, alternate language links, and
   for (const code of ['ar', 'en', 'x-default']) {
     assert.match(sitemap, new RegExp('hreflang="' + code + '"'));
   }
-  assert.match(sitemap, /<loc>https:\/\/shooter-academy-new-1vvk\.bolt\.host\/\?lang=en<\/loc>/);
+  assert.match(sitemap, /<loc>https:\/\/shooter\.academy\/\?lang=en<\/loc>/);
 });
 
 test('social links expose accessible labels in the selected language', () => {
