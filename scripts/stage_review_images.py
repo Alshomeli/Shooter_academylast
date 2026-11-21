@@ -31,8 +31,24 @@ logo_new = '<img src="/shooter-logo-transparent.webp" width="54" height="60" alt
 banner_old = 'src="/images/1000391344.jpg" alt='
 banner_new = 'src="/images/1000391344.webp" alt='
 
-if original.count(logo_old) != 1 or original.count(banner_old) != 1:
-    raise SystemExit("Homepage image markup changed: refusing to patch automatically")
-updated = original.replace(logo_old, logo_new, 1).replace(banner_old, banner_new, 1)
-page.write_text(updated, encoding="utf-8")
-print("Prepared WebP assets and responsive homepage references on development branch.")
+# This job may run again after its first successful commit. Re-runs must be
+# idempotent while still rejecting unexpected, unreviewed homepage markup.
+if original.count(logo_new) == 1 and original.count(logo_old) == 0:
+    updated = original
+elif original.count(logo_old) == 1 and original.count(logo_new) == 0:
+    updated = original.replace(logo_old, logo_new, 1)
+else:
+    raise SystemExit("Unexpected logo markup; manual review required")
+
+if updated.count(banner_new) == 1 and updated.count(banner_old) == 0:
+    pass
+elif updated.count(banner_old) == 1 and updated.count(banner_new) == 0:
+    updated = updated.replace(banner_old, banner_new, 1)
+else:
+    raise SystemExit("Unexpected banner markup; manual review required")
+
+if updated != original:
+    page.write_text(updated, encoding="utf-8")
+    print("Linked WebP images in the development homepage.")
+else:
+    print("WebP images are already linked; no homepage changes needed.")
