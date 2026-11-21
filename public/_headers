@@ -1,0 +1,40 @@
+/*
+  # --- Enforced CSP: only directives that cannot break normal page execution ---
+  # frame-ancestors closes clickjacking (the previous X-Frame-Options lived in <meta> and did nothing).
+  Content-Security-Policy: frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'
+  # --- Full policy in Report-Only first ---
+  # Reason: Cloudflare injects an inline challenge script into the HTML body, and the deploy
+  # pipeline (bolt.new) injects /badge.js. Enforcing script-src now would silently block them.
+  # Collect violations for ~1 week, then move this line into the enforcing policy above.
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co; media-src 'self' https://*.supabase.co; connect-src 'self' https://*.supabase.co https://*.supabase.in https://static.cloudflareinsights.com; frame-src 'self' https://www.google.com https://maps.google.com; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Cross-Origin-Opener-Policy: same-origin
+
+# Hashed build output never changes under the same name: cache it for a year.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/images/*
+  Cache-Control: public, max-age=2592000
+
+/home/*
+  Cache-Control: public, max-age=2592000
+
+/*.webp
+  Cache-Control: public, max-age=2592000
+
+/*.png
+  Cache-Control: public, max-age=2592000
+
+/*.jpg
+  Cache-Control: public, max-age=2592000
+
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+
+/robots.txt
+  Cache-Control: public, max-age=3600

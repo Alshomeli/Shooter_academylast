@@ -67,7 +67,7 @@ export const publicEnglish: Record<string, string> = {
   "شارع 28، حالة النعيم، البحرين": "Road 28, Halat Naim, Bahrain",
   "الاتجاهات إلى الأكاديمية": "Get Directions",
   "للوصول إلى الموقع المحدد للأكاديمية، استخدم زر الاتجاهات المرتبط بالخريطة المعتمدة.": "For the academy's exact location, use the directions button linked to our approved map.",
-  "06 / تواصل معنا": "06 / Contact Us",
+  "07 / تواصل معنا": "07 / Contact Us",
   "نلتقي في": "See You on",
   "الملعب.": "the Pitch.",
   "شارع 28، حالة النعيم 997، البحرين": "Road 28, Halat Naim 997, Bahrain",
