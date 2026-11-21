@@ -26,7 +26,8 @@ test('schema identifies only confirmed academy contact details and original bran
   assert.equal(org.name, 'أكاديمية شوتر لكرة القدم');
   assert.equal(org.alternateName, 'Shooter Academy');
   assert.equal(org.logo.url, base+'shooter-logo-transparent.png');
-  assert.ok(home.includes('src="/shooter-logo-transparent.png"'));
+  assert.ok(home.includes('src="/shooter-logo-transparent.webp"'));
+  assert.ok(home.includes('event.currentTarget.src = "/shooter-logo-transparent.png"'));
   assert.equal(org.email, 'shooter.academy.bh@gmail.com');
   assert.equal(org.telephone, '+97332287776');
   assert.equal(org.address.addressCountry, 'BH');
