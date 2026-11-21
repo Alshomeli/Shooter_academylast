@@ -1,0 +1,29 @@
+name: Review homepage image optimization
+on:
+  pull_request:
+    paths:
+      - 'scripts/optimize_home_images.py'
+      - '.github/workflows/review-home-image-optimization.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  image-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install image converter
+        run: python -m pip install 'Pillow>=11,<13'
+      - name: Generate review-only WebP images and byte report
+        run: python scripts/optimize_home_images.py
+      - name: Upload review files (not published)
+        uses: actions/upload-artifact@v4
+        with:
+          name: shooter-home-image-review
+          path: .image-optimization-review/
+          retention-days: 7
