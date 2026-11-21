@@ -181,7 +181,7 @@ export default function AcademyHome() {
   return <div className={`academy-home ${darkMode ? 'ah-dark' : 'ah-light'}`} dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang} id="top">
     <a className="ah-skip" href="#about">{tr("تخطي إلى المحتوى")}</a>
     <header className="ah-header">
-      <a href="#top" className="ah-brand"><img src="/shooter-logo-transparent.png" width="54" height="60" alt={tr("شعار أكاديمية شوتر")}/><span>{tr("أكاديمية شوتر")}<small>SHOOTER ACADEMY</small></span></a>
+      <a href="#top" className="ah-brand"><img src="/shooter-logo-transparent.webp" width="54" height="60" alt={tr("شعار أكاديمية شوتر")} onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = "/shooter-logo-transparent.png"; }}/><span>{tr("أكاديمية شوتر")}<small>SHOOTER ACADEMY</small></span></a>
       <nav className={`ah-nav ${menu ? 'is-open' : ''}`} id="ah-navigation" aria-label={tr("التنقل الرئيسي")}>{navigation.map(([id,label]) => <a href={`#${id}`} key={id} onClick={() => setMenu(false)}>{tr(label)}</a>)}</nav>
       <button type="button" className="ah-language-toggle" onClick={toggleLanguage} aria-label={lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'} title={lang === 'ar' ? 'Switch to English' : 'العودة إلى العربية'} lang={lang === 'ar' ? 'en' : 'ar'}>{lang === 'ar' ? 'EN' : 'عربي'}</button>
       <button type="button" className="ah-theme-toggle" onClick={() => setDarkMode(v => !v)} aria-label={darkMode ? tr("تفعيل الوضع النهاري") : tr("تفعيل الوضع الليلي")} aria-pressed={darkMode} title={darkMode ? tr("تفعيل الوضع النهاري") : tr("تفعيل الوضع الليلي")}>{darkMode ? <Sun size={18}/> : <Moon size={18}/>}<span>{darkMode ? tr("نهاري") : tr("ليلي")}</span></button>
@@ -196,7 +196,7 @@ export default function AcademyHome() {
       {contentError && <p role="status" className="ah-muted">{tr("تعذّر تحميل آخر المحتوى. يرجى تحديث الصفحة.")}</p>}
       <section className={`ah-image-banner ${lang === 'en' ? 'ah-image-banner-en' : ''}`} aria-labelledby="ah-title">
         <figure className="ah-banner-figure">
-          <img src="/images/1000391344.jpg" alt={lang === 'ar' ? 'أكاديمية شوتر لكرة القدم - لاعبون وشعار الأكاديمية، هنا تبدأ رحلتك الكروية' : 'Shooter Football Academy players and academy crest — your football journey starts here'} title={lang === 'ar' ? 'أكاديمية شوتر لكرة القدم | Shooter Academy' : 'Shooter Football Academy'} width={1918} height={820} loading="eager" fetchPriority="high" />
+          <img src="/images/1000391344.webp" alt={lang === 'ar' ? 'أكاديمية شوتر لكرة القدم - لاعبون وشعار الأكاديمية، هنا تبدأ رحلتك الكروية' : 'Shooter Football Academy players and academy crest — your football journey starts here'} title={lang === 'ar' ? 'أكاديمية شوتر لكرة القدم | Shooter Academy' : 'Shooter Football Academy'} width={1918} height={820} loading="eager" fetchPriority="high" />
           {lang === 'ar' ? <>
             <a className="ah-banner-hotspot ah-banner-login" href={platform} aria-label="دخول منصة الأكاديمية"><span className="sr-only">دخول منصة الأكاديمية</span></a>
             <a className="ah-banner-hotspot ah-banner-programs" href="#programs" aria-label="اكتشف برامجنا التدريبية"><span className="sr-only">اكتشف برامجنا</span></a>
