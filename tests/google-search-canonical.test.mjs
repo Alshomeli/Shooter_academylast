@@ -12,7 +12,7 @@ const official = 'https://shooter.academy/';
 test('official homepage has one static canonical at the verified custom domain', () => {
   assert.equal((index.match(/rel="canonical"/g)||[]).length,1);
   assert.ok(index.includes('rel="canonical" href="' + official + '"'));
-  assert.match(index, /meta property="og:url" content="https:\/\/shooter-academy-new-1vvk\.bolt\.host\//);
+  assert.match(index, /meta property="og:url" content="https:\/\/shooter\.academy\//);
   assert.ok(!index.includes('shooter-academy-new-1vvk.bolt.host'));
 });
 
