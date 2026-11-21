@@ -39,7 +39,7 @@ test('public social profiles are aligned with academy links', () => {
   for (const link of org.sameAs) assert.ok(publicConfig.includes(link),link);
   assert.equal(website.url, base);
   assert.deepEqual(website.inLanguage, ['ar', 'en']);
-  assert.equal(html.match(/rel="canonical" href="https:\/\/shooter-academy-new-1vvk\.bolt\.host\//g)?.length,1);
+  assert.equal(html.match(/rel="canonical" href="https:\/\/shooter\.academy\//g)?.length,1);
 });
 
 test('private portal and legal pages remove public organization schema while retaining noindex', () => {
