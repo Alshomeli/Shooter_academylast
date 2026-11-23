@@ -127,7 +127,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
     const phone = cleanPhone(player.parentPhone);
     if (!phone) return;
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
     setOpenedLog((prev) => [...prev, player.id]);
   }
 
@@ -139,7 +139,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
       ? (isAr ? 'مواعيد التدريبات' : 'Training Schedule')
       : customTitle || (isAr ? 'تعميم من الأكاديمية' : 'Academy Announcement');
     const url = `mailto:${player.parentEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(msg)}`;
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
     setOpenedLog((prev) => [...prev, player.id]);
   }
 
