@@ -82,13 +82,38 @@
     <meta name="twitter:image" content="https://shooter.academy/parent-hero.png">
 </head>
   <body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
-    <div id="root"></div>
+    <!--
+      Static shell. It is visible while the bundle downloads, and it is all a
+      visitor sees if the bundle never runs (cold visit on a slow network, a
+      failed hashed chunk after a deploy, JS disabled). React replaces it on
+      first commit, so it must stay plain HTML with no client state.
+    -->
+    <div id="root">
+      <div id="static-shell" dir="rtl" lang="ar">
+        <main style="max-width:56rem;margin:0 auto;padding:2.5rem 1.25rem;font-family:system-ui,sans-serif;line-height:1.8">
+          <p style="margin:0;font-size:.8rem;letter-spacing:.18em;color:#b91c1c">SHOOTER ACADEMY · BAHRAIN</p>
+          <h1 style="margin:.5rem 0 1rem;font-size:1.9rem">هنا تبدأ رحلتك الكروية — أكاديمية شوتر لكرة القدم</h1>
+          <p style="margin:0 0 1rem">أكاديمية شوتر في المحرق، مملكة البحرين. نطوّر مهارات اللاعبين الناشئين واللياقة البدنية وروح الفريق، في بيئة تجمع التدريب والانضباط وحب كرة القدم.</p>
+          <ul style="margin:0 0 1.25rem;padding-inline-start:1.2rem">
+            <li>برامج تدريبية: تطوير المهارات، اللياقة البدنية، إنهاء الهجمات.</li>
+            <li>الموقع: شارع 28، حالة النعيم 997، المحرق — البحرين.</li>
+            <li>للتواصل والتسجيل: هاتف وواتساب <bdi>+973 3228 7776</bdi> — <a href="mailto:shooter.academy.bh@gmail.com">shooter.academy.bh@gmail.com</a></li>
+          </ul>
+          <p style="margin:0 0 1rem">
+            <a href="tel:+97332287776" style="display:inline-block;background:#b91c1c;color:#fff;padding:.7rem 1.2rem;border-radius:.6rem;text-decoration:none;font-weight:700">اتصل بالأكاديمية</a>
+            <a href="https://wa.me/97332287776" style="display:inline-block;margin-inline-start:.6rem;padding:.7rem 1.2rem;border:1px solid #b91c1c;color:#b91c1c;border-radius:.6rem;text-decoration:none;font-weight:700">واتساب</a>
+          </p>
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:1.5rem 0">
+          <div lang="en" dir="ltr">
+            <h2 style="margin:0 0 .5rem;font-size:1.1rem">Shooter Academy — youth football in Muharraq, Bahrain</h2>
+            <p style="margin:0">Technical skills, physical fitness and finishing sessions in a team-first environment. Call or message <bdi>+973 3228 7776</bdi> to register.</p>
+          </div>
+          <p style="margin:1.5rem 0 0;font-size:.85rem;color:#64748b">جارٍ تحميل الموقع الكامل…</p>
+        </main>
+      </div>
+    </div>
     <noscript>
-      <main>
-        <h1>أكاديمية شوتر لكرة القدم في البحرين</h1>
-        <p>تدريب كرة القدم للناشئين في المحرق.</p>
-        <p lang="en" dir="ltr">Shooter Academy offers youth football training in Muharraq, Bahrain.</p>
-      </main>
+      <p style="text-align:center;padding:1rem;font-family:system-ui,sans-serif">لتفعيل التجربة الكاملة، يرجى تشغيل JavaScript في المتصفح. / Enable JavaScript for the full experience.</p>
     </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>

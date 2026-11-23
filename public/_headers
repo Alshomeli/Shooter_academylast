@@ -4,16 +4,26 @@
 # the frontend is built and served from this repository, and the same headers
 # should be mirrored on the active hosting/CDN.
 #
-# CSP is shipped Report-Only on purpose: it cannot break the SPA, it only
-# surfaces violations so the policy can be tightened after observation.
-# The other headers are strict and safe (they never block first-party use).
+# CSP is now ENFORCED (no longer Report-Only). Two deliberate carve-outs:
+#   * script-src keeps 'unsafe-inline' until the hosting layer stops injecting
+#     inline scripts into index.html (Cloudflare challenge bootstrap). Removing
+#     it today would hard-break the site on the first challenge; the follow-up
+#     is to serve those as external files and drop the token.
+#   * bolt.new is intentionally NOT allow-listed: enforcement is what removes
+#     the third-party badge script from the page.
+# cloudflareinsights.com stays allow-listed so first-party analytics keeps
+# working instead of failing silently.
+# media-src carries the CMS video/poster files served from Supabase Storage and
+# the blob: previews created by PhotoVideoStudio after a recording.
+# frame-src carries the Google Maps embed rendered by DeferredAcademyMap and the
+# srcdoc research widget in the AI panels ('self' covers about:srcdoc there).
 /*
   X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://shooter.academy https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' blob: https://*.supabase.co; frame-src 'self' https://www.google.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cloudflareinsights.com; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

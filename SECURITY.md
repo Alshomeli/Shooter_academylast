@@ -48,3 +48,31 @@ Security fixes will be prioritized and released as soon as practical. In most ca
 - Keep dependency versions updated.
 - Review Supabase Edge Function authorization checks before enabling external webhooks.
 - Prefer private reporting over public issue discussions for confirmed vulnerabilities.
+
+## Security headers and production hygiene
+
+`public/_headers` is the single source of truth for the frontend security
+headers. It is copied into `dist/` by `vite build` and applied by Netlify.
+
+- **CSP is enforced.** `Content-Security-Policy` is sent as an enforcing header,
+  not `Content-Security-Policy-Report-Only`. `bolt.new` is deliberately not
+  allow-listed, so enforcement removes the third-party badge script.
+- **Known carve-out:** `script-src` still contains `'unsafe-inline'` because the
+  hosting layer injects an inline bootstrap script into `index.html`. Removing
+  the token is only safe once that injection is gone (tracked as follow-up); do
+  not add new inline scripts to the document.
+- **HSTS** is declared here with `max-age=31536000`. If the edge/CDN overrides
+  it (currently Cloudflare), the shorter value wins — keep both at 12 months.
+- **Injected scripts are blocked.** `/.webmcp/*` is answered with 404 by
+  `public/_redirects`; any script served from the site origin must exist in this
+  repository.
+
+After every deploy run:
+
+```bash
+npm run verify:prod:hygiene                 # default https://shooter.academy
+node scripts/verify-production-hygiene.mjs https://<preview-host>
+```
+
+The gate fails the run if CSP is Report-Only, if `bolt.new` or `/.webmcp/`
+reappear, if HSTS drops below one year, or if the static HTML shell is missing.

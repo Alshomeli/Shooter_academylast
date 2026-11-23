@@ -48,6 +48,11 @@ if (legal) {
 const requestedLang = new URLSearchParams(window.location.search).get('lang');
 const initialLang = requestedLang === 'ar' || requestedLang === 'en' ? requestedLang : prefs.getLang();
 
+// The document ships a static shell inside #root so the page is readable while
+// the bundle downloads (and if it never runs). React replaces it on first
+// commit; removing it explicitly keeps that hand-off deterministic.
+document.getElementById('static-shell')?.remove();
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <RootErrorBoundary lang={initialLang}>
