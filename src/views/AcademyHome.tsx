@@ -218,6 +218,7 @@ export default function AcademyHome() {
         </div>}
         <div className="ah-banner-mobile-actions">
           <a className="ah-button" href={platform}>{tr("دخول منصة الأكاديمية")} <ArrowUpLeft size={18}/></a>
+          <a className="ah-outline" href="/parent">{tr("تسجيل لاعب", "Register a player")} <ArrowUpLeft size={18} aria-hidden="true"/></a>
           <a className="ah-text-link" href="#programs">{tr("اكتشف برامجنا")} <ArrowDown size={18}/></a>
         </div>
       </section>
