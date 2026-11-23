@@ -6,6 +6,21 @@ export interface ContentItem { id: string; kind: ContentKind; payload: ContentPa
 export interface ContentRevision { id: number; version: number; payload: ContentPayload; sort_order: number; action: string; changed_at: string; changed_by: string | null; }
 const bucket = 'academy-content';
 
+// CMS uploads keep their original camera resolution (a phone photo is easily
+// 3-4 MB) while the public page renders them in a 545 px card. Resize on the
+// signing side and keep the token alive long enough that the browser can cache
+// the result instead of re-downloading the full image on every visit.
+const MEDIA_SIGNED_TTL = 60 * 60 * 24 * 7;
+const IMAGE_TRANSFORM = { width: 1090, resize: 'contain' as const };
+const IMAGE_FIELDS = new Set(['image', 'poster', 'featured_image', 'employee_image']);
+
+async function signedMedia(path: string, isImage: boolean): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(path, MEDIA_SIGNED_TTL, isImage ? { transform: IMAGE_TRANSFORM } : undefined);
+  return error ? '' : data.signedUrl;
+}
+
 export function safeMediaUrl(value: string | undefined): string {
   if (!value) return '';
   if (value.startsWith('/home/') && !value.includes('..')) return value;
@@ -18,8 +33,7 @@ export async function resolveContentMedia(items: ContentItem[]): Promise<Content
     for (const field of ['image','video','poster','featured_image','employee_image']) {
       const path = payload[`${field}_path`];
       if (path) {
-        const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
-        payload[field] = error ? '' : data.signedUrl;
+        payload[field] = await signedMedia(path, IMAGE_FIELDS.has(field));
       } else payload[field] = safeMediaUrl(payload[field]);
     }
     // Resolve uploaded images for editable training program cards (section 02).
@@ -29,8 +43,7 @@ export async function resolveContentMedia(items: ContentItem[]): Promise<Content
         if (Array.isArray(programs)) {
           const resolved = await Promise.all(programs.slice(0, 20).map(async program => {
             if (!program.image_path) return { ...program, image: safeMediaUrl(program.image) };
-            const { data, error } = await supabase.storage.from(bucket).createSignedUrl(program.image_path, 3600);
-            return { ...program, image: error ? '' : data.signedUrl };
+            return { ...program, image: await signedMedia(program.image_path, true) };
           }));
           payload.programs_v1 = JSON.stringify(resolved);
         }
