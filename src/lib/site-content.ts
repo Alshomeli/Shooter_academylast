@@ -15,9 +15,19 @@ const IMAGE_TRANSFORM = { width: 1090, resize: 'contain' as const };
 const IMAGE_FIELDS = new Set(['image', 'poster', 'featured_image', 'employee_image']);
 
 async function signedMedia(path: string, isImage: boolean): Promise<string> {
+  if (isImage) {
+    // Transformations are a project-level feature: if they are disabled, or the
+    // object is not a decodable image, the signed render URL fails. Serving the
+    // original is always better than serving nothing.
+    const transformed = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(path, MEDIA_SIGNED_TTL, { transform: IMAGE_TRANSFORM });
+    if (!transformed.error) return transformed.data.signedUrl;
+    console.warn('[site-content] image transform unavailable, serving original', path);
+  }
   const { data, error } = await supabase.storage
     .from(bucket)
-    .createSignedUrl(path, MEDIA_SIGNED_TTL, isImage ? { transform: IMAGE_TRANSFORM } : undefined);
+    .createSignedUrl(path, MEDIA_SIGNED_TTL);
   return error ? '' : data.signedUrl;
 }
 
