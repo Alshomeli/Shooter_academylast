@@ -1,0 +1,194 @@
+تعليمات تنفيذ الهوية الحمراء والفحمية — Shooter Academy — 6 أكتوبر 2026
+
+نفّذ التغييرات الآن داخل المشروع الحالي باستخدام محرر الملفات المتاح لك. هذا الملف يحتوي على تفاصيل التنفيذ، ولا يتطلب Git أو الاتصال بمستودع بعيد. مصدر المواصفات هو تعديل 91b525b. لا تطلب مني وصف الألوان مرة أخرى.
+
+حدود العمل الملزمة:
+- عدّل المظهر فقط: الألوان والخلفيات والحدود والظلال والخطوط وحالات التركيز.
+- حافظ حرفيًا على النصوص والحقول والبيانات والأيقونات وأزرارها ووظائفها وصلاحيات الأدوار.
+- حافظ على عروض وارتفاعات الصفحات والحاويات، والمسافات، وأعمدة الشبكات، ونقاط الاستجابة الحالية للجوال والكمبيوتر. لا تنقل تخطيط صور مرجعية بأبعاد مختلفة.
+- حافظ على الشعار الحالي ومساراته وإصلاحات الأمان وأي تعديلات أحدث في المشروع. ادمج المقاطع أدناه داخل الملفات الحالية، ولا تستبدل ملفات المشروع كاملة بنسخة قديمة.
+- لا تعدل Supabase أو Auth أو RLS أو RPC أو البيانات أو .env أو ملفات القفل والاعتماديات.
+- احتفظ بميزة الوضع الفاتح والداكن الموجودة؛ الهوية الداكنة الجديدة هي الوضع الافتراضي مع استمرار عمل التبديل.
+- احتفظ بدلالات النجاح بالأخضر، والتحذير بالكهرماني، والخطأ بالأحمر، وألوان الرسوم البيانية؛ الأحمر هو لون هوية الأزرار الرئيسية والتحديد والتنقل.
+
+1. لوحة الألوان في tailwind.config.js
+داخل theme.extend ادمج colors التالية. حافظ على بقية إعدادات الملف، ومنها content وdarkMode وfontFamily وkeyframes وplugins. إذا كانت colors موجودة، ادمج مفاتيحها ولا تمحها. لا تعرّف مفتاح colors مرتين.
+
+```js
+      colors: {
+        brand: {
+          50: '#fff1f2', 100: '#ffe1e3', 200: '#ffc6ca', 300: '#ff9ba2',
+          400: '#ff6570', 500: '#f42b38', 600: '#D71920', 700: '#b81019',
+          800: '#98151c', 900: '#77171d', 950: '#39090e',
+        },
+        slate: {
+          300: '#c4ccd8', 400: '#a6b2c4', 500: '#7e8b9f',
+          600: '#586579', 700: '#344150', 800: '#263240',
+          900: '#171B22', 950: '#0B0D10',
+        },
+      },
+
+```
+
+2. الخطوط
+احتفظ بتحميل Cairo الحالي من Google Fonts بأوزان 400 و500 و600 و700 و800 و900، وبـ font-family: 'Cairo', sans-serif في :root وbody وtheme.extend.fontFamily.sans. لا تضف مكتبة خطوط ولا تغيّر مقاسات النصوص أو ارتفاع السطور القائمة. استخدم أوزان العناوين والأزرار الموجودة. لا يمكن الجزم باسم خط الصور النقطية غير الموثّق؛ Cairo هو الخط المحدد لهذا التنفيذ.
+
+3. تحويل عناصر الهوية إلى brand
+في كلاسات Tailwind التي تمثل هوية المنصة، حوّل اسم emerald- إلى brand- مع الاحتفاظ بالدرجة والشفافية والبادئة كاملة، مثل:
+- bg-emerald-600 -> bg-brand-600
+- hover:bg-emerald-500 -> hover:bg-brand-500
+- text-emerald-600 -> text-brand-600
+- dark:text-emerald-400 -> dark:text-brand-400
+- border-emerald-500 -> border-brand-500
+- focus:ring-emerald-500/50 -> focus:ring-brand-500/50
+- shadow-emerald-900/20 -> shadow-brand-900/20
+- from-emerald-50 -> from-brand-50
+- dark:from-emerald-950/30 -> dark:from-brand-950/30
+
+طبّق هذا على الأزرار الرئيسية وروابط الإجراءات والتبويبات المحددة والقائمة الجانبية وحلقات التركيز وزخارف الهوية وعناوين أقسام البوابة. راجع السياق قبل الاستبدال: لا تحوّل مؤشرات نجاح عملية أو حالة اتصال أو مدفوع أو نشط إلى الأحمر. لا تعدّل النصوص أو أسماء متغيرات البيانات أو شروط العمل.
+في src/components/ui.tsx طبّق التحويل على inputCls وSaveButton فقط. أبقِ ألوان Badge وStatCard الدلالية كما هي، بما فيها أخضر النجاح وألوان بطاقات المؤشرات. أبقِ ألوان الرسوم البيانية ثابتة.
+
+الملفات التي شملها تعديل الهوية الأصلي (إذا تغير الاسم استخدم المكوّن المناظر الحالي):
+- src/App.tsx
+- src/components/AIOperationsPanel.tsx
+- src/components/ChatGPTIntegrationStatus.tsx
+- src/components/ContactLinks.tsx
+- src/components/DocumentUpload.tsx
+- src/components/Login.tsx
+- src/components/RemindersPanel.tsx
+- src/components/Sidebar.tsx
+- src/components/TelegramLinkCard.tsx
+- src/components/ui.tsx
+- src/views/AICenter.tsx
+- src/views/Approvals.tsx
+- src/views/Attendance.tsx
+- src/views/AuditLogs.tsx
+- src/views/Dashboard.tsx
+- src/views/Evaluations.tsx
+- src/views/Messages.tsx
+- src/views/MobileView.tsx
+- src/views/OAuthConsent.tsx
+- src/views/ParentPortal.tsx
+- src/views/Parents.tsx
+- src/views/Players.tsx
+- src/views/Registration.tsx
+- src/views/RegistrationAdmin.tsx
+- src/views/Reports.tsx
+- src/views/Schedules.tsx
+- src/views/Settings.tsx
+- src/views/Staff.tsx
+- src/views/StaffRegistration.tsx
+- src/views/Subscriptions.tsx
+- src/views/Teams.tsx
+- src/views/Tournaments.tsx
+
+4. تفعيل الخلفية الداكنة أول مرة مع إبقاء مفتاح التبديل
+في src/lib/store.ts غيّر فقط دالتي تفضيل المظهر، مستخدمًا PREFIX الموجود حاليًا:
+
+```ts
+getDarkMode: (): boolean => localStorage.getItem(PREFIX + 'red_identity_mode') !== 'false',
+saveDarkMode: (v: boolean) => localStorage.setItem(PREFIX + 'red_identity_mode', String(v)),
+```
+
+هذا المفتاح الجديد يمنع قيمة الوضع القديم المخزنة من إخفاء الهوية الجديدة، ويظل يحفظ اختيار المستخدم اللاحق. لا تمس بقية store.ts.
+في src/App.tsx اجعل قيمة darkMode الأولية true بدل false. حافظ على استدعاء prefs.getDarkMode وعلى تأثير حفظ الاختيار وتحديث classList وعلى كل منطق المصادقة.
+في index.html:
+- أضف class="dark" إلى html مع إبقاء lang وdir وبقية السمات.
+- اجعل meta[name="theme-color"] يساوي #0B0D10.
+- أضف إلى كلاسات body الحالية: dark:bg-slate-950 dark:text-slate-100.
+- لا تغيّر favicon أو og:image أو twitter:image أو أي مسار شعار موجود.
+
+5. ربط القائمة والبوابة بتنسيق الهوية
+- في src/components/Sidebar.tsx أضف الكلاس shooter-sidebar إلى aside الذي يحمل id="sidebar"، دون تعديل عرضه أو موضعه أو ارتفاعه أو محتوى قائمته.
+- في src/views/ParentPortal.tsx أضف الكلاس parent-portal إلى main الخارجي فقط.
+- طبّق brand على زر طلب تسجيل أبناء، وتحديد اللاعب، وزخرفة رأس الصفحة وروابط الإجراءات. حافظ على شارة «نشط» خضراء.
+- حافظ على max-w-6xl وgrid lg:grid-cols-[260px_1fr] وعلى جميع شروط ظهور أقسام الأبناء والاشتراكات والمدفوعات والحضور والتقييمات والمستندات والتسجيل كما هي في المشروع الحالي.
+
+6. التنسيقات المشتركة
+أضف المقطع التالي مرة واحدة في نهاية src/index.css، بعد قواعد Tailwind. لا تحذف تنسيقات الطباعة والحركة الحالية. إذا كان مقطع الهوية موجودًا سابقًا، حدّثه بدل تكراره.
+
+```css
+/* Shooter identity: presentation only; existing dimensions and breakpoints stay intact. */
+:root {
+  --shooter-background: #0b0d10;
+  --shooter-surface: #171b22;
+  --shooter-primary: #d71920;
+}
+.dark { color-scheme: dark; }
+body { -webkit-font-smoothing: antialiased; }
+.dark body { background-color: var(--shooter-background); color: #fff; }
+.dark h1, .dark h2, .dark h3 { color: #fff; }
+.dark .text-slate-500 { color: #a6b2c4; }
+.dark input, .dark select, .dark textarea {
+  background-color: #171f29;
+  border-color: #344150;
+  color: #f5f7fb;
+}
+.dark input::placeholder, .dark textarea::placeholder { color: #a6b2c4; }
+.dark input:focus, .dark select:focus, .dark textarea:focus {
+  border-color: var(--shooter-primary);
+}
+.dark [class~="bg-white"][class*="rounded"],
+.dark [class~="dark:bg-slate-900"][class*="rounded"] {
+  background-image: linear-gradient(135deg, #171b22, #10161e);
+  border-color: #263240;
+}
+button[class~="bg-brand-600"] {
+  background-image: linear-gradient(115deg, #f20d20, #d71920 70%, #b81019);
+}
+button[class~="bg-brand-600"]:hover {
+  background-image: linear-gradient(115deg, #ff2638, #b81019);
+}
+.shooter-sidebar {
+  background-image: linear-gradient(160deg, #171b22, #0b0d10 60%);
+  isolation: isolate;
+}
+.shooter-sidebar::before, .shooter-sidebar::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  width: 72px;
+  height: 96px;
+  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(125deg, #f20d20 0 35%, #77171d 35% 60%, transparent 60%);
+}
+.shooter-sidebar::before { top: 0; }
+.shooter-sidebar::after { bottom: 0; transform: scaleY(-1); }
+.dark .shooter-sidebar nav button:not([class~="bg-brand-600"]) { color: #dce3ef; }
+.parent-portal header {
+  background-image: linear-gradient(120deg, #0b0d10, #171b22 65%, #39090e);
+}
+.dark .parent-portal [class*="from-brand-50"] {
+  background-image: linear-gradient(130deg, #24161c, #171b22 55%, #10161e);
+}
+.dark .parent-portal [class~="bg-brand-50"] {
+  background-color: #27171d;
+  border-color: #d71920;
+}
+:focus-visible { outline: 2px solid #ff6570; outline-offset: 3px; }
+@media print {
+  .dark { color-scheme: light; }
+  .dark body { background: white; color: #111827; }
+  .dark .receipt-print-root, .dark .receipt-print-root * {
+    background-image: none !important;
+    color: #111827 !important;
+  }
+}
+.dark .text-brand-600, .dark .text-brand-700, .dark .text-brand-800 {
+  color: #ff6570;
+}
+
+```
+
+7. التحقق بعد التنفيذ
+- نفّذ أوامر البناء وTypeScript المتاحة في package.json. شغّل الاختبارات الموجودة دون تغييرها.
+- اعرض الدخول ولوحة الإدارة والبوابة على عرض جوال 384 وعلى كمبيوتر 1440 مع المحافظة على نقاط الاستجابة الأصلية.
+- تأكد من أن زر الدخول وزر طلب تسجيل أبناء والتبويب النشط أحمر، والخلفية #0B0D10 والبطاقات داكنة، والنص مقروء، والشعار الحالي ظاهر.
+- تأكد من عدم وجود تمرير أفقي غير مقصود أو حقول أو نصوص مضافة أو مفقودة.
+- افحص قائمة الجوال والنوافذ والحقول والقوائم المنسدلة، وتبديل العربية والإنجليزية والوضع الفاتح/الداكن، ومعاينة طباعة الإيصال.
+- لا تطلب بيانات دخول أو تنشئ حسابات أو تغيّر بيانات حقيقية لغرض معاينة المظهر.
+- افحص مراجعة الفروق: التغييرات المسموحة هي تنسيق الهوية وتفضيل المظهر فقط. راجع بقاء الشعار الحالي وإصلاحات الأمان كاملة.
+- تقريرك النهائي يذكر الملفات المعدلة ونتيجة البناء وأي فحص تعذر تنفيذه. فرّق بين تحديث المعاينة ونشر الرابط العام؛ لا تعتبر الحفظ وحده دليلًا على تحديث رابط الإنتاج. إذا احتاج النشر زرًا من المستخدم، أخبره بذلك بوضوح.
+
+ابدأ التنفيذ مباشرة من هذا الملف، دون طلب Git أو إعادة تحديد الألوان، وأكمل جميع صفحات المنصة وبوابة ولي الأمر.
