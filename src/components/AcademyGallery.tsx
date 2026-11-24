@@ -37,9 +37,10 @@ export function AcademyGallery({ photos = publicGallery, lang = 'ar' }: { photos
   return <>
     <div className="ah-gallery">{albums.map((album, index) => {
       const cover = album.photos[0];
+      const teamCover = cover.src === '/home/festival-team.jpg' || cover.src === '/home/festival-team.webp';
       return <figure key={album.title}>
         <button type="button" onClick={() => open(index)} aria-label={lang === 'en' ? `Open album ${album.title}, ${album.photos.length} photos` : `عرض ألبوم ${album.title}، ${album.photos.length} صور`}>
-          <img src={cover.src} alt={cover.alt} loading="lazy" width="1200" height="860"/>
+          <img src={teamCover ? '/home/festival-team-720.webp' : cover.src} alt={cover.alt} loading="lazy" decoding="async" width="1200" height="860"/>
           <span><Maximize2 size={16}/> {tr("عرض صور النشاط")} ({album.photos.length})</span>
         </button>
         <figcaption><h3>{album.title}</h3><p>{cover.caption}</p></figcaption>
@@ -50,7 +51,7 @@ export function AcademyGallery({ photos = publicGallery, lang = 'ar' }: { photos
       onClick={e => { if (e.target === e.currentTarget) dialog.current?.close(); }}>
       <button type="button" className="ah-photo-close" autoFocus onClick={() => dialog.current?.close()} aria-label={tr("إغلاق الصور")}><X/></button>
       <h3 className="ah-photo-heading">{group.title}</h3>
-      <img src={photo.src} alt={photo.alt}/><p>{photo.title}</p>
+      <img src={photo.src} alt={photo.alt} loading="lazy"/><p>{photo.title}</p>
       <div className="ah-photo-controls">
         <button type="button" onClick={() => change(-1)} disabled={currentPhotos.length < 2} aria-label={tr("الصورة السابقة")}><ChevronRight/></button>
         <span>{activePhoto + 1} / {currentPhotos.length}</span>
