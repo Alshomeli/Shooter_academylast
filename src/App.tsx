@@ -1,7 +1,7 @@
 import { OnboardingChoice } from '@/components/OnboardingChoice';
 import { PublicHomeLink } from '@/components/PublicHomeLink';
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy, Component, type ReactNode } from 'react';
-import { Menu, Bell, Clock, Target, Loader2, AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Menu, Bell, Target, Loader2, AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { db, prefs, signOut, isRegistering } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
@@ -19,6 +19,7 @@ import { Login } from '@/components/Login';
 import { Sidebar } from '@/components/Sidebar';
 import { CoachOnboardingTour } from '@/components/CoachOnboardingTour';
 import { ContextualShooterAI } from '@/components/ContextualShooterAI';
+import { HeaderClock } from '@/components/HeaderClock';
 
 
 /* ── Lazy-loaded views for code splitting ── */
@@ -230,7 +231,6 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const [markingAllRead, setMarkingAllRead] = useState(false);
-  const [currentTime, setCurrentTime] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const [authReady, setAuthReady] = useState(false);
@@ -471,25 +471,6 @@ export default function App() {
       document.removeEventListener('visibilitychange', refreshVisible);
     };
   }, [currentUser, loadAllData]);
-
-  useEffect(() => {
-    const updateClock = () => {
-      try {
-        const formatter = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA' : 'en-US', {
-          timeZone: 'Asia/Bahrain',
-          year: 'numeric', month: '2-digit', day: '2-digit',
-          hour: '2-digit', minute: '2-digit', second: '2-digit',
-          hour12: true,
-        });
-        setCurrentTime(formatter.format(new Date()));
-      } catch {
-        setCurrentTime(new Date().toLocaleTimeString());
-      }
-    };
-    updateClock();
-    const interval = setInterval(updateClock, 1000);
-    return () => clearInterval(interval);
-  }, [lang]);
 
   useEffect(() => { prefs.saveLang(lang); document.documentElement.lang = lang; document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'; }, [lang]);
   useEffect(() => {
@@ -839,10 +820,7 @@ export default function App() {
 
           <div className="flex items-center gap-2 sm:gap-3">
             <PublicHomeLink lang={lang} darkMode={darkMode}/>
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <Clock className="h-3.5 w-3.5 text-brand-500" />
-              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 tabular-nums">{currentTime}</span>
-            </div>
+            <HeaderClock lang={lang} />
 
             <div className="relative">
               <button
