@@ -1,0 +1,74 @@
+.public-join {
+  color-scheme: light;
+  --join-page: #f6f2f3;
+  --join-card: #ffffff;
+  --join-text: #171419;
+  --join-muted: #514953;
+  --join-line: #d9cfd3;
+  --join-field-line: #8e7d86;
+  --join-inset: #f4eef0;
+  --join-accent: #a31329;
+  --join-total: #fae6eb;
+  background: radial-gradient(ellipse at top, var(--join-total), transparent 34rem), var(--join-page);
+  color: var(--join-text);
+}
+
+.public-join[data-theme="dark"] {
+  color-scheme: dark;
+  --join-page: #100d12;
+  --join-card: #201a22;
+  --join-text: #fff7fb;
+  --join-muted: #ded0da;
+  --join-line: #4e414d;
+  --join-field-line: #998593;
+  --join-inset: #302430;
+  --join-accent: #ff9aac;
+  --join-total: #4b1d2d;
+}
+
+.public-join h2 { color: var(--join-text); }
+.public-join .join-hero {
+  background: linear-gradient(115deg, #672131, #2e1521 55%, #140f18);
+  border: 1px solid #914455;
+  box-shadow: inset 0 -4px #d8304b;
+  color: #fff7fb;
+}
+.public-join .join-hero h1 { color: #fff7fb; }
+.public-join .join-hero-copy { color: #f6dce5; }
+.public-join .join-card {
+  background: var(--join-card);
+  border: 1px solid var(--join-line);
+  box-shadow: 0 8px 22px #140b1510;
+}
+.public-join .join-muted { color: var(--join-muted); }
+.public-join .join-accent { color: var(--join-accent); }
+.public-join .join-inset { background: var(--join-inset); }
+.public-join .join-total {
+  background: var(--join-total);
+  color: var(--join-text);
+}
+.public-join .join-total span:last-child {
+  color: var(--join-accent);
+  font-size: 1.25rem;
+}
+.public-join .join-field,
+.public-join .join-control {
+  background: var(--join-card);
+  border: 1px solid var(--join-field-line);
+  color: var(--join-text);
+}
+.public-join .join-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+.public-join .join-primary {
+  background: #b71534;
+  color: #ffffff;
+}
+.public-join .join-primary:hover { background: #98112a; }
+.public-join :is(a, button, input, select):focus-visible {
+  outline: 2px solid var(--join-accent);
+  outline-offset: 3px;
+}
