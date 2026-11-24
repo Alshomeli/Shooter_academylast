@@ -1,9 +1,0 @@
-/privacy        /index.html  200
-/terms          /index.html  200
-/parent         /index.html  200
-/coach          /index.html  200
-/oauth/consent  /index.html  200
-
-# The hosting layer injects an AI/MCP bridge at this path. It is not part of
-# this repository and is not needed by visitors, so it must not be served.
-/.webmcp/*      /404.html  404

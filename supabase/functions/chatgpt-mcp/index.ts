@@ -7,24 +7,6 @@ import { z } from "npm:zod@^4.1.13";
 
 type GatewayBody = Record<string, unknown>;
 
-// Reflect an allowlisted Origin and fall back to the canonical production
-// origin instead of "*". Non-browser MCP clients are unaffected by CORS;
-// this only narrows browser cross-origin access to known academy domains.
-const ALLOWED_ORIGINS = new Set([
-  "https://shooter.academy",
-  "https://www.shooter.academy",
-  "https://shooter-academy-new-1vvk.bolt.host",
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-]);
-
-function corsHeaders(origin: string | null): Record<string, string> {
-  return {
-    "Access-Control-Allow-Origin": origin && ALLOWED_ORIGINS.has(origin) ? origin : "https://shooter.academy",
-    "Vary": "Origin",
-  };
-}
-
 function projectUrl(): string {
   const url = Deno.env.get("SUPABASE_URL");
   if (!url) throw new Error("server_configuration_error");
@@ -47,14 +29,14 @@ function oauthResourceMetadata() {
   };
 }
 
-function unauthorizedResponse(origin: string | null) {
+function unauthorizedResponse() {
   return Response.json(
     { error: "authentication_required" },
     {
       status: 401,
       headers: {
         "Cache-Control": "no-store",
-        ...corsHeaders(origin),
+        "Access-Control-Allow-Origin": "*",
         "WWW-Authenticate": `Bearer resource_metadata="${oauthResourceMetadataUrl()}"`,
       },
     },
@@ -273,20 +255,20 @@ function makeServer(authHeader: string) {
 
 const app = new Hono().basePath("/chatgpt-mcp");
 
-app.get("/.well-known/oauth-protected-resource", (c) =>
+app.get("/.well-known/oauth-protected-resource", () =>
   Response.json(oauthResourceMetadata(), {
     headers: {
       "Cache-Control": "no-store",
-      ...corsHeaders(c.req.header("origin") ?? null),
+      "Access-Control-Allow-Origin": "*",
     },
   }),
 );
 
-app.get("/oauth-protected-resource", (c) =>
+app.get("/oauth-protected-resource", () =>
   Response.json(oauthResourceMetadata(), {
     headers: {
       "Cache-Control": "no-store",
-      ...corsHeaders(c.req.header("origin") ?? null),
+      "Access-Control-Allow-Origin": "*",
     },
   }),
 );
@@ -294,7 +276,7 @@ app.get("/oauth-protected-resource", (c) =>
 app.all("/mcp", async (c) => {
   const authHeader = c.req.header("authorization") || "";
   if (!authHeader.startsWith("Bearer ") || !(await validateUser(authHeader))) {
-    return unauthorizedResponse(c.req.header("origin") ?? null);
+    return unauthorizedResponse();
   }
 
   const server = makeServer(authHeader);
@@ -315,7 +297,7 @@ Deno.serve((req) => {
     }, {
       headers: {
         "Cache-Control": "no-store",
-        ...corsHeaders(req.headers.get("origin")),
+        "Access-Control-Allow-Origin": "*",
         "Content-Type": "application/json; charset=utf-8",
       },
     });

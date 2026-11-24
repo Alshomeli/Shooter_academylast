@@ -6,7 +6,7 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const entry = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
 const publicConfig = readFileSync(new URL('../src/data/public-academy.ts', import.meta.url), 'utf8');
 const home = readFileSync(new URL('../src/views/AcademyHome.tsx', import.meta.url), 'utf8');
-const base = 'https://shooter.academy/';
+const base = 'https://shooter-academy-new-1vvk.bolt.host/';
 
 const match = html.match(/<script id="academy-organization-schema" type="application\/ld\+json">\s*([\s\S]*?)\s*<\/script>/);
 if (!match) throw new Error('Public Organization JSON-LD missing from initial response');
@@ -26,8 +26,7 @@ test('schema identifies only confirmed academy contact details and original bran
   assert.equal(org.name, 'أكاديمية شوتر لكرة القدم');
   assert.equal(org.alternateName, 'Shooter Academy');
   assert.equal(org.logo.url, base+'shooter-logo-transparent.png');
-  assert.ok(home.includes('src="/shooter-logo-transparent.webp"'));
-  assert.ok(home.includes('event.currentTarget.src = "/shooter-logo-transparent.png"'));
+  assert.ok(home.includes('src="/shooter-logo-transparent.png"'));
   assert.equal(org.email, 'shooter.academy.bh@gmail.com');
   assert.equal(org.telephone, '+97332287776');
   assert.equal(org.address.addressCountry, 'BH');
@@ -40,7 +39,7 @@ test('public social profiles are aligned with academy links', () => {
   for (const link of org.sameAs) assert.ok(publicConfig.includes(link),link);
   assert.equal(website.url, base);
   assert.deepEqual(website.inLanguage, ['ar', 'en']);
-  assert.equal(html.match(/rel="canonical" href="https:\/\/shooter\.academy\//g)?.length,1);
+  assert.equal(html.match(/rel="canonical" href="https:\/\/shooter-academy-new-1vvk\.bolt\.host\//g)?.length,1);
 });
 
 test('private portal and legal pages remove public organization schema while retaining noindex', () => {

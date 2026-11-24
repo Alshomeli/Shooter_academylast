@@ -9,19 +9,10 @@ verify_jwt = true
 [auth.oauth_server]
 enabled = true
 authorization_url_path = "/oauth/consent"
-allow_dynamic_registration = false
+allow_dynamic_registration = true
 
 [functions.telegram-reply]
 verify_jwt = false
 
 [functions.parent-account-invite]
-verify_jwt = true
-
-[functions.ai-management-assistant]
-verify_jwt = true
-
-[functions.ai-operations-gateway]
-verify_jwt = true
-
-[functions.parent-register]
 verify_jwt = true

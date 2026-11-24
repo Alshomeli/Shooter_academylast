@@ -4,8 +4,7 @@ import { isSafePublicResearchQuestion, researchTraining } from "./research.ts";
 type Persona="financial"|"operations"|"documents"|"communication"|"players"|"training"|"matches"|"scout"; type Lang="ar"|"en";
 const ALLOWED=new Set<Persona>(["financial","operations","documents","communication","players","training","matches","scout"]);
 const roles:Record<Persona,string[]>={financial:["manager","accountant"],operations:["manager","receptionist"],documents:["manager","receptionist"],communication:["manager","receptionist"],players:["manager","coach"],scout:["manager","coach"],training:["manager","coach"],matches:["manager","coach"]};
-const ALLOWED_ORIGINS=new Set(["https://shooter.academy","https://www.shooter.academy","https://shooter-academy-new-1vvk.bolt.host","http://localhost:5173","http://127.0.0.1:5173"]);
-const cors=(o:string|null)=>({"Access-Control-Allow-Origin":o&&ALLOWED_ORIGINS.has(o)?o:"https://shooter.academy","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Vary":"Origin"});
+const cors=(o:string|null)=>({"Access-Control-Allow-Origin":o||"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Vary":"Origin"});
 const json=(d:unknown,s:number,o:string|null)=>new Response(JSON.stringify(d),{status:s,headers:{...cors(o),"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
 function key(){const raw=Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");if(raw){try{const p=JSON.parse(raw);const k=p.default||Object.values(p)[0];if(k)return String(k)}catch{}}const k=Deno.env.get("SUPABASE_ANON_KEY");if(!k)throw new Error("publishable_key_unavailable");return k}
 function text(p:any){const x=p?.candidates?.[0]?.content?.parts;return Array.isArray(x)?x.map((v:any)=>typeof v?.text==="string"?v.text:"").join("").trim():""}
