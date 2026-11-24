@@ -19,4 +19,4 @@ export const publicNews: { title: string; summary: string; image: string; imageA
   { title: 'مشاركة مواليد 2014 في مهرجان الاتحاد الآسيوي', summary: 'نفخر بمشاركة لاعبينا في المهرجان. فرصة لاكتساب الخبرة، وتعزيز العمل الجماعي، والاستمتاع بكرة القدم معًا.', image: '/home/festival-team.jpg', imageAlt: 'فريق مواليد 2014 في مهرجان الاتحاد الآسيوي', url: '#media' },
 ];
 // Illustrative program photography from the previous public website.
-export const programImages = ['/home/skills.jpg', '/home/fitness.jpg', '/home/finishing.jpg'];
+export const programImages = ['/home/skills.webp', '/home/fitness.webp', '/home/finishing.webp'];

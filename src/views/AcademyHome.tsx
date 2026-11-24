@@ -196,7 +196,7 @@ export default function AcademyHome() {
       {contentError && <p role="status" className="ah-muted">{tr("تعذّر تحميل آخر المحتوى. يرجى تحديث الصفحة.")}</p>}
       <section className={`ah-image-banner ${lang === 'en' ? 'ah-image-banner-en' : ''}`} aria-labelledby="ah-title">
         <figure className="ah-banner-figure">
-          <img src="/images/1000391344.jpg" alt={lang === 'ar' ? 'أكاديمية شوتر لكرة القدم - لاعبون وشعار الأكاديمية، هنا تبدأ رحلتك الكروية' : 'Shooter Football Academy players and academy crest — your football journey starts here'} title={lang === 'ar' ? 'أكاديمية شوتر لكرة القدم | Shooter Academy' : 'Shooter Football Academy'} width={1918} height={820} loading="eager" fetchPriority="high" />
+          <img src="/images/1000391344.jpg" srcSet="/images/1000391344-768.webp 768w, /images/1000391344.jpg 1918w" sizes="100vw" alt={lang === 'ar' ? 'أكاديمية شوتر لكرة القدم - لاعبون وشعار الأكاديمية، هنا تبدأ رحلتك الكروية' : 'Shooter Football Academy players and academy crest — your football journey starts here'} title={lang === 'ar' ? 'أكاديمية شوتر لكرة القدم | Shooter Academy' : 'Shooter Football Academy'} width={1918} height={820} loading="eager" fetchPriority="high" />
           {lang === 'ar' ? <>
             <a className="ah-banner-hotspot ah-banner-login" href={platform} aria-label="دخول منصة الأكاديمية"><span className="sr-only">دخول منصة الأكاديمية</span></a>
             <a className="ah-banner-hotspot ah-banner-programs" href="#programs" aria-label="اكتشف برامجنا التدريبية"><span className="sr-only">اكتشف برامجنا</span></a>
