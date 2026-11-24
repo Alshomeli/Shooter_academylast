@@ -221,6 +221,11 @@ export default function AcademyHome() {
           <a className="ah-text-link" href="#programs">{tr("اكتشف برامجنا")} <ArrowDown size={18}/></a>
         </div>
       </section>
+      <div className="flex justify-center px-4 py-4">
+        <a className="ah-button" href={`/?view=join&lang=${lang}`}>
+          {lang === 'ar' ? 'طلب الانضمام' : 'Join the Academy'} <ArrowUpLeft aria-hidden="true" size={18}/>
+        </a>
+      </div>
       <div className="ah-values"><span><Target/> {tr("تطوير المهارات")}</span><span><Users/> {tr("روح الفريق")}</span><span><Trophy/> {tr("شغف المنافسة")}</span><span>SHOOTER ACADEMY — BAHRAIN</span></div>
       <section className="ah-section ah-about" id="about"><div><p className="ah-eyebrow">{tr("01 / عن الأكاديمية")}</p><h2>{sectionText('about_title','كرة القدم أكثر من مجرد لعبة.')}</h2></div><div><p className="ah-copy">{sectionText('about_body','من المحرق في مملكة البحرين، تهدف أكاديمية شوتر إلى تطوير المواهب الناشئة في بيئة تجمع بين التدريب، والانضباط، وحب كرة القدم.')}</p><p className="ah-muted">{sectionText('about_extra','نركز على المهارات الفنية واللياقة البدنية وإنهاء الهجمات، ونؤمن بأن الاحترام والعمل الجماعي أساس تطور كل لاعب داخل الملعب وخارجه.')}</p><a href="#contact" className="ah-text-link">{tr("تعرّف علينا أكثر")} <ArrowUpLeft size={18}/></a></div></section>
       <section className="ah-section ah-programs" id="programs"><div className="ah-section-head"><div><p className="ah-eyebrow">{tr("02 / برامجنا التدريبية")}</p><h2>{tr(sectionText('programs_title','خطوة أقرب للتطور.'))}</h2></div><p className="ah-muted">{sectionText('programs_intro','تدريب متكامل، من الأساسيات إلى المنافسة.')}</p></div><div className="ah-program-grid">{programs.map((program,i) => <article className="ah-program" key={i}>{program.image && <img src={program.image} loading="lazy" alt={lang === 'en' && program.title_en ? program.title_en : tr(program.title)}/>}<div><span className="ah-number">{String(i+1).padStart(2,'0')}</span><h3>{lang === 'en' && program.title_en ? program.title_en : tr(program.title)}</h3><p>{lang === 'en' && program.body_en ? program.body_en : tr(program.body)}</p></div></article>)}</div>{contact?.programs_v1 === undefined && <p className="ah-photo-note">{tr("صور البرامج توضيحية من الموقع التعريفي للأكاديمية.")}</p>}</section>
@@ -261,7 +266,7 @@ export default function AcademyHome() {
       <section className="ah-section ah-contact" id="contact"><div><p className="ah-eyebrow">{tr("06 / تواصل معنا")}</p><h2>{tr("نلتقي في")} <em>{tr("الملعب.")}</em></h2><p className="ah-muted">{tr("شارع 28، حالة النعيم 997، البحرين")}</p><a className="ah-text-link" href={links.maps} target="_blank" rel="noopener noreferrer"><MapPin size={18}/> {tr("الاتجاهات على خرائط Google")}</a></div><div className="ah-contact-links"><a href="tel:+97332287776"><Phone size={20}/><bdi>+973 3228 7776</bdi></a><a href="mailto:shooter.academy.bh@gmail.com"><Mail size={20}/><span>shooter.academy.bh@gmail.com</span></a></div></section>
     </main>
     <section className="ah-section ah-faq" id="faq" aria-labelledby="ah-faq-title"><p className="ah-eyebrow">{tr("مساعدة أولياء الأمور")}</p><h2 id="ah-faq-title">{tr("الأسئلة الشائعة")}</h2>
-      <details><summary>{tr("كيف أسجل لاعبًا في الأكاديمية؟")}</summary><p>{tr("ادخل إلى منصة الأكاديمية ثم اختر تسجيل ولي الأمر. بعد تقديم البيانات، تراجع الإدارة طلب التسجيل.")}</p></details>
+      <details><summary>{tr("كيف أسجل لاعبًا في الأكاديمية؟")}</summary><p>{lang === 'ar' ? 'اضغط على «طلب الانضمام» للاطلاع على الرسوم، ثم تابع تسجيل اللاعب من حساب ولي الأمر.' : 'Choose Join the Academy to review fees and continue your player application from a parent account.'}</p></details>
       <details><summary>{tr("كيف أتابع معلومات اللاعب والتدريبات؟")}</summary><p>{tr("يمكن لولي الأمر متابعة بيانات اللاعبين المرتبطين بحسابه من بوابة أولياء الأمور بعد تسجيل الدخول.")}</p></details>
       <details><summary>{tr("كيف أتواصل مع إدارة الأكاديمية؟")}</summary><p>{tr("يمكنك استخدام رقم الاتصال أو البريد الإلكتروني في قسم التواصل، وروابط حسابات الأكاديمية الرسمية في أعلى الصفحة وأسفلها.")}</p></details>
     </section>
