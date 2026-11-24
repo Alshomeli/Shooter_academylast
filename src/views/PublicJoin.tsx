@@ -4,8 +4,18 @@ import { academyContact } from '@/data/public-academy';
 import { prefs } from '@/lib/preferences';
 import type { Lang } from '@/types';
 
+const ageGroups = [
+  { id: '2020-2021', ar: 'مواليد ٢٠٢٠–٢٠٢١', en: 'Born 2020–2021' },
+  { id: '2018-2019', ar: 'مواليد ٢٠١٨–٢٠١٩', en: 'Born 2018–2019' },
+  { id: '2016-2017', ar: 'مواليد ٢٠١٦–٢٠١٧', en: 'Born 2016–2017' },
+  { id: '2014-2015', ar: 'مواليد ٢٠١٤–٢٠١٥', en: 'Born 2014–2015' },
+  { id: 'other', ar: 'سنة ميلاد أخرى', en: 'Other birth year' },
+];
+
 export default function PublicJoin({ lang }: { lang: Lang }) {
   const [players, setPlayers] = useState(1);
+  const [ageGroup, setAgeGroup] = useState('');
+  const selectedGroup = ageGroups.find(group => group.id === ageGroup);
   const ar = lang === 'ar';
   const t = (arabic: string, english: string) => ar ? arabic : english;
   const money = (value: number) => new Intl.NumberFormat(ar ? 'ar-BH' : 'en-BH', {
@@ -40,9 +50,20 @@ export default function PublicJoin({ lang }: { lang: Lang }) {
           </section>
           <section className={card}>
             <CalendarDays aria-hidden="true" className="mb-3 text-brand-700" />
-            <h2 className="text-lg font-bold">{t('الفئة وموعد التدريب', 'Age group and training time')}</h2>
-            <p className="mt-2 text-slate-600">{t('تُحدَّد الفئة بحسب تاريخ ميلاد اللاعب. تواصل معنا لمعرفة الحصص المتاحة لفئته.', 'The player’s date of birth determines their age group. Contact us for available sessions.')}</p>
-            <a href={academyContact.whatsapp} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-11 items-center font-bold text-brand-700 underline">{t('استفسر عبر واتساب', 'Ask on WhatsApp')}</a>
+            <h2 className="text-lg font-bold">{t('الفئات ومواعيد التدريب', 'Age groups and training times')}</h2>
+            <label htmlFor="join-age-group" className="mt-3 block text-sm font-bold">{t('اختر فئة مواليد اللاعب', 'Choose the player’s birth-year group')}</label>
+            <select id="join-age-group" value={ageGroup} onChange={event => setAgeGroup(event.currentTarget.value)} className="mt-2 min-h-11 w-full rounded-lg border border-slate-400 bg-white px-3">
+              <option value="">{t('اختر الفئة', 'Choose an age group')}</option>
+              {ageGroups.map(group => <option key={group.id} value={group.id}>{t(group.ar, group.en)}</option>)}
+            </select>
+            <dl className="mt-4 space-y-2 rounded-xl bg-slate-100 p-3 text-sm" aria-live="polite">
+              {selectedGroup && <div><dt className="font-bold">{t('الفئة المختارة', 'Selected group')}</dt><dd>{t(selectedGroup.ar, selectedGroup.en)}</dd></div>}
+              <div><dt className="font-bold">{t('أيام التدريب', 'Training days')}</dt><dd>{t('السبت، الاثنين، الأربعاء', 'Saturday, Monday, Wednesday')}</dd></div>
+              <div><dt className="font-bold">{t('الفترة العامة للتدريب', 'General training window')}</dt><dd>{t('من ٤:٠٠ إلى ٨:٠٠ مساءً بتوقيت البحرين', '4:00–8:00 PM Bahrain time')}</dd></div>
+              <div><dt className="font-bold">{t('مدة الحصة', 'Session length')}</dt><dd>{t('٦٠ دقيقة', '60 minutes')}</dd></div>
+            </dl>
+            <p className="mt-3 text-sm text-slate-600">{t('تؤكد الأكاديمية وقت حصة الفئة وتوافر المقاعد. يُحدَّد الفريق عند مراجعة الطلب حسب تاريخ الميلاد.', 'The academy confirms the group’s session time and availability. The team is assigned during application review based on date of birth.')}</p>
+            <a href={academyContact.whatsapp} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-11 items-center font-bold text-brand-700 underline">{t('استفسر عن موعد الفئة عبر واتساب', 'Ask about group times on WhatsApp')}</a>
           </section>
         </div>
 
