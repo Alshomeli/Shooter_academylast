@@ -5,11 +5,14 @@ import { RootErrorBoundary } from './components/RootErrorBoundary.tsx';
 import { prefs } from './lib/preferences.ts';
 import './index.css';
 
+const PublicJoin = lazy(() => import('./views/PublicJoin.tsx'));
 const App = lazy(() => import('./App.tsx'));
 const AcademyHome = lazy(() => import('./views/AcademyHome.tsx'));
 const OAuthConsent = lazy(() => import('./views/OAuthConsent.tsx').then(module => ({ default: module.OAuthConsent })));
 const LegalPage = lazy(() => import('./views/LegalPage.tsx').then(module => ({ default: module.LegalPage })));
 const legalPath = window.location.pathname.replace(/\/+$/, '') || '/';
+const entryQuery = new URLSearchParams(window.location.search);
+const join = legalPath === '/' && entryQuery.get('view') === 'join' && [...entryQuery.keys()].every(key => key === 'view' || key === 'lang') && !window.location.hash;
 const legal = legalPath === '/privacy' || legalPath === '/terms';
 const oauthConsent = window.location.pathname === '/oauth/consent';
 const home = isPublicHome(window.location.pathname, window.location.search, window.location.hash);
@@ -34,6 +37,7 @@ if (home && !legal && !oauthConsent) {
   // Organization/WebSite data describes the public academy, not a private account view.
   document.getElementById('academy-organization-schema')?.remove();
 }
+if (join) document.title = 'طلب الانضمام | Shooter Academy';
 if (legal) {
   document.title = legalPath === '/privacy' ? 'سياسة الخصوصية | أكاديمية شوتر' : 'الشروط والأحكام | أكاديمية شوتر';
   document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute(
@@ -52,7 +56,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <RootErrorBoundary lang={initialLang}>
       <Suspense fallback={<p role="status" dir={initialLang === 'ar' ? 'rtl' : 'ltr'} lang={initialLang} className="p-8 text-center">{initialLang === 'ar' ? 'جارٍ التحميل…' : 'Loading…'}</p>}>
-        {legal ? <LegalPage page={legalPath === '/privacy' ? 'privacy' : 'terms'}/> : oauthConsent ? <OAuthConsent /> : home ? <AcademyHome /> : <App />}
+        {legal ? <LegalPage page={legalPath === '/privacy' ? 'privacy' : 'terms'}/> : oauthConsent ? <OAuthConsent /> : join ? <PublicJoin lang={initialLang} /> : home ? <AcademyHome /> : <App />}
       </Suspense>
     </RootErrorBoundary>
   </StrictMode>
